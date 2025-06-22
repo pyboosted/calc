@@ -1,111 +1,134 @@
----
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
-globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
-alwaysApply: false
----
+# CLAUDE.md
 
-Default to using Bun instead of Node.js.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+## Project Overview
 
-## APIs
+Boosted Calculator is a powerful terminal-based calculator built with Bun, TypeScript, and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, and a sophisticated expression parser.
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+## Development Commands
 
-## Testing
+### Essential Commands
+```bash
+# Install dependencies
+bun install
 
-Use `bun test` to run tests.
+# Run the calculator
+bun start
+# or globally after installation
+calc
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
+# Development with hot reload
+bun dev
 
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+# Run tests
+bun test
+
+# Run tests in watch mode
+bun test:watch
+
+# Update currency exchange rates
+bun run update-currencies
+# or with global installation
+calc --update
+
+# Type checking
+bun tsc --noEmit
+
+# Install globally
+npm i -g .
 ```
 
-## Frontend
+### Running Specific Tests
+```bash
+# Run a specific test file
+bun test tests/evaluator.test.ts
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
+# Run tests matching a pattern
+bun test --name-pattern "percentage"
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+## Code Architecture
 
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
+### Expression Processing Pipeline
 
-With the following `frontend.tsx`:
+1. **Tokenizer** (`src/parser/tokenizer.ts`): Converts raw input into tokens
+   - Handles numbers, operators, units, functions, variables, keywords
+   - Recognizes multi-character operators and currency symbols
+   - Maintains position information for each token
 
-```tsx#frontend.tsx
-import React from "react";
+2. **Parser** (`src/parser/parser.ts`): Builds Abstract Syntax Tree (AST) from tokens
+   - Recursive descent parser with proper operator precedence
+   - Special handling for percentage operations in context (e.g., `100 - 10%` → `100 - (100 * 10/100)`)
+   - Converts unit syntax (`100 cm`) into binary operations
+   - Handles "X% of Y" syntax separately from regular percentages
 
-// import .css files directly and it works
-import './index.css';
+3. **Evaluator** (`src/evaluator/evaluate.ts`): Executes AST to produce results
+   - Maintains variable state across evaluations
+   - Handles unit conversions through `convertUnits`
+   - Integrates with date/time operations via `DateManager`
+   - Returns `CalculatedValue` objects with value and optional unit
 
-import { createRoot } from "react-dom/client";
+### UI Architecture (Ink/React)
 
-const root = createRoot(document.body);
+The UI uses Ink (React for CLI) with a multi-line editor approach:
 
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
+1. **Calculator** (`src/ui/Calculator.tsx`): Main component managing state
+   - Tracks multiple lines with individual results
+   - Handles keyboard navigation (arrows, enter, backspace)
+   - Manages variable state including `prev` (previous result)
+   - Implements exit handling for Esc and Ctrl+C
 
-root.render(<Frontend />);
-```
+2. **InputWithResult** (`src/ui/InputWithResult.tsx`): Individual line component
+   - Renders input with syntax highlighting
+   - Shows results or errors aligned to the right
+   - Handles line-specific keyboard input when active
+   - Treats invalid expressions as comments (gray text)
 
-Then, run index.ts
+3. **InputLine** (`src/ui/InputLine.tsx`): Syntax highlighting and cursor
+   - Uses inverse character for cursor display
+   - Tokenizes input for color-coded syntax highlighting
+   - Handles empty lines and cursor positioning edge cases
 
-```sh
-bun --hot ./index.ts
-```
+### Key Systems
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+1. **Unit Conversion** (`src/evaluator/unitConverter.ts`)
+   - Dimensional analysis for unit compatibility
+   - Supports length, weight, temperature, time, volume, data units
+   - Special handling for temperature conversions (not linear)
+   - Uses decimal system for data units (1 GB = 1000 MB)
+
+2. **Currency Manager** (`src/utils/currencyManager.ts`)
+   - Fetches live rates from exchangerate-api.com
+   - Caches rates for 24 hours in `~/.config/boomi/currency_cache.json`
+   - Supports 300+ currencies
+   - Auto-updates on startup if cache is stale
+
+3. **Configuration** (`src/utils/configManager.ts`)
+   - YAML-based config at `~/.config/boomi/config.yaml`
+   - Currently supports precision setting (decimal places)
+   - Auto-creates config directory and file on first run
+
+4. **Date/Time Operations** (`src/utils/dateManager.ts`)
+   - Keywords: today, tomorrow, yesterday, now, weekdays
+   - Arithmetic with units: days, weeks, months, years, hours, minutes, seconds
+   - Uses date-fns for reliable date manipulation
+
+### Exit Handling
+
+The app uses `exitOnCtrlC: false` in Ink render options and handles exit keys manually in Calculator component to ensure both Esc and Ctrl+C work properly on first press.
+
+## Testing Strategy
+
+Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
+- `tests/evaluator.test.ts`: Core calculation logic
+- `tests/parser.test.ts`: AST generation and operator precedence
+- `tests/unit-conversion.test.ts`: Unit conversion accuracy
+
+## Important Notes
+
+- Always use Bun commands instead of npm/node equivalents
+- The calculator is published as `@boosted/calc` on npm
+- Configuration and cache files are stored in `~/.config/boomi/`
+- The parser treats invalid expressions as comments for better UX
+- Percentage calculations are context-aware (addition/subtraction vs standalone)
