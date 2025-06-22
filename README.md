@@ -17,6 +17,7 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Live currency conversion**: 300+ currencies updated daily from free API
 - **Variables**: `x = 10`, then use `x` in expressions
 - **Previous result**: Use `prev` to reference the previous line's result (skips empty lines and comments)
+- **Aggregate operations**: `total` and `average` calculate sum/mean of previous numeric values (stops at empty line or comment)
 - **Smart percentage calculations**: 
   - Basic: `20%` = 0.2
   - With operations: `100 - 10%` = 90, `100 + 10%` = 110
@@ -148,6 +149,23 @@ prev * 2
 prev - 5
 # Comment line doesn't affect prev
 prev / 3
+
+# Aggregate operations
+100
+200
+300
+total          # 600
+average        # 200
+
+# With grouping
+85
+90
+95
+average        # 90
+
+Comment or empty line breaks the group
+50
+total          # 50 (only counts this line)
 
 # Percentages
 20%

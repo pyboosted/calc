@@ -1,4 +1,4 @@
-import { Token, TokenType, ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, DateNode, DateOperationNode } from '../types';
+import { Token, TokenType, ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, DateNode, DateOperationNode } from '../types';
 
 export class Parser {
   private tokens: Token[];
@@ -291,6 +291,12 @@ export class Parser {
       if (this.current.value === 'prev') {
         this.advance();
         return { type: 'variable', name: 'prev' } as VariableNode;
+      }
+      // Aggregate keywords
+      if (this.current.value === 'total' || this.current.value === 'average') {
+        const aggregateType = this.current.value;
+        this.advance();
+        return { type: 'aggregate', operation: aggregateType } as AggregateNode;
       }
       // Date keywords
       if (['today', 'now', 'tomorrow', 'yesterday', 'monday', 'tuesday', 'wednesday', 

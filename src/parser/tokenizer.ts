@@ -77,7 +77,7 @@ export class Tokenizer {
     const lowerValue = value.toLowerCase();
     
     // Keywords
-    if (['in', 'to', 'as', 'of', 'what', 'is', 'prev', 'today', 'now', 'tomorrow', 'yesterday',
+    if (['in', 'to', 'as', 'of', 'what', 'is', 'prev', 'total', 'average', 'today', 'now', 'tomorrow', 'yesterday',
          'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
          'from', 'ago', 'hence', 'start', 'end', 'beginning'].includes(lowerValue)) {
       return { type: TokenType.KEYWORD, value: lowerValue, position: start };

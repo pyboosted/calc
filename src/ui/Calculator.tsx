@@ -72,7 +72,18 @@ export const Calculator: React.FC = () => {
       }
       
       try {
-        const result = evaluate(line, lineVariables);
+        // Collect previous results for aggregate operations
+        const previousResults: CalculatedValue[] = [];
+        for (let i = index - 1; i >= 0; i--) {
+          const prevResult = newLineResults.get(i);
+          if (!prevResult || prevResult.isComment || !prevResult.result) {
+            // Stop at empty line or comment
+            break;
+          }
+          previousResults.unshift(prevResult.result);
+        }
+        
+        const result = evaluate(line, lineVariables, { previousResults });
         newLineResults.set(index, { result, error: null, isComment: false });
         
         // Copy any new variable assignments back to cumulative variables (except 'prev')

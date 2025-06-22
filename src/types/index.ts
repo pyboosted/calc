@@ -79,6 +79,11 @@ export interface AssignmentNode extends ASTNode {
   value: ASTNode;
 }
 
+export interface AggregateNode extends ASTNode {
+  type: 'aggregate';
+  operation: 'total' | 'average';
+}
+
 export interface DateNode extends ASTNode {
   type: 'date';
   value: string;

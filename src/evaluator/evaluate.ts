@@ -1,4 +1,4 @@
-import { ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, CalculatedValue, DateNode, DateOperationNode } from '../types';
+import { ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, CalculatedValue, DateNode, DateOperationNode } from '../types';
 import { Tokenizer } from '../parser/tokenizer';
 import { Parser } from '../parser/parser';
 import { mathFunctions } from './mathFunctions';
@@ -12,17 +12,21 @@ function isTimePeriodUnit(unit: string | undefined): boolean {
           'year', 'years'].includes(unit);
 }
 
-export function evaluate(input: string, variables: Map<string, CalculatedValue>): CalculatedValue {
+export interface EvaluationContext {
+  previousResults?: CalculatedValue[];
+}
+
+export function evaluate(input: string, variables: Map<string, CalculatedValue>, context?: EvaluationContext): CalculatedValue {
   const tokenizer = new Tokenizer(input);
   const tokens = tokenizer.tokenize();
   
   const parser = new Parser(tokens);
   const ast = parser.parse();
   
-  return evaluateNode(ast, variables);
+  return evaluateNode(ast, variables, context);
 }
 
-function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): CalculatedValue {
+function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, context?: EvaluationContext): CalculatedValue {
   switch (node.type) {
     case 'number': {
       const numNode = node as NumberNode;
@@ -40,14 +44,14 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
     
     case 'assignment': {
       const assignNode = node as AssignmentNode;
-      const result = evaluateNode(assignNode.value, variables);
+      const result = evaluateNode(assignNode.value, variables, context);
       variables.set(assignNode.variable, result);
       return result;
     }
     
     case 'unary': {
       const unaryNode = node as UnaryOpNode;
-      const operand = evaluateNode(unaryNode.operand, variables);
+      const operand = evaluateNode(unaryNode.operand, variables, context);
       
       switch (unaryNode.operator) {
         case '+': return operand;
@@ -61,7 +65,7 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
       
       // Special handling for unit conversion
       if (binaryNode.operator === 'convert') {
-        const leftResult = evaluateNode(binaryNode.left, variables);
+        const leftResult = evaluateNode(binaryNode.left, variables, context);
         const rightNode = binaryNode.right as NumberNode;
         
         if (leftResult.unit && rightNode.unit) {
@@ -71,8 +75,8 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
         return leftResult;
       }
       
-      const left = evaluateNode(binaryNode.left, variables);
-      const right = evaluateNode(binaryNode.right, variables);
+      const left = evaluateNode(binaryNode.left, variables, context);
+      const right = evaluateNode(binaryNode.right, variables, context);
       
       switch (binaryNode.operator) {
         case '+': 
@@ -165,7 +169,7 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
     
     case 'function': {
       const funcNode = node as FunctionNode;
-      const args = funcNode.args.map(arg => evaluateNode(arg, variables));
+      const args = funcNode.args.map(arg => evaluateNode(arg, variables, context));
       
       const func = mathFunctions[funcNode.name];
       if (!func) {
@@ -192,7 +196,7 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
     
     case 'dateOperation': {
       const dateOpNode = node as DateOperationNode;
-      const dateResult = evaluateNode(dateOpNode.date, variables);
+      const dateResult = evaluateNode(dateOpNode.date, variables, context);
       
       if (!dateResult.date) {
         throw new Error('Date operation requires a date');
@@ -202,7 +206,7 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
       const date = dateResult.date;
       
       if (dateOpNode.operation === 'add' || dateOpNode.operation === 'subtract') {
-        const valueResult = evaluateNode(dateOpNode.value!, variables);
+        const valueResult = evaluateNode(dateOpNode.value!, variables, context);
         const value = valueResult.value;
         const unit = dateOpNode.unit!;
         
@@ -214,6 +218,31 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
       }
       
       throw new Error(`Unknown date operation: ${dateOpNode.operation}`);
+    }
+    
+    case 'aggregate': {
+      const aggNode = node as AggregateNode;
+      
+      if (!context?.previousResults || context.previousResults.length === 0) {
+        throw new Error(`No values to ${aggNode.operation}`);
+      }
+      
+      const values = context.previousResults
+        .filter(result => result && typeof result.value === 'number')
+        .map(result => result.value);
+      
+      if (values.length === 0) {
+        throw new Error(`No numeric values to ${aggNode.operation}`);
+      }
+      
+      if (aggNode.operation === 'total') {
+        const sum = values.reduce((acc, val) => acc + val, 0);
+        return { value: sum };
+      } else { // average
+        const sum = values.reduce((acc, val) => acc + val, 0);
+        const avg = sum / values.length;
+        return { value: avg };
+      }
     }
     
     default:
