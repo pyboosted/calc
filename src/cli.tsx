@@ -6,6 +6,7 @@ import { CurrencyManager } from './utils/currencyManager';
 import { ConfigManager } from './utils/configManager';
 import { evaluate } from './evaluator/evaluate';
 import { formatResultWithUnit } from './evaluator/unitFormatter';
+import { readFileSync, existsSync } from 'fs';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -26,9 +27,30 @@ async function main() {
   // Initialize currency data
   await currencyManager.initialize();
   
-  // Check if expression provided as argument
-  const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
-  if (nonFlagArgs.length > 0) {
+  // Check for file loading
+  let fileContent: string | undefined;
+  const fileArg = args.find(arg => arg.startsWith('--file=') || arg === '-f');
+  if (fileArg) {
+    const filePath = fileArg === '-f' 
+      ? args[args.indexOf('-f') + 1]
+      : fileArg.split('=')[1];
+      
+    if (filePath && existsSync(filePath)) {
+      try {
+        fileContent = readFileSync(filePath, 'utf-8');
+      } catch (error) {
+        console.error(`Error reading file: ${error.message}`);
+        process.exit(1);
+      }
+    } else {
+      console.error(`File not found: ${filePath}`);
+      process.exit(1);
+    }
+  }
+  
+  // Check if expression provided as argument (non-file arguments)
+  const nonFlagArgs = args.filter(arg => !arg.startsWith('--') && arg !== '-f' && args[args.indexOf(arg) - 1] !== '-f');
+  if (nonFlagArgs.length > 0 && !fileContent) {
     // Non-interactive mode: evaluate expression and print result
     const expression = nonFlagArgs.join(' ');
     try {
@@ -42,7 +64,7 @@ async function main() {
   }
   
   // Interactive mode: start the calculator UI
-  render(<Calculator />, { exitOnCtrlC: false });
+  render(<Calculator initialContent={fileContent} />, { exitOnCtrlC: false });
 }
 
 main().catch(console.error);

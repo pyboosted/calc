@@ -4,18 +4,33 @@ import { InputWithResult } from './InputWithResult';
 import { evaluate } from '../evaluator/evaluate';
 import type { CalculatorState, CalculatedValue } from '../types';
 
-export const Calculator: React.FC = () => {
+import { writeFileSync, readFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { execSync } from 'child_process';
+
+interface CalculatorProps {
+  initialContent?: string;
+}
+
+export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
   const { exit } = useApp();
-  const [state, setState] = useState<CalculatorState>({
-    input: '',
+  const [state, setState] = useState<CalculatorState>(() => ({
+    input: initialContent ? initialContent.split('\n')[0] || '' : '',
     result: null,
     error: null,
     history: [],
     cursorPosition: 0,
     variables: new Map()
-  });
+  }));
 
-  const [lines, setLines] = useState<string[]>(['']);
+  const [lines, setLines] = useState<string[]>(() => {
+    if (initialContent) {
+      const contentLines = initialContent.split('\n');
+      return contentLines.length === 0 ? [''] : contentLines;
+    }
+    return [''];
+  });
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [lineResults, setLineResults] = useState<Map<number, { result: CalculatedValue | null; error: string | null; isComment?: boolean }>>(new Map());
 
@@ -33,6 +48,10 @@ export const Calculator: React.FC = () => {
       setCurrentLineIndex(0);
       setLineResults(new Map());
       setState(prev => ({ ...prev, input: '', result: null, error: null, cursorPosition: 0 }));
+    }
+    
+    if (key.ctrl && input === 'e') {
+      openInEditor();
     }
   });
 
@@ -203,6 +222,38 @@ export const Calculator: React.FC = () => {
     }
   };
 
+  const openInEditor = () => {
+    const editor = process.env.EDITOR || 'nano';
+    const tempFile = join(tmpdir(), `calc-${Date.now()}.txt`);
+    
+    // Write current content to temp file
+    const content = lines.join('\n');
+    writeFileSync(tempFile, content);
+    
+    try {
+      // Open editor and wait for it to close
+      execSync(`${editor} ${tempFile}`, { stdio: 'inherit' });
+      
+      // Read the edited content
+      const editedContent = readFileSync(tempFile, 'utf-8');
+      const newLines = editedContent.split('\n');
+      
+      // Update the calculator with new content
+      setLines(newLines.length === 0 ? [''] : newLines);
+      setCurrentLineIndex(0);
+      setState(prev => ({ 
+        ...prev, 
+        input: newLines[0] || '', 
+        cursorPosition: 0,
+        result: null,
+        error: null
+      }));
+    } catch (error) {
+      // If editor fails, just return without changes
+      console.error('Failed to open editor:', error);
+    }
+  };
+
   return (
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
@@ -229,6 +280,12 @@ export const Calculator: React.FC = () => {
             />
           );
         })}
+      </Box>
+      
+      <Box marginTop={1}>
+        <Text dimColor>
+          Esc/Ctrl+C: Exit  •  Ctrl+L: Clear  •  Ctrl+E: Edit in $EDITOR  •  ↑↓: History
+        </Text>
       </Box>
     </Box>
   );

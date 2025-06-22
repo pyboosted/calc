@@ -73,6 +73,10 @@ calc --update
 # Install globally (optional)
 npm i -g .
 calc
+
+# Load calculations from a file
+calc --file=budget.calc
+calc -f calculations.txt
 ```
 
 ## Configuration
@@ -94,10 +98,12 @@ precision: 4
 ## Keyboard Shortcuts
 
 - **Ctrl+C / ESC**: Exit the calculator
-- **Ctrl+L**: Clear the current input
+- **Ctrl+L**: Clear all calculations
+- **Ctrl+E**: Open current content in external editor ($EDITOR)
 - **Enter**: Add a new line (for multi-line expressions)
 - **Up/Down arrows**: Navigate through calculation history
 - **Left/Right arrows**: Move cursor within input
+- **Backspace at line start**: Merge with previous line
 
 ## Examples
 

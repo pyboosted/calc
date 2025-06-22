@@ -1,0 +1,25 @@
+# Monthly Budget Calculation
+
+# Income
+salary = 5000
+freelance = 1500
+total_income = salary + freelance
+
+# Fixed Expenses
+rent = 1200
+utilities = 150
+insurance = 200
+total_fixed = rent + utilities + insurance
+
+# Variable Expenses
+groceries = 400
+transport = 200
+entertainment = 300
+total_variable = groceries + transport + entertainment
+
+# Summary
+total_expenses = total_fixed + total_variable
+savings = total_income - total_expenses
+
+# Savings rate
+savings_rate = (savings / total_income) * 100

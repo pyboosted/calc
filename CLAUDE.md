@@ -22,6 +22,10 @@ calc
 calc "2 + 2"
 calc "today + 5 days"
 
+# Load from file
+calc --file=budget.calc
+calc -f calculations.txt
+
 # Development with hot reload
 bun dev
 
