@@ -10,7 +10,9 @@
   "scripts": {
     "start": "bun run src/cli.tsx",
     "dev": "bun run --watch src/cli.tsx",
-    "update-currencies": "bun run src/cli.tsx --update"
+    "update-currencies": "bun run src/cli.tsx --update",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
   },
   "devDependencies": {
     "@types/bun": "latest"

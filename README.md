@@ -178,7 +178,10 @@ The calculator is built with a modular architecture:
 
 ```bash
 # Run tests
-bun run test.ts
+bun test
+
+# Run tests in watch mode
+bun test:watch
 
 # Type checking
 bun tsc --noEmit
