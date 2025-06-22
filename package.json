@@ -1,0 +1,29 @@
+{
+  "name": "@boosted/calc",
+  "version": "1.0.0",
+  "description": "A powerful terminal-based calculator with unit conversions, currency support, and more",
+  "module": "src/index.tsx",
+  "type": "module",
+  "bin": {
+    "calc": "./bin/calc"
+  },
+  "scripts": {
+    "start": "bun run src/cli.tsx",
+    "dev": "bun run --watch src/cli.tsx",
+    "update-currencies": "bun run src/cli.tsx --update"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/react": "^19.1.8",
+    "date-fns": "^4.1.0",
+    "ink": "^6.0.0",
+    "react": "^19.1.0",
+    "yaml": "^2.8.0"
+  }
+}
