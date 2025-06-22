@@ -39,6 +39,7 @@ export const Calculator: React.FC = () => {
   // Evaluate all lines
   useEffect(() => {
     const newLineResults = new Map<number, { result: CalculatedValue | null; error: string | null; isComment?: boolean }>();
+    const cumulativeVariables = new Map(state.variables);
     
     lines.forEach((line, index) => {
       const trimmed = line.trim();
@@ -62,8 +63,8 @@ export const Calculator: React.FC = () => {
         }
       }
       
-      // Create variables map with current 'prev' value
-      const lineVariables = new Map(state.variables);
+      // Create variables map for this line with current 'prev' value
+      const lineVariables = new Map(cumulativeVariables);
       if (prevValue) {
         lineVariables.set('prev', prevValue);
       } else {
@@ -74,9 +75,21 @@ export const Calculator: React.FC = () => {
         const result = evaluate(line, lineVariables);
         newLineResults.set(index, { result, error: null, isComment: false });
         
+        // Copy any new variable assignments back to cumulative variables (except 'prev')
+        lineVariables.forEach((value, key) => {
+          if (key !== 'prev') {
+            cumulativeVariables.set(key, value);
+          }
+        });
+        
         // Update current state if this is the current line
         if (index === currentLineIndex) {
-          setState(prev => ({ ...prev, result, error: null }));
+          setState(prev => ({ 
+            ...prev, 
+            result, 
+            error: null,
+            variables: new Map(cumulativeVariables)
+          }));
         }
       } catch (error) {
         // Treat invalid expressions as comments (gray text)
@@ -90,7 +103,7 @@ export const Calculator: React.FC = () => {
     });
     
     setLineResults(newLineResults);
-  }, [lines, currentLineIndex, state.variables]);
+  }, [lines, currentLineIndex]);
 
   const handleInputChange = (value: string, cursorPosition: number) => {
     const newLines = [...lines];
