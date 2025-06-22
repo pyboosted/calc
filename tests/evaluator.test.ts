@@ -92,9 +92,14 @@ describe('Variables', () => {
     expect(result2.value).toBe(15);
   });
 
-  test('prev variable', () => {
+  test('prev variable with value', () => {
     const vars = new Map([['prev', { value: 42 }]]);
     const result = evaluate('prev * 2', vars);
     expect(result.value).toBe(84);
+  });
+
+  test('prev variable without value throws error', () => {
+    const vars = new Map();
+    expect(() => evaluate('prev', vars)).toThrow('Unknown variable: prev');
   });
 });

@@ -16,7 +16,7 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Examples: `100 cm in meters`, `32 F in C`, `1 hour in minutes`
 - **Live currency conversion**: 300+ currencies updated daily from free API
 - **Variables**: `x = 10`, then use `x` in expressions
-- **Previous result**: Use `prev` to reference the last calculation
+- **Previous result**: Use `prev` to reference the previous line's result (skips empty lines and comments)
 - **Smart percentage calculations**: 
   - Basic: `20%` = 0.2
   - With operations: `100 - 10%` = 90, `100 + 10%` = 110
@@ -128,6 +128,9 @@ sqrt(x^2 + y^2)
 # Using previous result
 10 + 5
 prev * 2
+prev - 5
+# Comment line doesn't affect prev
+prev / 3
 
 # Percentages
 20%

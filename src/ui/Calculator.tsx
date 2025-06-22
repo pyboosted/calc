@@ -12,7 +12,7 @@ export const Calculator: React.FC = () => {
     error: null,
     history: [],
     cursorPosition: 0,
-    variables: new Map([['prev', { value: 0 }]])
+    variables: new Map()
   });
 
   const [lines, setLines] = useState<string[]>(['']);
@@ -52,8 +52,26 @@ export const Calculator: React.FC = () => {
         return;
       }
       
+      // Find the previous line's result for 'prev' variable
+      let prevValue: CalculatedValue | undefined;
+      for (let i = index - 1; i >= 0; i--) {
+        const prevLineResult = newLineResults.get(i);
+        if (prevLineResult && prevLineResult.result && !prevLineResult.isComment) {
+          prevValue = prevLineResult.result;
+          break;
+        }
+      }
+      
+      // Create variables map with current 'prev' value
+      const lineVariables = new Map(state.variables);
+      if (prevValue) {
+        lineVariables.set('prev', prevValue);
+      } else {
+        lineVariables.delete('prev');
+      }
+      
       try {
-        const result = evaluate(line, state.variables);
+        const result = evaluate(line, lineVariables);
         newLineResults.set(index, { result, error: null, isComment: false });
         
         // Update current state if this is the current line
@@ -102,15 +120,6 @@ export const Calculator: React.FC = () => {
   };
 
   const handleNewLine = () => {
-    // Update prev variable only if we have a valid result
-    if (state.result && !state.error) {
-      setState(prev => {
-        const newVariables = new Map(prev.variables);
-        newVariables.set('prev', prev.result!);
-        return { ...prev, variables: newVariables };
-      });
-    }
-    
     // Always allow adding a new line
     const newLines = [...lines, ''];
     setLines(newLines);
