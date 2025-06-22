@@ -67,7 +67,8 @@ export class Tokenizer {
     const start = this.position;
     let value = '';
 
-    while (/[a-zA-Z0-9_]/.test(this.current)) {
+    // Support Unicode letters (including Cyrillic) and numbers
+    while (/[\p{L}\p{N}_]/u.test(this.current)) {
       value += this.current;
       this.advance();
     }
@@ -179,7 +180,8 @@ export class Tokenizer {
       }
 
       // Identifiers (variables, functions, units, keywords)
-      if (/[a-zA-Z]/.test(this.current)) {
+      // Support Unicode letters including Cyrillic
+      if (/\p{L}/u.test(this.current)) {
         tokens.push(this.readIdentifier());
         continue;
       }

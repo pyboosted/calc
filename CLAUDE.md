@@ -137,4 +137,5 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - The parser treats invalid expressions as comments for better UX
 - Percentage calculations are context-aware (addition/subtraction vs standalone)
 - Units take priority over variables - single letters like m, g, c, f, k, s, h, d, l are recognized as units, not variables
+- Unicode variable names are supported, including Cyrillic (e.g., `цена = 100`)
 - Date arithmetic supports expressions like `variable * time_unit + date` (e.g., `test * 1 day + today`)

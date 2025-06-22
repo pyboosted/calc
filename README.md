@@ -131,6 +131,11 @@ y = 20
 x + y
 sqrt(x^2 + y^2)
 
+# Unicode variable names (including Cyrillic)
+цена = 1500
+скидка = 10%
+цена - скидка
+
 # Variables with date/time arithmetic
 test = 2
 test * 1 day + today
