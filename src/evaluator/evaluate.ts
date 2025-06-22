@@ -5,6 +5,13 @@ import { mathFunctions } from './mathFunctions';
 import { convertUnits } from './unitConverter';
 import { DateManager } from '../utils/dateManager';
 
+function isTimePeriodUnit(unit: string | undefined): boolean {
+  if (!unit) return false;
+  return ['second', 'seconds', 'minute', 'minutes', 'hour', 'hours', 
+          'day', 'days', 'week', 'weeks', 'month', 'months', 
+          'year', 'years'].includes(unit);
+}
+
 export function evaluate(input: string, variables: Map<string, CalculatedValue>): CalculatedValue {
   const tokenizer = new Tokenizer(input);
   const tokens = tokenizer.tokenize();
@@ -70,7 +77,30 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>): C
       switch (binaryNode.operator) {
         case '+': 
         case '-': {
-          // For addition/subtraction, units must match
+          // Special handling for date arithmetic
+          if ((left.unit === 'timestamp' && left.date) || (right.unit === 'timestamp' && right.date)) {
+            const dateManager = DateManager.getInstance();
+            
+            // Handle: date + time period
+            if (left.unit === 'timestamp' && left.date && isTimePeriodUnit(right.unit)) {
+              const newDate = binaryNode.operator === '+' 
+                ? dateManager.addPeriod(left.date, right.value, right.unit!)
+                : dateManager.subtractPeriod(left.date, right.value, right.unit!);
+              return { value: newDate.getTime(), unit: 'timestamp', date: newDate };
+            }
+            
+            // Handle: time period + date
+            if (right.unit === 'timestamp' && right.date && isTimePeriodUnit(left.unit)) {
+              if (binaryNode.operator === '+') {
+                const newDate = dateManager.addPeriod(right.date, left.value, left.unit!);
+                return { value: newDate.getTime(), unit: 'timestamp', date: newDate };
+              } else {
+                throw new Error('Cannot subtract a date from a time period');
+              }
+            }
+          }
+          
+          // Regular unit conversion for non-date arithmetic
           if (left.unit && right.unit && left.unit !== right.unit) {
             // Try to convert right to left's unit
             try {

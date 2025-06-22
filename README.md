@@ -125,6 +125,12 @@ y = 20
 x + y
 sqrt(x^2 + y^2)
 
+# Variables with date/time arithmetic
+test = 2
+test * 1 day + today
+num = 5
+tomorrow + num * 1 week
+
 # Using previous result
 10 + 5
 prev * 2

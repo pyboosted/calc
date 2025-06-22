@@ -132,3 +132,5 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Configuration and cache files are stored in `~/.config/boomi/`
 - The parser treats invalid expressions as comments for better UX
 - Percentage calculations are context-aware (addition/subtraction vs standalone)
+- Units take priority over variables - single letters like m, g, c, f, k, s, h, d, l are recognized as units, not variables
+- Date arithmetic supports expressions like `variable * time_unit + date` (e.g., `test * 1 day + today`)
