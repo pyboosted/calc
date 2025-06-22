@@ -112,20 +112,27 @@ export const Calculator: React.FC = () => {
     setState(prev => ({ ...prev, input: value, cursorPosition }));
   };
 
-  const handleBackspaceOnEmptyLine = () => {
-    if (currentLineIndex > 0 && lines[currentLineIndex] === '') {
-      // Remove current empty line
-      const newLines = lines.filter((_, index) => index !== currentLineIndex);
-      setLines(newLines);
-      
-      // Move to end of previous line
+  const handleBackspaceAtLineStart = () => {
+    if (currentLineIndex > 0) {
+      const currentLine = lines[currentLineIndex];
       const prevLineIndex = currentLineIndex - 1;
       const prevLine = lines[prevLineIndex];
+      
+      // Merge current line with previous line
+      const mergedLine = prevLine + currentLine;
+      const newCursorPosition = prevLine.length;
+      
+      // Update lines array
+      const newLines = [...lines];
+      newLines[prevLineIndex] = mergedLine;
+      newLines.splice(currentLineIndex, 1);
+      
+      setLines(newLines);
       setCurrentLineIndex(prevLineIndex);
       setState(prev => ({ 
         ...prev, 
-        input: prevLine, 
-        cursorPosition: prevLine.length,
+        input: mergedLine, 
+        cursorPosition: newCursorPosition,
         result: null,
         error: null
       }));
@@ -133,26 +140,55 @@ export const Calculator: React.FC = () => {
   };
 
   const handleNewLine = () => {
-    // Always allow adding a new line
-    const newLines = [...lines, ''];
+    const currentLine = lines[currentLineIndex];
+    const beforeCursor = currentLine.slice(0, state.cursorPosition);
+    const afterCursor = currentLine.slice(state.cursorPosition);
+    
+    // Update current line with text before cursor
+    const newLines = [...lines];
+    newLines[currentLineIndex] = beforeCursor;
+    
+    // Insert new line with text after cursor
+    newLines.splice(currentLineIndex + 1, 0, afterCursor);
+    
     setLines(newLines);
     setCurrentLineIndex(currentLineIndex + 1);
-    setState(prev => ({ ...prev, input: '', cursorPosition: 0, result: null, error: null }));
+    setState(prev => ({ 
+      ...prev, 
+      input: afterCursor, 
+      cursorPosition: 0, 
+      result: null, 
+      error: null 
+    }));
   };
 
   const handleArrowUp = () => {
     if (currentLineIndex > 0) {
-      setCurrentLineIndex(currentLineIndex - 1);
-      const newLine = lines[currentLineIndex - 1];
-      setState(prev => ({ ...prev, input: newLine, cursorPosition: newLine.length }));
+      const targetIndex = currentLineIndex - 1;
+      const targetLine = lines[targetIndex];
+      const newCursorPosition = Math.min(state.cursorPosition, targetLine.length);
+      
+      setCurrentLineIndex(targetIndex);
+      setState(prev => ({ 
+        ...prev, 
+        input: targetLine, 
+        cursorPosition: newCursorPosition 
+      }));
     }
   };
 
   const handleArrowDown = () => {
     if (currentLineIndex < lines.length - 1) {
-      setCurrentLineIndex(currentLineIndex + 1);
-      const newLine = lines[currentLineIndex + 1];
-      setState(prev => ({ ...prev, input: newLine, cursorPosition: newLine.length }));
+      const targetIndex = currentLineIndex + 1;
+      const targetLine = lines[targetIndex];
+      const newCursorPosition = Math.min(state.cursorPosition, targetLine.length);
+      
+      setCurrentLineIndex(targetIndex);
+      setState(prev => ({ 
+        ...prev, 
+        input: targetLine, 
+        cursorPosition: newCursorPosition 
+      }));
     }
   };
 
@@ -177,7 +213,7 @@ export const Calculator: React.FC = () => {
               onNewLine={index === currentLineIndex ? handleNewLine : undefined}
               onArrowUp={index === currentLineIndex ? handleArrowUp : undefined}
               onArrowDown={index === currentLineIndex ? handleArrowDown : undefined}
-              onBackspaceOnEmptyLine={index === currentLineIndex ? handleBackspaceOnEmptyLine : undefined}
+              onBackspaceOnEmptyLine={index === currentLineIndex ? handleBackspaceAtLineStart : undefined}
               isActive={index === currentLineIndex}
             />
           );

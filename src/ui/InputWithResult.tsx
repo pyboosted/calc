@@ -65,8 +65,8 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
     }
 
     if (key.backspace || key.delete) {
-      if (cursorPosition === 0 && value === '') {
-        // Backspace on empty line
+      if (cursorPosition === 0) {
+        // Backspace at beginning of line (empty or non-empty)
         onBackspaceOnEmptyLine?.();
       } else if (cursorPosition !== undefined && cursorPosition > 0) {
         const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
