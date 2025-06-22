@@ -13,10 +13,14 @@ Boosted Calculator is a powerful terminal-based calculator built with Bun, TypeS
 # Install dependencies
 bun install
 
-# Run the calculator
+# Run the calculator (interactive mode)
 bun start
 # or globally after installation
 calc
+
+# Non-interactive mode (evaluate expression)
+calc "2 + 2"
+calc "today + 5 days"
 
 # Development with hot reload
 bun dev

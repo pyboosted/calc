@@ -52,19 +52,25 @@ bun install
 ## Usage
 
 ```bash
-# Run the calculator
+# Run the calculator (interactive mode)
 bun start
 
 # Or run with file watching (development)
 bun dev
 
+# Non-interactive mode - calculate and print result
+calc "2 + 2"
+calc "today + 5 days"
+calc "100 USD in EUR"
+calc "sqrt(16) * 2"
+
 # Update currency exchange rates
 bun run update-currencies
 # Or
-./calc --update
+calc --update
 
 # Install globally (optional)
-bun link
+npm i -g .
 calc
 ```
 

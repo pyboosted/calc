@@ -4,6 +4,8 @@ import { render } from 'ink';
 import { Calculator } from './ui/Calculator';
 import { CurrencyManager } from './utils/currencyManager';
 import { ConfigManager } from './utils/configManager';
+import { evaluate } from './evaluator/evaluate';
+import { formatResultWithUnit } from './evaluator/unitFormatter';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -24,7 +26,22 @@ async function main() {
   // Initialize currency data
   await currencyManager.initialize();
   
-  // Start the calculator with exit on Ctrl+C disabled (we handle it ourselves)
+  // Check if expression provided as argument
+  const nonFlagArgs = args.filter(arg => !arg.startsWith('--'));
+  if (nonFlagArgs.length > 0) {
+    // Non-interactive mode: evaluate expression and print result
+    const expression = nonFlagArgs.join(' ');
+    try {
+      const result = evaluate(expression, new Map());
+      console.log(formatResultWithUnit(result));
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+  
+  // Interactive mode: start the calculator UI
   render(<Calculator />, { exitOnCtrlC: false });
 }
 
