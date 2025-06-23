@@ -250,6 +250,16 @@ Remaining
 3500 - 1250
 ```
 
+## Installation from npm
+
+```bash
+npm install -g boosted-calc
+# or
+yarn global add boosted-calc
+# or
+bun add -g boosted-calc
+```
+
 ## Architecture
 
 The calculator is built with a modular architecture:

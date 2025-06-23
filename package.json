@@ -1,11 +1,40 @@
 {
-  "name": "@boosted/calc",
-  "version": "1.0.0",
+  "name": "boosted-calc",
+  "version": "1.1.0",
   "description": "A powerful terminal-based calculator with unit conversions, currency support, and more",
+  "keywords": [
+    "calculator",
+    "cli",
+    "terminal",
+    "unit-conversion",
+    "currency",
+    "math",
+    "typescript",
+    "bun"
+  ],
+  "author": "pyboosted",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pyboosted/calc.git"
+  },
+  "homepage": "https://github.com/pyboosted/calc#readme",
+  "bugs": {
+    "url": "https://github.com/pyboosted/calc/issues"
+  },
   "module": "src/index.tsx",
   "type": "module",
   "bin": {
-    "calc": "./bin/calc"
+    "calc": "bin/calc"
+  },
+  "files": [
+    "src/**/*",
+    "bin/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   },
   "scripts": {
     "start": "bun run src/cli.tsx",

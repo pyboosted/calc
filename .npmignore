@@ -1,0 +1,44 @@
+# Test files
+tests/
+*.test.ts
+*.spec.ts
+
+# Source control
+.git/
+.gitignore
+
+# Development files
+.vscode/
+.idea/
+*.log
+.DS_Store
+
+# Documentation source
+docs/
+
+# Build files
+tsconfig.json
+bun.lockb
+
+# CI/CD
+.github/
+
+# Example/demo files
+*.calc
+examples/
+
+# Development dependencies config
+.eslintrc*
+.prettierrc*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Local config that shouldn't be published
+CLAUDE.md
