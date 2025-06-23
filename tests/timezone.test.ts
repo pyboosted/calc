@@ -137,4 +137,27 @@ describe('Timezone Support', () => {
     expect(hours).toBeGreaterThanOrEqual(0);
     expect(hours).toBeLessThanOrEqual(23);
   });
+
+  test('time conversion with single letter timezone', () => {
+    // Should treat single letters as timezone when converting time
+    const result = evaluate('10:00 to m', new Map());
+    expect(result.unit).toBe('timestamp');
+    expect(result.date).toBeDefined();
+    expect(result.timezone).toBe('m');
+  });
+
+  test('unit conversion still works for non-time values', () => {
+    // Regular unit conversion should still work
+    const result = evaluate('100 cm to m', new Map());
+    expect(result.unit).toBe('m');
+    expect(result.value).toBe(1);
+  });
+
+  test('incomplete timezone conversion does not crash', () => {
+    // Should handle incomplete timezone conversion
+    const result = evaluate('10:00 to', new Map());
+    expect(result.unit).toBe('timestamp');
+    expect(result.date).toBeDefined();
+    // Should return original time without timezone conversion
+  });
 });

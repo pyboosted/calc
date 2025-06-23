@@ -95,25 +95,51 @@ export class Parser {
     // Handle "in", "to", "as" for unit and timezone conversion at expression level
     if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
       this.advance();
-      if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
-        const targetUnit = this.current.value;
-        this.advance();
-        node = {
-          type: 'binary',
-          operator: 'convert',
-          left: node,
-          right: { type: 'number', value: 1, unit: targetUnit } as NumberNode
-        } as BinaryOpNode;
-      } else if (this.current.type === TokenType.TIMEZONE || this.current.type === TokenType.VARIABLE) {
-        // Timezone conversion
-        const targetTimezone = this.current.value;
-        this.advance();
-        node = {
-          type: 'binary',
-          operator: 'timezone_convert',
-          left: node,
-          right: { type: 'variable', name: targetTimezone } as VariableNode
-        } as BinaryOpNode;
+      
+      // Check if we're converting a time/date (which could be a timezone conversion)
+      const isTimeOrDate = node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
+                          (node.type === 'variable' && (node as VariableNode).name === 'now') ||
+                          // Also check for date operations that result in timestamps
+                          (node.type === 'dateOperation') ||
+                          // Check for binary operations that might involve dates
+                          (node.type === 'binary' && (node as BinaryOpNode).operator === 'timezone_convert');
+      
+      if (isTimeOrDate) {
+        // For time/date nodes, any identifier could be a timezone
+        if (this.current.type === TokenType.TIMEZONE || 
+            this.current.type === TokenType.VARIABLE ||
+            this.current.type === TokenType.UNIT ||
+            this.current.type === TokenType.CURRENCY ||
+            this.current.type === TokenType.KEYWORD ||
+            this.current.type === TokenType.EOF) {
+          
+          if (this.current.type === TokenType.EOF) {
+            // Incomplete expression, just return the node as-is
+            return node;
+          }
+          
+          // Timezone conversion
+          const targetTimezone = this.current.value;
+          this.advance();
+          node = {
+            type: 'binary',
+            operator: 'timezone_convert',
+            left: node,
+            right: { type: 'variable', name: targetTimezone } as VariableNode
+          } as BinaryOpNode;
+        }
+      } else {
+        // For non-time/date nodes, do regular unit conversion
+        if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
+          const targetUnit = this.current.value;
+          this.advance();
+          node = {
+            type: 'binary',
+            operator: 'convert',
+            left: node,
+            right: { type: 'number', value: 1, unit: targetUnit } as NumberNode
+          } as BinaryOpNode;
+        }
       }
     }
     

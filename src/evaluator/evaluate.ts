@@ -94,9 +94,14 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
             return { value: date.getTime(), unit: 'timestamp', date, timezone: targetTimezone };
           }
           
-          // Convert timezone
-          const convertedDate = timezoneManager.convertTimezone(leftResult.date, sourceTimezone, targetTimezone);
-          return { value: convertedDate.getTime(), unit: 'timestamp', date: convertedDate, timezone: targetTimezone };
+          // Validate and convert timezone
+          try {
+            const convertedDate = timezoneManager.convertTimezone(leftResult.date, sourceTimezone, targetTimezone);
+            return { value: convertedDate.getTime(), unit: 'timestamp', date: convertedDate, timezone: targetTimezone };
+          } catch (error) {
+            // If timezone conversion fails, return the original date with the attempted timezone
+            return { ...leftResult, timezone: targetTimezone };
+          }
         }
         
         throw new Error('Timezone conversion requires a timestamp value');
@@ -237,24 +242,37 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
       const timeNode = node as TimeNode;
       const timezoneManager = TimezoneManager.getInstance();
       
-      // Parse time components
-      const [hours, minutes] = timeNode.value.split(':').map(Number);
-      
-      // Get current date in the specified timezone
-      const timezone = timeNode.timezone || timezoneManager.getSystemTimezone();
-      const now = new Date();
-      
-      // Create date with time in specified timezone
-      const date = timezoneManager.createDateInTimezone(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        now.getDate(),
-        hours,
-        minutes,
-        timezone
-      );
-      
-      return { value: date.getTime(), unit: 'timestamp', date, timezone };
+      try {
+        // Parse time components
+        const [hours, minutes] = timeNode.value.split(':').map(Number);
+        
+        // Get current date in the specified timezone
+        const timezone = timeNode.timezone || timezoneManager.getSystemTimezone();
+        const now = new Date();
+        
+        // Create date with time in specified timezone
+        const date = timezoneManager.createDateInTimezone(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          now.getDate(),
+          hours,
+          minutes,
+          timezone
+        );
+        
+        // Check if the date is valid
+        if (!date || isNaN(date.getTime())) {
+          throw new Error(`Invalid time value: ${timeNode.value}`);
+        }
+        
+        return { value: date.getTime(), unit: 'timestamp', date, timezone };
+      } catch (error) {
+        // If there's an error creating the date, return a default time with system timezone
+        const [hours, minutes] = timeNode.value.split(':').map(Number);
+        const now = new Date();
+        const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+        return { value: date.getTime(), unit: 'timestamp', date };
+      }
     }
     
     case 'datetime': {

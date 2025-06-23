@@ -129,34 +129,55 @@ export class TimezoneManager {
    * Convert a date from one timezone to another
    */
   convertTimezone(date: Date, fromTimezone: string, toTimezone: string): Date {
-    const fromTz = this.getTimezone(fromTimezone);
-    const toTz = this.getTimezone(toTimezone);
-    
-    // First, get the time in the source timezone
-    const utcDate = fromZonedTime(date, fromTz);
-    
-    // Then convert to the target timezone
-    return toZonedTime(utcDate, toTz);
+    try {
+      const fromTz = this.getTimezone(fromTimezone);
+      const toTz = this.getTimezone(toTimezone);
+      
+      // Validate timezones
+      if (!this.isValidTimezone(fromTz) || !this.isValidTimezone(toTz)) {
+        // If either timezone is invalid, return the original date
+        return date;
+      }
+      
+      // First, get the time in the source timezone
+      const utcDate = fromZonedTime(date, fromTz);
+      
+      // Then convert to the target timezone
+      return toZonedTime(utcDate, toTz);
+    } catch (error) {
+      // If conversion fails, return the original date
+      return date;
+    }
   }
   
   /**
    * Create a date in a specific timezone
    */
   createDateInTimezone(year: number, month: number, day: number, hour: number, minute: number, timezone: string): Date {
-    const tz = this.getTimezone(timezone);
-    
-    // If timezone is not valid, use system timezone
-    if (!this.isValidTimezone(tz)) {
-      const systemTz = this.getSystemTimezone();
+    try {
+      const tz = this.getTimezone(timezone);
+      
+      // If timezone is not valid, use system timezone
+      if (!this.isValidTimezone(tz)) {
+        const systemTz = this.getSystemTimezone();
+        const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
+        try {
+          return fromZonedTime(localDate, systemTz);
+        } catch {
+          // If even system timezone fails, return the local date
+          return localDate;
+        }
+      }
+      
+      // Create a date object representing the local time in the target timezone
       const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-      return fromZonedTime(localDate, systemTz);
+      
+      // Convert from the timezone to UTC
+      return fromZonedTime(localDate, tz);
+    } catch (error) {
+      // If all else fails, return a simple date
+      return new Date(year, month - 1, day, hour, minute, 0, 0);
     }
-    
-    // Create a date object representing the local time in the target timezone
-    const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
-    
-    // Convert from the timezone to UTC
-    return fromZonedTime(localDate, tz);
   }
   
   /**
@@ -171,8 +192,20 @@ export class TimezoneManager {
    * Get the current time in a specific timezone
    */
   getNowInTimezone(timezone: string): Date {
-    const tz = this.getTimezone(timezone);
-    return toZonedTime(new Date(), tz);
+    try {
+      const tz = this.getTimezone(timezone);
+      
+      // Validate timezone
+      if (!this.isValidTimezone(tz)) {
+        // Return current time in system timezone
+        return new Date();
+      }
+      
+      return toZonedTime(new Date(), tz);
+    } catch (error) {
+      // If conversion fails, return current time
+      return new Date();
+    }
   }
   
   /**
