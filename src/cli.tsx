@@ -35,7 +35,7 @@ if (!packageJson) {
 
 function showHelp() {
   console.log(`
-${chalk.bold.cyan('Boosted Calculator')} - A powerful terminal calculator
+${chalk.bold.cyan('Boosted Calculator')} v${packageJson?.version || '-unknown'} - A powerful terminal calculator
 
 ${chalk.bold.yellow('USAGE:')}
   ${chalk.green('calc')}                        Start interactive calculator
