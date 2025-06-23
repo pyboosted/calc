@@ -87,14 +87,21 @@ async function main() {
     // Process file content line by line or single expression
     const lines = input.split("\n").filter((line) => line.trim());
     const variables = new Map();
+    const previousResults: Array<import("./types").CalculatedValue> = [];
     let hasError = false;
 
     for (const line of lines) {
       if (line.trim().startsWith("#")) continue; // Skip comments
 
       try {
-        const result = evaluate(line.trim(), variables);
+        const result = evaluate(line.trim(), variables, { previousResults });
         console.log(chalk.green(formatResultWithUnit(result)));
+
+        // Add result to previousResults for aggregate operations
+        previousResults.push(result);
+
+        // Also update 'prev' variable with the latest result
+        variables.set("prev", result.value);
       } catch (error) {
         console.error(chalk.red(`Error: ${(error as Error).message}`));
         hasError = true;

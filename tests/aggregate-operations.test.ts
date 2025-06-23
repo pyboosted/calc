@@ -187,4 +187,106 @@ describe("Aggregate Operations", () => {
     expect(result3.value).toBe(3);
     expect(result3.unit).toBe("m");
   });
+
+  test("smart total adds time periods to dates", () => {
+    const vars = new Map();
+
+    // Create a specific date for testing
+    const testDate = new Date("2025-01-01T10:00:00");
+
+    const previousResults: CalculatedValue[] = [
+      { value: testDate.getTime(), unit: "timestamp", date: testDate },
+      { value: 2, unit: "days" },
+      { value: 1, unit: "day" },
+      { value: 1, unit: "hour" },
+    ];
+
+    const result = evaluate("total", vars, { previousResults });
+
+    // Expected: Jan 1 + 2 days + 1 day + 1 hour = Jan 4, 11:00:00
+    const expectedDate = new Date("2025-01-04T11:00:00");
+
+    expect(result.unit).toBe("timestamp");
+    expect(result.date).toBeDefined();
+    expect(result.date?.getTime()).toBe(expectedDate.getTime());
+  });
+
+  test("smart total handles various time units", () => {
+    const vars = new Map();
+
+    const testDate = new Date("2025-01-01T00:00:00");
+
+    const previousResults: CalculatedValue[] = [
+      { value: testDate.getTime(), unit: "timestamp", date: testDate },
+      { value: 1, unit: "week" },
+      { value: 3, unit: "hours" },
+      { value: 30, unit: "minutes" },
+      { value: 45, unit: "seconds" },
+    ];
+
+    const result = evaluate("total", vars, { previousResults });
+
+    // Expected: Jan 1 + 1 week + 3.5 hours + 45 seconds
+    const expectedDate = new Date("2025-01-08T03:30:45");
+
+    expect(result.unit).toBe("timestamp");
+    expect(result.date).toBeDefined();
+    expect(result.date?.getTime()).toBe(expectedDate.getTime());
+  });
+
+  test("smart total falls back to regular behavior without date", () => {
+    const vars = new Map();
+
+    // Only time periods, no date
+    const previousResults: CalculatedValue[] = [
+      { value: 2, unit: "days" },
+      { value: 1, unit: "day" },
+      { value: 24, unit: "hours" },
+    ];
+
+    const result = evaluate("total", vars, { previousResults });
+
+    // Should sum to 4 days total (2 + 1 + 1)
+    expect(result.value).toBe(4);
+    expect(result.unit).toBe("days");
+  });
+
+  test("smart total requires exactly one date", () => {
+    const vars = new Map();
+
+    const date1 = new Date("2025-01-01T00:00:00");
+    const date2 = new Date("2025-02-01T00:00:00");
+
+    // Two dates - should fall back to regular behavior
+    const previousResults: CalculatedValue[] = [
+      { value: date1.getTime(), unit: "timestamp", date: date1 },
+      { value: date2.getTime(), unit: "timestamp", date: date2 },
+      { value: 1, unit: "day" },
+    ];
+
+    const result = evaluate("total", vars, { previousResults });
+
+    // Should sum the numeric values
+    expect(result.value).toBe(date1.getTime() + date2.getTime() + 1);
+    expect(result.unit).toBeUndefined();
+  });
+
+  test("smart total respects target unit specification", () => {
+    const vars = new Map();
+
+    const testDate = new Date("2025-01-01T00:00:00");
+
+    const previousResults: CalculatedValue[] = [
+      { value: testDate.getTime(), unit: "timestamp", date: testDate },
+      { value: 1, unit: "day" },
+      { value: 24, unit: "hours" },
+    ];
+
+    // When target unit is specified, use regular behavior
+    const result = evaluate("total in hours", vars, { previousResults });
+
+    // Should convert everything to hours
+    expect(result.value).toBe(48); // 1 day + 24 hours = 48 hours
+    expect(result.unit).toBe("hours");
+  });
 });

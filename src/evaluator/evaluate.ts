@@ -473,7 +473,50 @@ function evaluateNode(
         throw new Error(`No values to ${aggNode.operation}`);
       }
 
-      // Filter for numeric values with their units
+      // Check if we have a date/timestamp and time periods for smart date arithmetic
+      const dateResults = context.previousResults.filter(
+        (result) => result && result.unit === "timestamp" && result.date,
+      );
+      const timePeriodResults = context.previousResults.filter(
+        (result) => result && isTimePeriodUnit(result.unit),
+      );
+
+      // If we have exactly one date and one or more time periods, add them together
+      if (
+        aggNode.operation === "total" &&
+        dateResults.length === 1 &&
+        timePeriodResults.length > 0 &&
+        !aggNode.targetUnit
+      ) {
+        const dateResult = dateResults[0];
+
+        // Sum all time periods, converting to seconds
+        let totalSeconds = 0;
+        for (const period of timePeriodResults) {
+          try {
+            if (period.unit) {
+              const seconds = convertUnits(period.value, period.unit, "seconds");
+              totalSeconds += seconds;
+            }
+          } catch (_error) {
+            // If conversion fails, skip this period
+          }
+        }
+
+        // Add the total time period to the date
+        if (totalSeconds !== 0 && dateResult && dateResult.date) {
+          const dateManagerInstance = DateManager.getInstance();
+          const newDate = dateManagerInstance.addPeriod(dateResult.date, totalSeconds, "seconds");
+          return {
+            value: newDate.getTime(),
+            unit: "timestamp",
+            date: newDate,
+            timezone: dateResult.timezone,
+          };
+        }
+      }
+
+      // Filter for numeric values with their units (original behavior)
       const valuesWithUnits = context.previousResults
         .filter(
           (result) => result && typeof result.value === "number" && !Number.isNaN(result.value),
