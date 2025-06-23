@@ -182,6 +182,7 @@ export function formatUnit(unit: string): string {
     'terabyte': 'TB',
     'terabytes': 'TB',
     'tb': 'TB',
+    '%': '%',
   };
   
   return unitDisplay[unit.toLowerCase()] || unit;

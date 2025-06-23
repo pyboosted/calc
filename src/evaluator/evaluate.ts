@@ -165,6 +165,16 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
             }
           }
           
+          // Special handling for percentage units
+          if (right.unit === '%') {
+            // Calculate percentage of the left value
+            const percentageAmount = left.value * (right.value / 100);
+            const result = binaryNode.operator === '+' 
+              ? left.value + percentageAmount 
+              : left.value - percentageAmount;
+            return { value: result, unit: left.unit };
+          }
+          
           // Regular unit conversion for non-date arithmetic
           if (left.unit && right.unit && left.unit !== right.unit) {
             // Try to convert right to left's unit
@@ -206,7 +216,8 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
           return { value: left.value % right.value };
           
         case 'percent':
-          return { value: left.value / 100, unit: left.unit };
+          // Keep percentage as a unit instead of converting immediately
+          return { value: left.value, unit: '%' };
           
         case '^': 
           return { value: Math.pow(left.value, right.value) };
