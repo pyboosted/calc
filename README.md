@@ -51,25 +51,44 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - Better error handling and recovery
 - Persistent history across sessions
 
+## Requirements
+
+- **Bun runtime** (required) - [Install Bun](https://bun.sh)
+- Node.js 18+ (for npm installation)
+
 ## Installation
+
+### Install from npm (recommended)
+
+```bash
+npm install -g boosted-calc
+# or
+yarn global add boosted-calc
+# or
+bun add -g boosted-calc
+```
+
+### Build from source
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/pyboosted/calc
 cd calc
 
 # Install dependencies
 bun install
+
+# Install globally
+npm link
+# or
+npm install -g .
 ```
 
 ## Usage
 
 ```bash
 # Run the calculator (interactive mode)
-bun start
-
-# Or run with file watching (development)
-bun dev
+calc
 
 # Non-interactive mode - calculate and print result
 calc "2 + 2"
@@ -78,17 +97,15 @@ calc "100 USD in EUR"
 calc "sqrt(16) * 2"
 
 # Update currency exchange rates
-bun run update-currencies
-# Or
 calc --update
-
-# Install globally (optional)
-npm i -g .
-calc
 
 # Load calculations from a file
 calc --file=budget.calc
 calc -f calculations.txt
+
+# For development (from source)
+bun start    # Run calculator
+bun dev      # Run with file watching
 ```
 
 ## Supported Timezones
@@ -248,16 +265,6 @@ rent + food + utilities
 
 Remaining
 3500 - 1250
-```
-
-## Installation from npm
-
-```bash
-npm install -g boosted-calc
-# or
-yarn global add boosted-calc
-# or
-bun add -g boosted-calc
 ```
 
 ## Architecture
