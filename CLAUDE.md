@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with Bun, TypeScript, and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, and a sophisticated expression parser.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -12,6 +12,9 @@ Boosted Calculator is a powerful terminal-based calculator built with Bun, TypeS
 ```bash
 # Install dependencies
 bun install
+
+# Build for distribution (creates dist/ folder)
+bun run build
 
 # Run the calculator (interactive mode)
 bun start
@@ -41,11 +44,37 @@ bun run update-currencies
 calc --update
 
 # Type checking
+bun run typecheck
+# or
 bun tsc --noEmit
+
+# Linting and formatting
+bun run lint        # Auto-fix linting issues
+bun run format      # Format code
+bun run check       # Run all checks (lint + format)
 
 # Install globally
 npm i -g .
+
+# Publishing workflow
+bun run typecheck && bun run lint && npm version patch && git push && npm publish
 ```
+
+### Workflow Guidelines
+
+**Before pushing code:**
+1. Always run `bun run typecheck` to ensure no TypeScript errors
+2. Always run `bun run lint` to fix linting issues
+3. Always run `bun run format` to ensure consistent code style
+
+**Before publishing to npm:**
+1. Always run `bun run build` to ensure the dist/ folder is up to date
+2. The `prepublishOnly` hook will automatically build, but manual verification is recommended
+
+**Before committing:**
+- Always ask for confirmation on the commit message before running `git commit`
+- Show the proposed commit message and wait for approval
+- This ensures commit messages are clear and follow project conventions
 
 ### Running Specific Tests
 ```bash
@@ -122,6 +151,14 @@ The UI uses Ink (React for CLI) with a multi-line editor approach:
    - Arithmetic with units: days, weeks, months, years, hours, minutes, seconds
    - Uses date-fns for reliable date manipulation
 
+### Build System
+
+The project uses tsup to compile TypeScript/JSX to JavaScript:
+- Configuration in `tsup.config.ts`
+- Creates optimized bundles in `dist/`
+- Adds Node.js shebang to CLI entry point
+- The `prepublishOnly` hook ensures builds before npm publish
+
 ### Exit Handling
 
 The app uses `exitOnCtrlC: false` in Ink render options and handles exit keys manually in Calculator component to ensure both Esc and Ctrl+C work properly on first press.
@@ -135,11 +172,11 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 
 ## Important Notes
 
-- Always use Bun commands instead of npm/node equivalents
-- The calculator is published as `@boosted/calc` on npm
+- The calculator is published as `boosted-calc` on npm
 - Configuration and cache files are stored in `~/.config/boomi/`
 - The parser treats invalid expressions as comments for better UX
 - Percentage calculations are context-aware (addition/subtraction vs standalone)
 - Units take priority over variables - single letters like m, g, c, f, k, s, h, d, l are recognized as units, not variables
 - Unicode variable names are supported, including Cyrillic (e.g., `цена = 100`)
 - Date arithmetic supports expressions like `variable * time_unit + date` (e.g., `test * 1 day + today`)
+- When fixing TypeScript errors in tests, avoid using non-null assertions (!); use proper type guards instead

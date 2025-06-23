@@ -1,13 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import chalk from "chalk";
-import { render } from "ink";
-import { evaluate } from "./evaluator/evaluate";
-import { formatResultWithUnit } from "./evaluator/unitFormatter";
-import { Calculator } from "./ui/Calculator";
-import { ConfigManager } from "./utils/configManager";
-import { CurrencyManager } from "./utils/currencyManager";
+import { showHelp } from "./help";
 
 // Get the directory of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -16,85 +10,43 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 let packageJson: { version: string } | undefined;
 const possiblePaths = [
   join(__dirname, "..", "..", "package.json"), // Development: src/cli.tsx -> calc/package.json
-  join(__dirname, "..", "package.json"), // Installed: lib/src/cli.tsx -> lib/package.json
+  join(__dirname, "..", "package.json"), // Installed: dist/cli.js -> calc/package.json
 ];
 
 for (const path of possiblePaths) {
   if (existsSync(path)) {
-    packageJson = JSON.parse(readFileSync(path, "utf-8"));
-    break;
+    try {
+      packageJson = JSON.parse(readFileSync(path, "utf-8"));
+      break;
+    } catch (_e) {
+      // Continue to next path
+    }
   }
-}
-
-if (!packageJson) {
-  console.error(chalk.red("Error: Could not find package.json"));
-  process.exit(1);
-}
-
-function showHelp() {
-  console.log(`
-${chalk.bold.cyan("Boosted Calculator")} v${packageJson?.version || "-unknown"} - A powerful terminal calculator
-
-${chalk.bold.yellow("USAGE:")}
-  ${chalk.green("calc")}                        Start interactive calculator
-  ${chalk.green("calc")} ${chalk.cyan("<expression>")}           Evaluate expression and exit
-  ${chalk.green("calc")} ${chalk.cyan("--file=<path>")}          Load calculations from file
-  ${chalk.green("calc")} ${chalk.cyan("-f <path>")}              Load calculations from file (alternative)
-  ${chalk.green("calc")} ${chalk.cyan("--update")}               Update currency exchange rates
-  ${chalk.green("calc")} ${chalk.cyan("--version")}              Show version number
-  ${chalk.green("calc")} ${chalk.cyan("-v")}                     Show version number (alternative)
-  ${chalk.green("calc")} ${chalk.cyan("--help")}                 Show this help message
-  ${chalk.green("calc")} ${chalk.cyan("-h")}                     Show this help message (alternative)
-
-${chalk.bold.yellow("EXAMPLES:")}
-  ${chalk.green("calc")} ${chalk.cyan('"2 + 2"')}                Basic arithmetic
-  ${chalk.green("calc")} ${chalk.cyan('"sqrt(16)"')}             Mathematical functions
-  ${chalk.green("calc")} ${chalk.cyan('"100 USD in EUR"')}       Currency conversion
-  ${chalk.green("calc")} ${chalk.cyan('"5 feet in meters"')}     Unit conversion
-  ${chalk.green("calc")} ${chalk.cyan('"today + 5 days"')}       Date arithmetic
-  ${chalk.green("calc")} ${chalk.cyan('"20% of 150"')}           Percentage calculations
-
-${chalk.bold.yellow("INTERACTIVE MODE:")}
-  When running without arguments, the calculator starts in interactive mode.
-
-${chalk.bold.yellow("KEYBOARD SHORTCUTS:")}
-  ${chalk.magenta("Ctrl+C, ESC")}                 Exit calculator
-  ${chalk.magenta("Ctrl+L")}                      Clear all calculations
-  ${chalk.magenta("Ctrl+E")}                      Open in external editor
-  ${chalk.magenta("Ctrl+Y")}                      Copy result to clipboard
-  ${chalk.magenta("Ctrl+U, Ctrl+Shift+Y")}        Copy full line to clipboard
-  ${chalk.magenta("Up/Down arrows")}              Navigate history
-  ${chalk.magenta("Enter")}                       New line
-
-${chalk.bold.yellow("FEATURES:")}
-  ${chalk.gray("•")} Basic arithmetic: ${chalk.cyan("+, -, *, /, ^, %")}
-  ${chalk.gray("•")} Functions: ${chalk.cyan("sqrt, sin, cos, log, round, etc.")}
-  ${chalk.gray("•")} Variables: ${chalk.cyan("x = 10")}, then use ${chalk.cyan("x")}
-  ${chalk.gray("•")} Previous result: use ${chalk.cyan("'prev'")}
-  ${chalk.gray("•")} Aggregates: ${chalk.cyan("'total'")} and ${chalk.cyan("'average'")}
-  ${chalk.gray("•")} Unit conversions: ${chalk.cyan("length, weight, time, data, etc.")}
-  ${chalk.gray("•")} Live currency conversion ${chalk.cyan("(300+ currencies)")}
-  ${chalk.gray("•")} Date/time operations with timezone support
-  ${chalk.gray("•")} Comments with ${chalk.cyan("#")} symbol
-
-For more information, visit: ${chalk.blue.underline("https://github.com/pyboosted/calc")}
-`);
 }
 
 async function main() {
   const args = process.argv.slice(2);
 
-  // Handle --help flag
+  // Handle --help flag FIRST (before any heavy imports)
   if (args.includes("--help") || args.includes("-h")) {
-    showHelp();
+    showHelp(packageJson?.version);
     process.exit(0);
   }
 
-  // Handle --version flag
+  // Handle --version flag FIRST (before any heavy imports)
   if (args.includes("--version") || args.includes("-v")) {
     console.log(packageJson?.version || "unknown");
     process.exit(0);
   }
+
+  // Now we can lazy load all heavy dependencies
+  const chalk = (await import("chalk")).default;
+  const { render } = await import("ink");
+  const { evaluate } = await import("./evaluator/evaluate");
+  const { formatResultWithUnit } = await import("./evaluator/unitFormatter");
+  const { Calculator } = await import("./ui/Calculator");
+  const { ConfigManager } = await import("./utils/configManager");
+  const { CurrencyManager } = await import("./utils/currencyManager");
 
   // Initialize config manager
   const configManager = ConfigManager.getInstance();
@@ -117,43 +69,52 @@ async function main() {
   const fileArg = args.find((arg) => arg.startsWith("--file=") || arg === "-f");
   if (fileArg) {
     const filePath = fileArg === "-f" ? args[args.indexOf("-f") + 1] : fileArg.split("=")[1];
-
-    if (filePath && existsSync(filePath)) {
-      try {
-        fileContent = readFileSync(filePath, "utf-8");
-      } catch (error) {
-        console.error(
-          chalk.red(
-            `Error reading file: ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
-        process.exit(1);
-      }
-    } else {
-      console.error(chalk.red(`File not found: ${filePath}`));
+    if (!filePath) {
+      console.error(chalk.red("Error: No file path provided"));
       process.exit(1);
     }
-  }
-
-  // Check if expression provided as argument (non-file arguments)
-  const nonFlagArgs = args.filter(
-    (arg) => !arg.startsWith("--") && arg !== "-f" && args[args.indexOf(arg) - 1] !== "-f",
-  );
-  if (nonFlagArgs.length > 0 && !fileContent) {
-    // Non-interactive mode: evaluate expression and print result
-    const expression = nonFlagArgs.join(" ");
     try {
-      const result = evaluate(expression, new Map());
-      console.log(formatResultWithUnit(result));
+      fileContent = readFileSync(filePath, "utf-8");
     } catch (error) {
-      console.error(chalk.red(`Error: ${error instanceof Error ? error.message : String(error)}`));
+      console.error(chalk.red(`Error reading file: ${error}`));
       process.exit(1);
     }
-    process.exit(0);
   }
 
-  // Interactive mode: start the calculator UI
-  render(<Calculator initialContent={fileContent} />, { exitOnCtrlC: false });
+  // Non-interactive mode
+  const input = fileContent || args.join(" ");
+  if (input.trim()) {
+    // Process file content line by line or single expression
+    const lines = input.split("\n").filter((line) => line.trim());
+    const variables = new Map();
+    let hasError = false;
+
+    for (const line of lines) {
+      if (line.trim().startsWith("#")) continue; // Skip comments
+
+      try {
+        const result = evaluate(line.trim(), variables);
+        console.log(chalk.green(formatResultWithUnit(result)));
+      } catch (error) {
+        console.error(chalk.red(`Error: ${(error as Error).message}`));
+        hasError = true;
+      }
+    }
+    
+    if (hasError) {
+      process.exit(1);
+    }
+  } else {
+    // Interactive mode
+    render(<Calculator initialContent={input} />);
+  }
 }
 
-main().catch(console.error);
+// Handle errors
+main().catch((error) => {
+  // Only load chalk if we need to show an error
+  import("chalk").then(({ default: chalk }) => {
+    console.error(chalk.red(`Error: ${error.message}`));
+    process.exit(1);
+  });
+});

@@ -49,7 +49,7 @@ describe("Editor Integration", () => {
     } catch (error) {
       const e = error as { exitCode: number; stderr: Buffer };
       expect(e.exitCode).toBe(1);
-      expect(e.stderr.toString()).toContain("File not found");
+      expect(e.stderr.toString()).toContain("Error reading file");
     }
   });
 
