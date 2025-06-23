@@ -63,7 +63,8 @@ describe('Mathematical Functions', () => {
 describe('Percentage Calculations', () => {
   test('simple percentage', () => {
     const result = evaluate('20%');
-    expect(result.value).toBe(0.2);
+    expect(result.value).toBe(20);
+    expect(result.unit).toBe('%');
   });
 
   test('percentage addition', () => {
@@ -101,5 +102,50 @@ describe('Variables', () => {
   test('prev variable without value throws error', () => {
     const vars = new Map();
     expect(() => evaluate('prev', vars)).toThrow('Unknown variable: prev');
+  });
+});
+
+describe('Inline Comments', () => {
+  test('simple expression with comment', () => {
+    const result = evaluate('2 + 3 # this is a comment');
+    expect(result.value).toBe(5);
+  });
+
+  test('multiplication with comment', () => {
+    const result = evaluate('5 * 4 # multiply five by four');
+    expect(result.value).toBe(20);
+  });
+
+  test('variable assignment with comment', () => {
+    const vars = new Map();
+    const result = evaluate('price = 100 # base price', vars);
+    expect(result.value).toBe(100);
+    expect(vars.get('price').value).toBe(100);
+  });
+
+  test('expression with comment containing operators', () => {
+    const result = evaluate('10 + 5 # 10 + 5 = 15');
+    expect(result.value).toBe(15);
+  });
+
+  test('percentage calculation with comment', () => {
+    const result = evaluate('100 - 10% # apply discount');
+    expect(result.value).toBe(90);
+  });
+
+  test('function call with comment', () => {
+    const result = evaluate('sqrt(16) # square root of 16');
+    expect(result.value).toBe(4);
+  });
+
+  test('comment with special characters', () => {
+    const result = evaluate('2 * 3 # result: 6! (factorial notation in comment)');
+    expect(result.value).toBe(6);
+  });
+
+  test('unit conversion with comment', () => {
+    const result = evaluate('5 m # five meters');
+    expect(result.value).toBe(5);
+    expect(result.unit).toBe('m');
   });
 });

@@ -555,6 +555,12 @@ export class Tokenizer {
             this.advance();
           }
           break;
+        case '#':
+          // Comment - skip the rest of the line
+          while (this.position < this.input.length) {
+            this.advance();
+          }
+          break;
         default:
           // Skip unknown characters
           this.advance();

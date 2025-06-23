@@ -72,6 +72,15 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
         return;
       }
       
+      // Check if the line is a pure comment (starts with #)
+      if (trimmed.startsWith('#')) {
+        newLineResults.set(index, { result: null, error: null, isComment: true });
+        if (index === currentLineIndex) {
+          setState(prev => ({ ...prev, result: null, error: null }));
+        }
+        return;
+      }
+      
       // Find the previous line's result for 'prev' variable
       let prevValue: CalculatedValue | undefined;
       for (let i = index - 1; i >= 0; i--) {

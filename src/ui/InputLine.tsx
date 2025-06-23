@@ -63,7 +63,12 @@ export const InputLine: React.FC<InputLineProps> = ({ text, cursorPosition, dimC
   return (
     <Text dimColor={dimColor}>
       {parts.map((part, i) => (
-        <Text key={i} color={dimColor ? undefined : part.color} inverse={part.inverse}>
+        <Text 
+          key={i} 
+          color={dimColor ? undefined : (part.color === 'dim' ? undefined : part.color)} 
+          dimColor={part.color === 'dim'}
+          inverse={part.inverse}
+        >
           {part.text}
         </Text>
       ))}
@@ -79,7 +84,11 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
   return (
     <Text>
       {parts.map((part, i) => (
-        <Text key={i} color={part.color}>
+        <Text 
+          key={i} 
+          color={part.color === 'dim' ? undefined : part.color}
+          dimColor={part.color === 'dim'}
+        >
           {part.text}
         </Text>
       ))}
@@ -88,6 +97,29 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
 };
 
 function getHighlightedParts(text: string): Array<{ text: string; color?: string }> {
+  if (!text) return [];
+
+  // Check for comment
+  const commentIndex = text.indexOf('#');
+  if (commentIndex !== -1) {
+    const parts: Array<{ text: string; color?: string }> = [];
+    
+    // Process the part before the comment
+    if (commentIndex > 0) {
+      const beforeComment = text.substring(0, commentIndex);
+      parts.push(...getHighlightedPartsWithoutComment(beforeComment));
+    }
+    
+    // Add the comment part in dim color
+    parts.push({ text: text.substring(commentIndex), color: 'dim' });
+    
+    return parts;
+  }
+
+  return getHighlightedPartsWithoutComment(text);
+}
+
+function getHighlightedPartsWithoutComment(text: string): Array<{ text: string; color?: string }> {
   if (!text) return [];
 
   try {
