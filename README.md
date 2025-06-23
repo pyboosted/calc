@@ -45,12 +45,6 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Date differences: `25/07/2025 - today in days`, `(01.01.2025 - 25.12.2024) in hours`
   - Supports: days, weeks, months, years, hours, minutes, seconds, milliseconds
 
-### 🚧 Todo
-- Advanced percentage calculations (`20% of what is 30 cm`)
-- Sum/Average operations on multiple values
-- Better error handling and recovery
-- Persistent history across sessions
-
 ## Requirements
 
 - **Bun runtime** (required) - [Install Bun](https://bun.sh)

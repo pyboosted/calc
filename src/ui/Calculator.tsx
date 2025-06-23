@@ -4,10 +4,26 @@ import { InputWithResult } from './InputWithResult';
 import { evaluate } from '../evaluator/evaluate';
 import type { CalculatorState, CalculatedValue } from '../types';
 
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+// Get package version
+const __dirname = dirname(fileURLToPath(import.meta.url));
+let version = '';
+const possiblePaths = [
+  join(__dirname, '..', '..', 'package.json'),
+  join(__dirname, '..', 'package.json'),
+];
+for (const path of possiblePaths) {
+  if (existsSync(path)) {
+    const pkg = JSON.parse(readFileSync(path, 'utf-8'));
+    version = pkg.version;
+    break;
+  }
+}
 
 interface CalculatorProps {
   initialContent?: string;
@@ -267,6 +283,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
         <Text bold color="cyan">Boosted Calculator</Text>
+        {version && <Text color="gray"> v{version}</Text>}
       </Box>
       
       <Box flexDirection="column">
@@ -274,7 +291,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
           const lineResult = lineResults.get(index);
           return (
             <InputWithResult
-              key={index}
+              key={`line-${index}`}
               value={line}
               cursorPosition={index === currentLineIndex ? state.cursorPosition : undefined}
               result={lineResult?.result || null}
