@@ -1,4 +1,4 @@
-import { ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, CalculatedValue, DateNode, TimeNode, DateTimeNode, DateOperationNode } from '../types';
+import { type ASTNode, type NumberNode, type BinaryOpNode, type UnaryOpNode, type FunctionNode, type VariableNode, type AssignmentNode, type AggregateNode, type CalculatedValue, type DateNode, type TimeNode, type DateTimeNode, type DateOperationNode } from '../types';
 import { Tokenizer } from '../parser/tokenizer';
 import { Parser } from '../parser/parser';
 import { mathFunctions } from './mathFunctions';
@@ -283,8 +283,8 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
           now.getFullYear(),
           now.getMonth() + 1,
           now.getDate(),
-          hours,
-          minutes,
+          hours ?? 0,
+          minutes ?? 0,
           timezone
         );
         
@@ -313,9 +313,9 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
         throw new Error(`Invalid date format: ${datetimeNode.dateValue}`);
       }
       
-      const day = parseInt(dateParts[1]);
-      const month = parseInt(dateParts[2]);
-      const year = parseInt(dateParts[3]);
+      const day = parseInt(dateParts[1] ?? '1');
+      const month = parseInt(dateParts[2] ?? '1');
+      const year = parseInt(dateParts[3] ?? '2000');
       
       // Parse time components
       const [hours, minutes] = datetimeNode.timeValue.split(':').map(Number);
@@ -328,8 +328,8 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
         year,
         month,
         day,
-        hours,
-        minutes,
+        hours ?? 0,
+        minutes ?? 0,
         timezone
       );
       
@@ -372,7 +372,7 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
       
       // Filter for numeric values with their units
       const valuesWithUnits = context.previousResults
-        .filter(result => result && typeof result.value === 'number')
+        .filter(result => result && typeof result.value === 'number' && !isNaN(result.value))
         .map(result => ({ value: result.value, unit: result.unit }));
       
       if (valuesWithUnits.length === 0) {
@@ -449,7 +449,7 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
           for (const item of valuesWithUnits) {
             if (item.unit && item.unit !== commonUnit) {
               try {
-                const converted = convertUnits(item.value, item.unit, commonUnit);
+                const converted = convertUnits(item.value, item.unit, commonUnit!);
                 totalValue += converted;
               } catch (error) {
                 // Not compatible - fall back to raw sum

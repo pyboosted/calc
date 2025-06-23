@@ -25,11 +25,13 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, o
       if (historyIndex < history.length - 1) {
         const newIndex = historyIndex + 1;
         const historyEntry = history[history.length - 1 - newIndex];
-        if (historyIndex === -1) {
-          setTempValue(value);
+        if (historyEntry) {
+          if (historyIndex === -1) {
+            setTempValue(value);
+          }
+          setHistoryIndex(newIndex);
+          onChange(historyEntry.input, historyEntry.input.length);
         }
-        setHistoryIndex(newIndex);
-        onChange(historyEntry.input, historyEntry.input.length);
       }
       return;
     }
@@ -42,7 +44,9 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, o
           onChange(tempValue, tempValue.length);
         } else {
           const historyEntry = history[history.length - 1 - newIndex];
-          onChange(historyEntry.input, historyEntry.input.length);
+          if (historyEntry) {
+            onChange(historyEntry.input, historyEntry.input.length);
+          }
         }
       }
       return;

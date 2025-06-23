@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 
 const CONFIG_DIR = join(homedir(), '.config', 'boomi');
 const CURRENCY_FILE = join(CONFIG_DIR, 'currencies.json');
@@ -44,8 +44,8 @@ export class CurrencyManager {
   private async loadCurrencyData(): Promise<void> {
     try {
       if (existsSync(CURRENCY_FILE)) {
-        const file = Bun.file(CURRENCY_FILE);
-        const data: CurrencyData = await file.json();
+        const content = readFileSync(CURRENCY_FILE, 'utf-8');
+        const data: CurrencyData = JSON.parse(content);
         
         // Convert to our internal format (uppercase keys)
         this.currencyRates = {};
@@ -64,12 +64,12 @@ export class CurrencyManager {
     }
     
     try {
-      const file = Bun.file(CURRENCY_FILE);
-      const stats = file.lastModified;
+      const stats = statSync(CURRENCY_FILE);
+      const lastModified = stats.mtime.getTime();
       const now = Date.now();
       
       // Update if file is older than 24 hours
-      return (now - stats) > UPDATE_INTERVAL;
+      return (now - lastModified) > UPDATE_INTERVAL;
     } catch {
       return true;
     }
@@ -84,7 +84,7 @@ export class CurrencyManager {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.json();
+      const data = await response.json() as { date: string; usd: Record<string, number> };
       
       // Add metadata
       const currencyData: CurrencyData = {
@@ -94,11 +94,11 @@ export class CurrencyManager {
       };
       
       // Save to file
-      await Bun.write(CURRENCY_FILE, JSON.stringify(currencyData, null, 2));
+      writeFileSync(CURRENCY_FILE, JSON.stringify(currencyData, null, 2));
       
       // Update internal rates
       this.currencyRates = {};
-      for (const [currency, rate] of Object.entries(data.usd)) {
+      for (const [currency, rate] of Object.entries(data.usd as Record<string, number>)) {
         this.currencyRates[currency.toUpperCase()] = rate;
       }
       

@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 import { evaluate } from '../src/evaluator/evaluate';
+import { type CalculatedValue } from '../src/types';
 
 describe('Aggregate Operations', () => {
   test('total sums previous numeric values', () => {
@@ -34,11 +35,11 @@ describe('Aggregate Operations', () => {
     const vars = new Map();
     
     // Mix of numeric and non-numeric results
-    const previousResults = [
+    const previousResults: CalculatedValue[] = [
       { value: 10 },
-      { value: new Date(), unit: 'timestamp' }, // Date result
+      { value: 0, date: new Date(), unit: 'timestamp' }, // Date result
       { value: 20 },
-      { value: 'text' }, // This shouldn't happen but test it
+      { value: NaN }, // Non-numeric value
       { value: 30 }
     ];
     
@@ -72,8 +73,8 @@ describe('Aggregate Operations', () => {
   test('throws error when no numeric values', () => {
     const vars = new Map();
     
-    const previousResults = [
-      { value: new Date(), unit: 'timestamp' }
+    const previousResults: CalculatedValue[] = [
+      { value: NaN, date: new Date(), unit: 'timestamp' }
     ];
     
     expect(() => evaluate('total', vars, { previousResults }))

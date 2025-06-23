@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { parse, stringify } from 'yaml';
 
 const CONFIG_DIR = join(homedir(), '.config', 'boomi');
@@ -44,8 +44,7 @@ export class ConfigManager {
   
   private async loadConfig(): Promise<void> {
     try {
-      const file = Bun.file(CONFIG_FILE);
-      const content = await file.text();
+      const content = readFileSync(CONFIG_FILE, 'utf-8');
       const loadedConfig = parse(content) as Partial<Config>;
       
       // Merge with defaults to ensure all fields exist
@@ -69,7 +68,7 @@ export class ConfigManager {
                          '\n' +
                          stringify(this.config);
       
-      await Bun.write(CONFIG_FILE, yamlContent);
+      writeFileSync(CONFIG_FILE, yamlContent);
     } catch (error) {
       console.error('Failed to save config:', error);
     }

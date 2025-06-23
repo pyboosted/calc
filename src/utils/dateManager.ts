@@ -88,7 +88,7 @@ export class DateManager {
         // Try parsing DD.MM.YYYY or DD/MM/YYYY format
         const datePattern = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/;
         const match = input.match(datePattern);
-        if (match) {
+        if (match && match[1] && match[2] && match[3]) {
           const day = parseInt(match[1]);
           const month = parseInt(match[2]);
           const year = parseInt(match[3]);

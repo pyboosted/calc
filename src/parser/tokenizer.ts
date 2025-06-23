@@ -1,4 +1,4 @@
-import { Token, TokenType } from '../types';
+import { type Token, TokenType } from '../types';
 
 export class Tokenizer {
   private input: string;
@@ -97,9 +97,9 @@ export class Tokenizer {
     
     // Validate the date format
     const parts = value.split(separator);
-    const day = parseInt(parts[0]);
-    const month = parseInt(parts[1]);
-    const year = parseInt(parts[2]);
+    const day = parseInt(parts[0] ?? '1');
+    const month = parseInt(parts[1] ?? '1');
+    const year = parseInt(parts[2] ?? '2000');
     
     if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
       this.position = savedPosition;
@@ -268,8 +268,10 @@ export class Tokenizer {
       value += this.current;
       this.advance();
       
-      if (this.current === '+' || this.current === '-') {
-        value += this.current;
+      // After advance(), current is a new character
+      const sign = this.current as string;
+      if (sign === '+' || sign === '-') {
+        value += sign;
         this.advance();
       }
       

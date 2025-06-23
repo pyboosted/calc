@@ -158,8 +158,8 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
       const prevLine = lines[prevLineIndex];
       
       // Merge current line with previous line
-      const mergedLine = prevLine + currentLine;
-      const newCursorPosition = prevLine.length;
+      const mergedLine = (prevLine || '') + (currentLine || '');
+      const newCursorPosition = (prevLine || '').length;
       
       // Update lines array
       const newLines = [...lines];
@@ -179,7 +179,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
   };
 
   const handleNewLine = () => {
-    const currentLine = lines[currentLineIndex];
+    const currentLine = lines[currentLineIndex] || '';
     const beforeCursor = currentLine.slice(0, state.cursorPosition);
     const afterCursor = currentLine.slice(state.cursorPosition);
     
@@ -204,7 +204,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
   const handleArrowUp = () => {
     if (currentLineIndex > 0) {
       const targetIndex = currentLineIndex - 1;
-      const targetLine = lines[targetIndex];
+      const targetLine = lines[targetIndex] || '';
       const newCursorPosition = Math.min(state.cursorPosition, targetLine.length);
       
       setCurrentLineIndex(targetIndex);
@@ -219,7 +219,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
   const handleArrowDown = () => {
     if (currentLineIndex < lines.length - 1) {
       const targetIndex = currentLineIndex + 1;
-      const targetLine = lines[targetIndex];
+      const targetLine = lines[targetIndex] || '';
       const newCursorPosition = Math.min(state.cursorPosition, targetLine.length);
       
       setCurrentLineIndex(targetIndex);

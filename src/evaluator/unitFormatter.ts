@@ -1,4 +1,4 @@
-import { CalculatedValue } from '../types';
+import { type CalculatedValue } from '../types';
 import { ConfigManager } from '../utils/configManager';
 import { format } from 'date-fns';
 
@@ -51,7 +51,7 @@ export function formatNumber(num: number): string {
   
   // Format with thousands separators
   const parts = rounded.toFixed(precision).split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  parts[0] = parts[0]?.replace(/\B(?=(\d{3})+(?!\d))/g, ',') ?? '';
   
   // Remove trailing zeros after decimal point if precision > 0
   if (precision > 0 && parts[1]) {

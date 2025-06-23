@@ -1,26 +1,34 @@
-import { Token, TokenType, ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, DateNode, TimeNode, DateTimeNode, DateOperationNode } from '../types';
+import { type Token, TokenType, type ASTNode, type NumberNode, type BinaryOpNode, type UnaryOpNode, type FunctionNode, type VariableNode, type AssignmentNode, type AggregateNode, type DateNode, type TimeNode, type DateTimeNode, type DateOperationNode } from '../types';
 
 export class Parser {
   private tokens: Token[];
   private position: number = 0;
-  private current: Token;
+  private _current!: Token;
+  
+  private get current(): Token {
+    return this._current;
+  }
+  
+  private set current(token: Token) {
+    this._current = token;
+  }
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
-    this.current = this.tokens[0];
+    this.current = this.tokens[0] || { type: TokenType.EOF, value: '', position: 0 };
   }
 
   private advance(): Token {
     if (this.position < this.tokens.length - 1) {
       this.position++;
-      this.current = this.tokens[this.position];
+      this.current = this.tokens[this.position] || { type: TokenType.EOF, value: '', position: this.position };
     }
     return this.current;
   }
 
   private peek(offset: number = 1): Token | null {
     const pos = this.position + offset;
-    return pos < this.tokens.length ? this.tokens[pos] : null;
+    return pos < this.tokens.length ? (this.tokens[pos] || null) : null;
   }
 
   private consume(type: TokenType, message?: string): Token {
@@ -86,9 +94,11 @@ export class Parser {
     let node = this.parseOf();
     
     // Handle unit/timezone conversion at the expression level (lowest precedence)
-    if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
-      const convKeyword = this.current.value;
+    const currentToken = this.current;
+    if (currentToken.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(currentToken.value)) {
+      const convKeyword = currentToken.value;
       this.advance();
+      const nextToken = this.current;
       
       // Check if we're converting a time/date (which could be a timezone conversion)
       // But NOT if it's a duration (result of time subtraction)
@@ -106,20 +116,20 @@ export class Parser {
       
       if (isTimeOrDate) {
         // For time/date nodes, any identifier could be a timezone
-        if (this.current.type === TokenType.TIMEZONE || 
-            this.current.type === TokenType.VARIABLE ||
-            this.current.type === TokenType.UNIT ||
-            this.current.type === TokenType.CURRENCY ||
-            this.current.type === TokenType.KEYWORD ||
-            this.current.type === TokenType.EOF) {
+        if (nextToken.type === TokenType.TIMEZONE || 
+            nextToken.type === TokenType.VARIABLE ||
+            nextToken.type === TokenType.UNIT ||
+            nextToken.type === TokenType.CURRENCY ||
+            nextToken.type === TokenType.KEYWORD ||
+            nextToken.type === TokenType.EOF) {
           
-          if (this.current.type === TokenType.EOF) {
+          if (nextToken.type === TokenType.EOF) {
             // Incomplete expression, just return the node as-is
             return node;
           }
           
           // Timezone conversion
-          const targetTimezone = this.current.value;
+          const targetTimezone = nextToken.value;
           this.advance();
           node = {
             type: 'binary',
@@ -130,8 +140,8 @@ export class Parser {
         }
       } else {
         // For regular unit conversion of numeric results
-        if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
-          const targetUnit = this.current.value;
+        if (nextToken.type === TokenType.UNIT || nextToken.type === TokenType.CURRENCY) {
+          const targetUnit = nextToken.value;
           this.advance();
           node = {
             type: 'binary',
@@ -355,22 +365,23 @@ export class Parser {
           }
           
           this.advance(); // consume 'in', 'to', or 'as'
+          const nextTokenAfterAdvance = this.current;
           
           // For time/date nodes, any identifier could be a timezone
-          if (this.current.type === TokenType.TIMEZONE || 
-              this.current.type === TokenType.VARIABLE ||
-              this.current.type === TokenType.UNIT ||
-              this.current.type === TokenType.CURRENCY ||
-              this.current.type === TokenType.KEYWORD ||
-              this.current.type === TokenType.EOF) {
+          if (nextTokenAfterAdvance.type === TokenType.TIMEZONE || 
+              nextTokenAfterAdvance.type === TokenType.VARIABLE ||
+              nextTokenAfterAdvance.type === TokenType.UNIT ||
+              nextTokenAfterAdvance.type === TokenType.CURRENCY ||
+              nextTokenAfterAdvance.type === TokenType.KEYWORD ||
+              nextTokenAfterAdvance.type === TokenType.EOF) {
             
-            if (this.current.type === TokenType.EOF) {
+            if (nextTokenAfterAdvance.type === TokenType.EOF) {
               // Incomplete expression, just return the node as-is
               return node;
             }
             
             // Timezone conversion
-            const targetTimezone = this.current.value;
+            const targetTimezone = nextTokenAfterAdvance.value;
             this.advance();
             node = {
               type: 'binary',
@@ -417,24 +428,26 @@ export class Parser {
         const [datePart, timePart] = dateValue.split('T');
         
         // Check for timezone
-        if (this.current.type === TokenType.AT_SYMBOL) {
+        const currentToken = this.current;
+        if (currentToken.type === TokenType.AT_SYMBOL) {
           this.advance(); // consume @
-          if (this.current.type === TokenType.EOF) {
+          const tokenAfterAt = this.current;
+          if (tokenAfterAt.type === TokenType.EOF) {
             // Incomplete expression - treat as datetime without timezone
             return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
           }
           
           // Accept any identifier-like token as a potential timezone
-          if (this.current.type === TokenType.TIMEZONE || 
-              this.current.type === TokenType.VARIABLE ||
-              this.current.type === TokenType.UNIT ||
-              this.current.type === TokenType.CURRENCY ||
-              this.current.type === TokenType.KEYWORD) {
-            const timezone = this.current.value;
+          if (tokenAfterAt.type === TokenType.TIMEZONE || 
+              tokenAfterAt.type === TokenType.VARIABLE ||
+              tokenAfterAt.type === TokenType.UNIT ||
+              tokenAfterAt.type === TokenType.CURRENCY ||
+              tokenAfterAt.type === TokenType.KEYWORD) {
+            const timezone = tokenAfterAt.value;
             this.advance();
             return { type: 'datetime', dateValue: datePart, timeValue: timePart, timezone } as DateTimeNode;
           } else {
-            throw new Error(`Invalid timezone: ${this.current.value}`);
+            throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
           }
         }
         
@@ -451,24 +464,26 @@ export class Parser {
       this.advance();
       
       // Check for timezone
-      if (this.current.type === TokenType.AT_SYMBOL) {
+      const currentToken = this.current;
+      if (currentToken.type === TokenType.AT_SYMBOL) {
         this.advance(); // consume @
-        if (this.current.type === TokenType.EOF) {
+        const tokenAfterAt = this.current;
+        if (tokenAfterAt.type === TokenType.EOF) {
           // Incomplete expression - treat as time without timezone
           return { type: 'time', value: timeValue } as TimeNode;
         }
         
         // Accept any identifier-like token as a potential timezone
-        if (this.current.type === TokenType.TIMEZONE || 
-            this.current.type === TokenType.VARIABLE ||
-            this.current.type === TokenType.UNIT ||
-            this.current.type === TokenType.CURRENCY ||
-            this.current.type === TokenType.KEYWORD) {
-          const timezone = this.current.value;
+        if (tokenAfterAt.type === TokenType.TIMEZONE || 
+            tokenAfterAt.type === TokenType.VARIABLE ||
+            tokenAfterAt.type === TokenType.UNIT ||
+            tokenAfterAt.type === TokenType.CURRENCY ||
+            tokenAfterAt.type === TokenType.KEYWORD) {
+          const timezone = tokenAfterAt.value;
           this.advance();
           return { type: 'time', value: timeValue, timezone } as TimeNode;
         } else {
-          throw new Error(`Invalid timezone: ${this.current.value}`);
+          throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
         }
       }
       
@@ -488,12 +503,14 @@ export class Parser {
         this.advance();
         
         // Check for "in unit" syntax
-        if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
+        const currentTokenCheck = this.current;
+        if (currentTokenCheck.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(currentTokenCheck.value)) {
           this.advance(); // consume 'in', 'to', or 'as'
+          const nextToken = this.current;
           
           // Expect a unit or currency
-          if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
-            const targetUnit = this.current.value;
+          if (nextToken.type === TokenType.UNIT || nextToken.type === TokenType.CURRENCY) {
+            const targetUnit = nextToken.value;
             this.advance();
             return { 
               type: 'aggregate', 
@@ -503,7 +520,7 @@ export class Parser {
           } else {
             // If not a unit, back up and treat as regular aggregate
             this.position--;
-            this.current = this.tokens[this.position];
+            this.current = this.tokens[this.position] || { type: TokenType.EOF, value: '', position: this.position };
           }
         }
         
@@ -520,29 +537,7 @@ export class Parser {
 
     // Functions
     if (this.current.type === TokenType.FUNCTION) {
-      const name = this.current.value;
-      this.advance();
-      
-      if (this.current.type === TokenType.LPAREN) {
-        this.advance(); // consume (
-        const args: ASTNode[] = [];
-        
-        if (this.current.type !== TokenType.RPAREN) {
-          args.push(this.parseExpression());
-          
-          while (this.current.type === TokenType.COMMA) {
-            this.advance(); // consume ,
-            args.push(this.parseExpression());
-          }
-        }
-        
-        this.consume(TokenType.RPAREN, 'Expected )');
-        return { type: 'function', name, args } as FunctionNode;
-      } else {
-        // Function without parentheses (single argument)
-        const arg = this.parseUnary();
-        return { type: 'function', name, args: [arg] } as FunctionNode;
-      }
+      return this.parseFunction();
     }
 
     // Parentheses
@@ -554,6 +549,33 @@ export class Parser {
     }
 
     throw new Error(`Unexpected token: ${this.current.value}`);
+  }
+
+  private parseFunction(): FunctionNode {
+    const name = this.current.value;
+    this.advance();
+    
+    if (this.current.type === TokenType.LPAREN) {
+      this.advance(); // consume (
+      const args: ASTNode[] = [];
+      
+      // Parse function arguments
+      if ((this.current as Token).type !== TokenType.RPAREN) {
+        args.push(this.parseExpression());
+        
+        while ((this.current as Token).type === TokenType.COMMA) {
+          this.advance(); // consume ,
+          args.push(this.parseExpression());
+        }
+      }
+      
+      this.consume(TokenType.RPAREN, 'Expected )');
+      return { type: 'function', name, args } as FunctionNode;
+    } else {
+      // Function without parentheses (single argument)
+      const arg = this.parseUnary();
+      return { type: 'function', name, args: [arg] } as FunctionNode;
+    }
   }
 
   private isPercentageContext(): boolean {

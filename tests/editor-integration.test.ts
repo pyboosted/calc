@@ -50,8 +50,8 @@ describe('Editor Integration', () => {
       await $`bun run src/cli.tsx --file=nonexistent.calc`.text();
       expect(true).toBe(false); // Should not reach here
     } catch (error) {
-      expect(error.exitCode).toBe(1);
-      expect(error.stderr.toString()).toContain('File not found');
+      expect((error as any).exitCode).toBe(1);
+      expect((error as any).stderr.toString()).toContain('File not found');
     }
   });
 

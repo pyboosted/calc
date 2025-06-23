@@ -27,8 +27,8 @@ describe('CLI Non-Interactive Mode', () => {
       await $`bun run src/cli.tsx "invalid expression"`.text();
       expect(true).toBe(false); // Should not reach here
     } catch (error) {
-      expect(error.exitCode).toBe(1);
-      expect(error.stderr.toString()).toContain('Error:');
+      expect((error as any).exitCode).toBe(1);
+      expect((error as any).stderr.toString()).toContain('Error:');
     }
   });
 
