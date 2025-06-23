@@ -26,7 +26,12 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Syntax highlighting**: Numbers, operators, units, functions, and variables are color-coded
 - **History navigation**: Use up/down arrows to navigate through previous calculations
 - **Multi-line support**: Press Enter to add new lines to expressions
-- **Comments and formatting**: Invalid expressions are treated as comments (gray text), empty lines for organization
+- **Comments**: Use `#` for inline comments (e.g., `5 * 4 # multiply numbers`)
+- **Formatting**: Invalid expressions are treated as comments (gray text), empty lines for organization
+- **Clipboard copy**: 
+  - `Ctrl+Y`: Copy just the result value
+  - `Ctrl+U` or `Ctrl+Shift+Y`: Copy the full line (expression = result)
+  - Visual feedback with yellow background highlight
 - **Configurable precision**: Set decimal places for results via config.yaml
 - **Date/time operations**: 
   - Keywords: `today`, `tomorrow`, `yesterday`, `now`, weekdays (`monday`, `tuesday`, etc.)
@@ -115,6 +120,8 @@ precision: 4
 - **Ctrl+C / ESC**: Exit the calculator
 - **Ctrl+L**: Clear all calculations
 - **Ctrl+E**: Open current content in external editor ($EDITOR)
+- **Ctrl+Y**: Copy result to clipboard
+- **Ctrl+U / Ctrl+Shift+Y**: Copy full line (expression = result) to clipboard
 - **Enter**: Add a new line (for multi-line expressions)
 - **Up/Down arrows**: Navigate through calculation history
 - **Left/Right arrows**: Move cursor within input
@@ -170,6 +177,11 @@ prev * 2
 prev - 5
 # Comment line doesn't affect prev
 prev / 3
+
+# Inline comments
+100 * 1.2 # add 20% markup
+sqrt(144) # square root of 144
+price = 50 # base price
 
 # Aggregate operations
 100

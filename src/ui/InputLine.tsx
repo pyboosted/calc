@@ -17,7 +17,9 @@ export const InputLine: React.FC<InputLineProps> = ({ text, cursorPosition, dimC
 
   if (cursorPosition === undefined) {
     // No cursor on this line, just render highlighted text
-    return dimColor ? <Text dimColor>{text}</Text> : <HighlightedText text={text} />;
+    return dimColor ? 
+      <Text dimColor>{text}</Text> : 
+      <HighlightedText text={text} />;
   }
 
   // When we have a cursor position, we need to be careful about rendering

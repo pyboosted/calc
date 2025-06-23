@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, measureElement } from 'ink';
 import { InputLine } from './InputLine';
 import { formatResultWithUnit } from '../evaluator/unitFormatter';
 import type { CalculatedValue } from '../types';
+import clipboardy from 'clipboardy';
 
 interface InputWithResultProps {
   value: string;
@@ -31,6 +32,17 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   onBackspaceOnEmptyLine,
   isActive
 }) => {
+  const [copyHighlight, setCopyHighlight] = useState<'result' | 'full' | null>(null);
+
+  useEffect(() => {
+    if (copyHighlight) {
+      const timer = setTimeout(() => {
+        setCopyHighlight(null);
+      }, 300); // Highlight for 300ms
+      return () => clearTimeout(timer);
+    }
+  }, [copyHighlight]);
+
   useInput((input, key) => {
     
     if (!isActive || !onChange) return;
@@ -75,6 +87,27 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
       return;
     }
 
+    // Handle Ctrl+Y for copying result
+    if (key.ctrl && input === 'y' && !key.shift) {
+      if (result && !error) {
+        const resultToCopy = formatResultWithUnit(result);
+        clipboardy.writeSync(resultToCopy);
+        setCopyHighlight('result');
+      }
+      return;
+    }
+
+    // Handle Ctrl+U or Ctrl+Shift+Y for copying full line
+    if (key.ctrl && (input === 'u' || (input === 'y' && key.shift))) {
+      if (result && !error) {
+        const resultToCopy = formatResultWithUnit(result);
+        const fullLine = `${value} = ${resultToCopy}`;
+        clipboardy.writeSync(fullLine);
+        setCopyHighlight('full');
+      }
+      return;
+    }
+
     // Regular character input
     if (input && !key.ctrl && !key.meta && cursorPosition !== undefined) {
       const newValue = value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
@@ -90,13 +123,26 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
     : '';
 
   return (
-    <Box width="100%" justifyContent="space-between">
+    <Box 
+      width="100%" 
+      justifyContent="space-between"
+    >
       <Box flexGrow={1}>
         {value === '' && !isActive ? (
           // Render empty lines with a space to ensure they take up height
           <Text> </Text>
         ) : isComment && !isActive ? (
-          <Text dimColor>{value}</Text>
+          <Text 
+            dimColor={copyHighlight !== 'full'}
+            color={copyHighlight === 'full' ? 'black' : undefined}
+            backgroundColor={copyHighlight === 'full' ? 'yellow' : undefined}
+          >
+            {value}
+          </Text>
+        ) : copyHighlight === 'full' ? (
+          <Text color="black" backgroundColor="yellow">
+            {value}
+          </Text>
         ) : (
           <InputLine 
             text={value} 
@@ -106,9 +152,13 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
         )}
       </Box>
       {resultText && !isComment && (
-        <Box marginLeft={2}>
-          <Text color={error ? 'red' : 'green'} bold={!error}>
-            = {resultText}
+        <Box marginLeft={copyHighlight === 'full' ? 1 : 2}>
+          <Text 
+            color={(copyHighlight === 'result' || copyHighlight === 'full') ? 'black' : (error ? 'red' : 'green')} 
+            bold={!error}
+            backgroundColor={(copyHighlight === 'result' || copyHighlight === 'full') ? 'yellow' : undefined}
+          >
+            {copyHighlight === 'full' ? ' = ' : '= '}{resultText}
           </Text>
         </Box>
       )}
