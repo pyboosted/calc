@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Text } from 'ink';
+import { Box, Text } from "ink";
+import type React from "react";
 
 interface SimpleInputProps {
   value: string;
@@ -8,7 +8,7 @@ interface SimpleInputProps {
 
 export const SimpleInput: React.FC<SimpleInputProps> = ({ value, cursorPosition }) => {
   // For empty input, show just cursor
-  if (value === '') {
+  if (value === "") {
     return (
       <Box>
         <Text inverse> </Text>
@@ -18,7 +18,7 @@ export const SimpleInput: React.FC<SimpleInputProps> = ({ value, cursorPosition 
 
   // Split text around cursor
   const beforeCursor = value.slice(0, cursorPosition);
-  const atCursor = value[cursorPosition] || ' ';
+  const atCursor = value[cursorPosition] || " ";
   const afterCursor = value.slice(cursorPosition + 1);
 
   return (

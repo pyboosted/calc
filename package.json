@@ -42,9 +42,14 @@
     "update-currencies": "bun run src/cli.tsx --update",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
+    "check": "biome check --write .",
+    "check:ci": "biome ci"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.0.5",
     "@types/bun": "latest",
     "@types/react": "^19.1.8"
   },

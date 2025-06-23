@@ -1,34 +1,53 @@
-import { type Token, TokenType, type ASTNode, type NumberNode, type BinaryOpNode, type UnaryOpNode, type FunctionNode, type VariableNode, type AssignmentNode, type AggregateNode, type DateNode, type TimeNode, type DateTimeNode, type DateOperationNode } from '../types';
+import {
+  type AggregateNode,
+  type ASTNode,
+  type AssignmentNode,
+  type BinaryOpNode,
+  type DateNode,
+  type DateOperationNode,
+  type DateTimeNode,
+  type FunctionNode,
+  type NumberNode,
+  type TimeNode,
+  type Token,
+  TokenType,
+  type UnaryOpNode,
+  type VariableNode,
+} from "../types";
 
 export class Parser {
   private tokens: Token[];
   private position: number = 0;
   private _current!: Token;
-  
+
   private get current(): Token {
     return this._current;
   }
-  
+
   private set current(token: Token) {
     this._current = token;
   }
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
-    this.current = this.tokens[0] || { type: TokenType.EOF, value: '', position: 0 };
+    this.current = this.tokens[0] || { type: TokenType.EOF, value: "", position: 0 };
   }
 
   private advance(): Token {
     if (this.position < this.tokens.length - 1) {
       this.position++;
-      this.current = this.tokens[this.position] || { type: TokenType.EOF, value: '', position: this.position };
+      this.current = this.tokens[this.position] || {
+        type: TokenType.EOF,
+        value: "",
+        position: this.position,
+      };
     }
     return this.current;
   }
 
   private peek(offset: number = 1): Token | null {
     const pos = this.position + offset;
-    return pos < this.tokens.length ? (this.tokens[pos] || null) : null;
+    return pos < this.tokens.length ? this.tokens[pos] || null : null;
   }
 
   private consume(type: TokenType, message?: string): Token {
@@ -51,13 +70,13 @@ export class Parser {
   private parseAssignment(): ASTNode {
     const expr = this.parseExpression();
 
-    if (this.current.type === TokenType.EQUALS && expr.type === 'variable') {
+    if (this.current.type === TokenType.EQUALS && expr.type === "variable") {
       this.advance(); // consume =
       const value = this.parseExpression();
       return {
-        type: 'assignment',
+        type: "assignment",
         variable: (expr as VariableNode).name,
-        value
+        value,
       } as AssignmentNode;
     }
 
@@ -67,75 +86,88 @@ export class Parser {
   private parseExpression(): ASTNode {
     return this.parseConversionExpression();
   }
-  
+
   private isTimeNode(node: ASTNode): boolean {
     // We can't determine at parse time if a variable contains a date/time
     // So we should be conservative and treat all variables as potential time nodes
-    return node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
-           node.type === 'variable';
+    return (
+      node.type === "time" ||
+      node.type === "datetime" ||
+      node.type === "date" ||
+      node.type === "variable"
+    );
   }
-  
+
   private isTimestampResult(node: ASTNode): boolean {
     // Helper to determine if a binary operation will result in a timestamp
-    if (node.type !== 'binary') return false;
+    if (node.type !== "binary") return false;
     const binNode = node as BinaryOpNode;
-    
+
     // Subtraction of two times/dates results in a duration, not a timestamp
-    if (binNode.operator === '-') {
+    if (binNode.operator === "-") {
       const leftIsTime = this.isTimeNode(binNode.left);
       const rightIsTime = this.isTimeNode(binNode.right);
       return !(leftIsTime && rightIsTime); // Not a timestamp if both are times
     }
-    
+
     return false;
   }
-  
+
   private parseConversionExpression(): ASTNode {
     let node = this.parseOf();
-    
+
     // Handle unit/timezone conversion at the expression level (lowest precedence)
     const currentToken = this.current;
-    if (currentToken.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(currentToken.value)) {
-      const convKeyword = currentToken.value;
+    if (
+      currentToken.type === TokenType.KEYWORD &&
+      ["in", "to", "as"].includes(currentToken.value)
+    ) {
+      const _convKeyword = currentToken.value;
       this.advance();
       const nextToken = this.current;
-      
+
       // Check if we're converting a time/date (which could be a timezone conversion)
       // But NOT if it's a duration (result of time subtraction)
-      const isDuration = node.type === 'binary' && (node as BinaryOpNode).operator === '-' &&
-                        this.isTimeNode((node as BinaryOpNode).left) && 
-                        this.isTimeNode((node as BinaryOpNode).right);
-      
-      const isTimeOrDate = !isDuration && (
-                          node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
-                          node.type === 'variable' || // Any variable could contain a timestamp
-                          (node.type === 'dateOperation') ||
-                          (node.type === 'binary' && (node as BinaryOpNode).operator === 'timezone_convert') ||
-                          // Also check if it's a timestamp result
-                          (node.type === 'binary' && this.isTimestampResult(node)));
-      
+      const isDuration =
+        node.type === "binary" &&
+        (node as BinaryOpNode).operator === "-" &&
+        this.isTimeNode((node as BinaryOpNode).left) &&
+        this.isTimeNode((node as BinaryOpNode).right);
+
+      const isTimeOrDate =
+        !isDuration &&
+        (node.type === "time" ||
+          node.type === "datetime" ||
+          node.type === "date" ||
+          node.type === "variable" || // Any variable could contain a timestamp
+          node.type === "dateOperation" ||
+          (node.type === "binary" && (node as BinaryOpNode).operator === "timezone_convert") ||
+          // Also check if it's a timestamp result
+          (node.type === "binary" && this.isTimestampResult(node)));
+
       if (isTimeOrDate) {
         // For time/date nodes, any identifier could be a timezone
-        if (nextToken.type === TokenType.TIMEZONE || 
-            nextToken.type === TokenType.VARIABLE ||
-            nextToken.type === TokenType.UNIT ||
-            nextToken.type === TokenType.CURRENCY ||
-            nextToken.type === TokenType.KEYWORD ||
-            nextToken.type === TokenType.EOF) {
-          
+        if (
+          nextToken.type === TokenType.TIMEZONE ||
+          nextToken.type === TokenType.VARIABLE ||
+          nextToken.type === TokenType.UNIT ||
+          nextToken.type === TokenType.CURRENCY ||
+          nextToken.type === TokenType.KEYWORD ||
+          nextToken.type === TokenType.EOF
+        ) {
           if (nextToken.type === TokenType.EOF) {
             // Incomplete expression, just return the node as-is
             return node;
           }
-          
+
           // Timezone conversion
           const targetTimezone = nextToken.value;
           this.advance();
           node = {
-            type: 'binary',
-            operator: 'timezone_convert',
+            type: "binary",
+            operator: "timezone_convert",
             left: node,
-            right: { type: 'variable', name: targetTimezone } as VariableNode
+            right: { type: "variable", name: targetTimezone } as VariableNode,
           } as BinaryOpNode;
         }
       } else {
@@ -144,153 +176,178 @@ export class Parser {
           const targetUnit = nextToken.value;
           this.advance();
           node = {
-            type: 'binary',
-            operator: 'convert',
+            type: "binary",
+            operator: "convert",
             left: node,
-            right: { type: 'number', value: 1, unit: targetUnit } as NumberNode
+            right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
           } as BinaryOpNode;
         }
       }
     }
-    
+
     return node;
   }
-  
+
   private parseOf(): ASTNode {
-    let node = this.parseAdditive();
-    
+    const node = this.parseAdditive();
+
     // Handle "of" for percentage calculations (e.g., "20% of 100")
-    if (this.current.type === TokenType.KEYWORD && this.current.value === 'of') {
+    if (this.current.type === TokenType.KEYWORD && this.current.value === "of") {
       // Check if left side is a percentage
-      if (node.type === 'binary' && (node as BinaryOpNode).operator === 'percent') {
+      if (node.type === "binary" && (node as BinaryOpNode).operator === "percent") {
         this.advance(); // consume 'of'
         const right = this.parseAdditive();
-        
+
         // Convert "X% of Y" to "(X/100) * Y"
         const percentValue = (node as BinaryOpNode).left;
         return {
-          type: 'binary',
-          operator: '*',
+          type: "binary",
+          operator: "*",
           left: {
-            type: 'binary',
-            operator: '/',
+            type: "binary",
+            operator: "/",
             left: percentValue,
-            right: { type: 'number', value: 100 } as NumberNode
+            right: { type: "number", value: 100 } as NumberNode,
           } as BinaryOpNode,
-          right
+          right,
         } as BinaryOpNode;
       }
     }
-    
+
     return node;
   }
-  
+
   private parseAdditive(): ASTNode {
     let left = this.parseMultiplicative();
-    
-    while (this.current.type === TokenType.OPERATOR && ['+', '-'].includes(this.current.value)) {
+
+    while (this.current.type === TokenType.OPERATOR && ["+", "-"].includes(this.current.value)) {
       const operator = this.current.value;
       this.advance();
       const right = this.parseMultiplicative();
-      
+
       // Check if this is a date operation
-      if ((left.type === 'date' || (left as any).date) && right.type === 'number' && (right as NumberNode).unit) {
+      const isDateNode = (node: ASTNode): node is DateNode => node.type === "date";
+      const isDateTimeNode = (node: ASTNode): node is DateTimeNode => node.type === "datetime";
+      const hasDate = isDateNode(left) || isDateTimeNode(left);
+
+      if (hasDate && right.type === "number" && (right as NumberNode).unit) {
         const unit = (right as NumberNode).unit;
-        if (['day', 'days', 'd',
-             'week', 'weeks', 'w',
-             'month', 'months',
-             'year', 'years', 'yr',
-             'hour', 'hours', 'h', 'hr',
-             'minute', 'minutes', 'min', 'm',
-             'second', 'seconds', 's', 'sec'].includes(unit!)) {
+        if (
+          unit &&
+          [
+            "day",
+            "days",
+            "d",
+            "week",
+            "weeks",
+            "w",
+            "month",
+            "months",
+            "year",
+            "years",
+            "yr",
+            "hour",
+            "hours",
+            "h",
+            "hr",
+            "minute",
+            "minutes",
+            "min",
+            "m",
+            "second",
+            "seconds",
+            "s",
+            "sec",
+          ].includes(unit)
+        ) {
           left = {
-            type: 'dateOperation',
+            type: "dateOperation",
             date: left,
-            operation: operator === '+' ? 'add' : 'subtract',
+            operation: operator === "+" ? "add" : "subtract",
             value: right,
-            unit: unit
+            unit: unit,
           } as DateOperationNode;
           continue;
         }
       }
-      
+
       // Check if right side is a percentage (e.g., 100 + 10% or 100 - 10%)
-      if (right.type === 'binary' && (right as BinaryOpNode).operator === 'percent') {
+      if (right.type === "binary" && (right as BinaryOpNode).operator === "percent") {
         // If left side is also a percentage, just add/subtract them as decimals
-        if (left.type === 'binary' && (left as BinaryOpNode).operator === 'percent') {
+        if (left.type === "binary" && (left as BinaryOpNode).operator === "percent") {
           left = {
-            type: 'binary',
+            type: "binary",
             operator,
             left,
-            right
+            right,
           } as BinaryOpNode;
         } else {
           // Convert "X + Y%" to "X + (X * Y/100)" or "X - Y%" to "X - (X * Y/100)"
           const percentValue = (right as BinaryOpNode).left;
           const percentCalculation = {
-            type: 'binary',
-            operator: '*',
+            type: "binary",
+            operator: "*",
             left: left,
             right: {
-              type: 'binary',
-              operator: '/',
+              type: "binary",
+              operator: "/",
               left: percentValue,
-              right: { type: 'number', value: 100 } as NumberNode
-            } as BinaryOpNode
+              right: { type: "number", value: 100 } as NumberNode,
+            } as BinaryOpNode,
           } as BinaryOpNode;
-          
+
           left = {
-            type: 'binary',
+            type: "binary",
             operator,
             left,
-            right: percentCalculation
+            right: percentCalculation,
           } as BinaryOpNode;
         }
       } else {
         left = {
-          type: 'binary',
+          type: "binary",
           operator,
           left,
-          right
+          right,
         } as BinaryOpNode;
       }
     }
-    
+
     return left;
   }
 
   private parseMultiplicative(): ASTNode {
-    return this.parseBinary(this.parsePower.bind(this), ['*', '/', '%']);
+    return this.parseBinary(this.parsePower.bind(this), ["*", "/", "%"]);
   }
 
   private parsePower(): ASTNode {
-    return this.parseBinary(this.parseBitwise.bind(this), ['^'], true);
+    return this.parseBinary(this.parseBitwise.bind(this), ["^"], true);
   }
 
   private parseBitwise(): ASTNode {
-    return this.parseBinary(this.parseUnary.bind(this), ['&', '|', '<<', '>>']);
+    return this.parseBinary(this.parseUnary.bind(this), ["&", "|", "<<", ">>"]);
   }
 
   private parseBinary(
     parseHigherPrecedence: () => ASTNode,
     operators: string[],
-    rightAssociative: boolean = false
+    rightAssociative: boolean = false,
   ): ASTNode {
     let left = parseHigherPrecedence();
 
     while (this.current.type === TokenType.OPERATOR && operators.includes(this.current.value)) {
       const operator = this.current.value;
       this.advance();
-      
-      const right = rightAssociative 
+
+      const right = rightAssociative
         ? this.parseBinary(parseHigherPrecedence, operators, rightAssociative)
         : parseHigherPrecedence();
-      
+
       left = {
-        type: 'binary',
+        type: "binary",
         operator,
         left,
-        right
+        right,
       } as BinaryOpNode;
 
       if (rightAssociative) break;
@@ -300,13 +357,13 @@ export class Parser {
   }
 
   private parseUnary(): ASTNode {
-    if (this.current.type === TokenType.OPERATOR && ['+', '-'].includes(this.current.value)) {
+    if (this.current.type === TokenType.OPERATOR && ["+", "-"].includes(this.current.value)) {
       const operator = this.current.value;
       this.advance();
       return {
-        type: 'unary',
+        type: "unary",
         operator,
-        operand: this.parseUnary()
+        operand: this.parseUnary(),
       } as UnaryOpNode;
     }
 
@@ -321,73 +378,86 @@ export class Parser {
       if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
         const unit = this.current.value;
         this.advance();
-        
-        if (node.type === 'number') {
+
+        if (node.type === "number") {
           (node as NumberNode).unit = unit;
         } else {
           // Wrap in a conversion node if needed
           node = {
-            type: 'binary',
-            operator: 'unit',
+            type: "binary",
+            operator: "unit",
             left: node,
-            right: { type: 'number', value: 1, unit } as NumberNode
+            right: { type: "number", value: 1, unit } as NumberNode,
           } as BinaryOpNode;
         }
-      } else if (this.current.type === TokenType.OPERATOR && this.current.value === '%' && 
-                 this.isPercentageContext()) {
+      } else if (
+        this.current.type === TokenType.OPERATOR &&
+        this.current.value === "%" &&
+        this.isPercentageContext()
+      ) {
         this.advance();
         node = {
-          type: 'binary',
-          operator: 'percent',
+          type: "binary",
+          operator: "percent",
           left: node,
-          right: { type: 'number', value: 100 } as NumberNode
+          right: { type: "number", value: 100 } as NumberNode,
         } as BinaryOpNode;
-      } else if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
+      } else if (
+        this.current.type === TokenType.KEYWORD &&
+        ["in", "to", "as"].includes(this.current.value)
+      ) {
         // Handle timezone conversion immediately after time/date nodes
         // BUT only if it's not followed by a unit (which would indicate unit conversion at expression level)
-        const isTimeOrDate = node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
-                            (node.type === 'variable' && (node as VariableNode).name === 'now');
-        
+        const isTimeOrDate =
+          node.type === "time" ||
+          node.type === "datetime" ||
+          node.type === "date" ||
+          (node.type === "variable" && (node as VariableNode).name === "now");
+
         if (isTimeOrDate) {
           // Peek ahead to see what follows the conversion keyword
           const nextToken = this.peek(1);
-          
+
           // If the next token is a unit AND we're at expression level (could be time subtraction),
           // don't consume the conversion here - let parseConversionExpression handle it
           if (nextToken && nextToken.type === TokenType.UNIT) {
             // Check if this might be part of a larger expression by looking further ahead
             const tokenAfterUnit = this.peek(2);
-            if (!tokenAfterUnit || tokenAfterUnit.type === TokenType.EOF || 
-                tokenAfterUnit.type === TokenType.RPAREN) {
+            if (
+              !tokenAfterUnit ||
+              tokenAfterUnit.type === TokenType.EOF ||
+              tokenAfterUnit.type === TokenType.RPAREN
+            ) {
               // This looks like expression-level unit conversion, don't handle it here
               break;
             }
           }
-          
+
           this.advance(); // consume 'in', 'to', or 'as'
           const nextTokenAfterAdvance = this.current;
-          
+
           // For time/date nodes, any identifier could be a timezone
-          if (nextTokenAfterAdvance.type === TokenType.TIMEZONE || 
-              nextTokenAfterAdvance.type === TokenType.VARIABLE ||
-              nextTokenAfterAdvance.type === TokenType.UNIT ||
-              nextTokenAfterAdvance.type === TokenType.CURRENCY ||
-              nextTokenAfterAdvance.type === TokenType.KEYWORD ||
-              nextTokenAfterAdvance.type === TokenType.EOF) {
-            
+          if (
+            nextTokenAfterAdvance.type === TokenType.TIMEZONE ||
+            nextTokenAfterAdvance.type === TokenType.VARIABLE ||
+            nextTokenAfterAdvance.type === TokenType.UNIT ||
+            nextTokenAfterAdvance.type === TokenType.CURRENCY ||
+            nextTokenAfterAdvance.type === TokenType.KEYWORD ||
+            nextTokenAfterAdvance.type === TokenType.EOF
+          ) {
             if (nextTokenAfterAdvance.type === TokenType.EOF) {
               // Incomplete expression, just return the node as-is
               return node;
             }
-            
+
             // Timezone conversion
             const targetTimezone = nextTokenAfterAdvance.value;
             this.advance();
             node = {
-              type: 'binary',
-              operator: 'timezone_convert',
+              type: "binary",
+              operator: "timezone_convert",
               left: node,
-              right: { type: 'variable', name: targetTimezone } as VariableNode
+              right: { type: "variable", name: targetTimezone } as VariableNode,
             } as BinaryOpNode;
           }
         } else {
@@ -399,7 +469,6 @@ export class Parser {
       }
     }
 
-
     return node;
   }
 
@@ -408,25 +477,25 @@ export class Parser {
     if (this.current.type === TokenType.NUMBER) {
       const value = parseFloat(this.current.value);
       this.advance();
-      return { type: 'number', value } as NumberNode;
+      return { type: "number", value } as NumberNode;
     }
 
     // Variables
     if (this.current.type === TokenType.VARIABLE) {
       const name = this.current.value;
       this.advance();
-      return { type: 'variable', name } as VariableNode;
+      return { type: "variable", name } as VariableNode;
     }
 
     // Date literals (DD.MM.YYYY or DD/MM/YYYY or DD.MM.YYYYTHH:MM)
     if (this.current.type === TokenType.DATE_LITERAL) {
       const dateValue = this.current.value;
       this.advance();
-      
+
       // Check if it contains time (datetime format)
-      if (dateValue.includes('T')) {
-        const [datePart, timePart] = dateValue.split('T');
-        
+      if (dateValue.includes("T")) {
+        const [datePart, timePart] = dateValue.split("T");
+
         // Check for timezone
         const currentToken = this.current;
         if (currentToken.type === TokenType.AT_SYMBOL) {
@@ -434,35 +503,42 @@ export class Parser {
           const tokenAfterAt = this.current;
           if (tokenAfterAt.type === TokenType.EOF) {
             // Incomplete expression - treat as datetime without timezone
-            return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
+            return { type: "datetime", dateValue: datePart, timeValue: timePart } as DateTimeNode;
           }
-          
+
           // Accept any identifier-like token as a potential timezone
-          if (tokenAfterAt.type === TokenType.TIMEZONE || 
-              tokenAfterAt.type === TokenType.VARIABLE ||
-              tokenAfterAt.type === TokenType.UNIT ||
-              tokenAfterAt.type === TokenType.CURRENCY ||
-              tokenAfterAt.type === TokenType.KEYWORD) {
+          if (
+            tokenAfterAt.type === TokenType.TIMEZONE ||
+            tokenAfterAt.type === TokenType.VARIABLE ||
+            tokenAfterAt.type === TokenType.UNIT ||
+            tokenAfterAt.type === TokenType.CURRENCY ||
+            tokenAfterAt.type === TokenType.KEYWORD
+          ) {
             const timezone = tokenAfterAt.value;
             this.advance();
-            return { type: 'datetime', dateValue: datePart, timeValue: timePart, timezone } as DateTimeNode;
+            return {
+              type: "datetime",
+              dateValue: datePart,
+              timeValue: timePart,
+              timezone,
+            } as DateTimeNode;
           } else {
             throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
           }
         }
-        
+
         // DateTime without timezone
-        return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
+        return { type: "datetime", dateValue: datePart, timeValue: timePart } as DateTimeNode;
       }
-      
-      return { type: 'date', value: dateValue } as DateNode;
+
+      return { type: "date", value: dateValue } as DateNode;
     }
-    
+
     // Time literals (HH:MM)
     if (this.current.type === TokenType.TIME_LITERAL) {
       const timeValue = this.current.value;
       this.advance();
-      
+
       // Check for timezone
       const currentToken = this.current;
       if (currentToken.type === TokenType.AT_SYMBOL) {
@@ -470,68 +546,90 @@ export class Parser {
         const tokenAfterAt = this.current;
         if (tokenAfterAt.type === TokenType.EOF) {
           // Incomplete expression - treat as time without timezone
-          return { type: 'time', value: timeValue } as TimeNode;
+          return { type: "time", value: timeValue } as TimeNode;
         }
-        
+
         // Accept any identifier-like token as a potential timezone
-        if (tokenAfterAt.type === TokenType.TIMEZONE || 
-            tokenAfterAt.type === TokenType.VARIABLE ||
-            tokenAfterAt.type === TokenType.UNIT ||
-            tokenAfterAt.type === TokenType.CURRENCY ||
-            tokenAfterAt.type === TokenType.KEYWORD) {
+        if (
+          tokenAfterAt.type === TokenType.TIMEZONE ||
+          tokenAfterAt.type === TokenType.VARIABLE ||
+          tokenAfterAt.type === TokenType.UNIT ||
+          tokenAfterAt.type === TokenType.CURRENCY ||
+          tokenAfterAt.type === TokenType.KEYWORD
+        ) {
           const timezone = tokenAfterAt.value;
           this.advance();
-          return { type: 'time', value: timeValue, timezone } as TimeNode;
+          return { type: "time", value: timeValue, timezone } as TimeNode;
         } else {
           throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
         }
       }
-      
+
       // Time without timezone uses system timezone
-      return { type: 'time', value: timeValue } as TimeNode;
+      return { type: "time", value: timeValue } as TimeNode;
     }
 
     // Keywords
     if (this.current.type === TokenType.KEYWORD) {
-      if (this.current.value === 'prev') {
+      if (this.current.value === "prev") {
         this.advance();
-        return { type: 'variable', name: 'prev' } as VariableNode;
+        return { type: "variable", name: "prev" } as VariableNode;
       }
       // Aggregate keywords
-      if (this.current.value === 'total' || this.current.value === 'average') {
+      if (this.current.value === "total" || this.current.value === "average") {
         const aggregateType = this.current.value;
         this.advance();
-        
+
         // Check for "in unit" syntax
         const currentTokenCheck = this.current;
-        if (currentTokenCheck.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(currentTokenCheck.value)) {
+        if (
+          currentTokenCheck.type === TokenType.KEYWORD &&
+          ["in", "to", "as"].includes(currentTokenCheck.value)
+        ) {
           this.advance(); // consume 'in', 'to', or 'as'
           const nextToken = this.current;
-          
+
           // Expect a unit or currency
           if (nextToken.type === TokenType.UNIT || nextToken.type === TokenType.CURRENCY) {
             const targetUnit = nextToken.value;
             this.advance();
-            return { 
-              type: 'aggregate', 
+            return {
+              type: "aggregate",
               operation: aggregateType,
-              targetUnit 
+              targetUnit,
             } as AggregateNode;
           } else {
             // If not a unit, back up and treat as regular aggregate
             this.position--;
-            this.current = this.tokens[this.position] || { type: TokenType.EOF, value: '', position: this.position };
+            this.current = this.tokens[this.position] || {
+              type: TokenType.EOF,
+              value: "",
+              position: this.position,
+            };
           }
         }
-        
-        return { type: 'aggregate', operation: aggregateType } as AggregateNode;
+
+        return { type: "aggregate", operation: aggregateType } as AggregateNode;
       }
       // Date keywords
-      if (['today', 'now', 'tomorrow', 'yesterday', 'monday', 'tuesday', 'wednesday', 
-           'thursday', 'friday', 'saturday', 'sunday'].includes(this.current.value)) {
+      if (
+        [
+          "today",
+          "now",
+          "tomorrow",
+          "yesterday",
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday",
+        ].includes(this.current.value)
+      ) {
         const dateValue = this.current.value;
         this.advance();
-        return { type: 'date', value: dateValue } as DateNode;
+        return { type: "date", value: dateValue } as DateNode;
       }
     }
 
@@ -544,7 +642,7 @@ export class Parser {
     if (this.current.type === TokenType.LPAREN) {
       this.advance(); // consume (
       const node = this.parseExpression();
-      this.consume(TokenType.RPAREN, 'Expected )');
+      this.consume(TokenType.RPAREN, "Expected )");
       return node;
     }
 
@@ -554,27 +652,27 @@ export class Parser {
   private parseFunction(): FunctionNode {
     const name = this.current.value;
     this.advance();
-    
+
     if (this.current.type === TokenType.LPAREN) {
       this.advance(); // consume (
       const args: ASTNode[] = [];
-      
+
       // Parse function arguments
       if ((this.current as Token).type !== TokenType.RPAREN) {
         args.push(this.parseExpression());
-        
+
         while ((this.current as Token).type === TokenType.COMMA) {
           this.advance(); // consume ,
           args.push(this.parseExpression());
         }
       }
-      
-      this.consume(TokenType.RPAREN, 'Expected )');
-      return { type: 'function', name, args } as FunctionNode;
+
+      this.consume(TokenType.RPAREN, "Expected )");
+      return { type: "function", name, args } as FunctionNode;
     } else {
       // Function without parentheses (single argument)
       const arg = this.parseUnary();
-      return { type: 'function', name, args: [arg] } as FunctionNode;
+      return { type: "function", name, args: [arg] } as FunctionNode;
     }
   }
 
@@ -585,7 +683,7 @@ export class Parser {
     // - It's followed by "of", "in", etc.
     const next = this.peek();
     if (!next || next.type === TokenType.EOF) return true;
-    if (next.type === TokenType.OPERATOR && next.value !== '%') return true;
+    if (next.type === TokenType.OPERATOR && next.value !== "%") return true;
     if (next.type === TokenType.KEYWORD) return true;
     if (next.type === TokenType.RPAREN) return true;
     if (next.type === TokenType.COMMA) return true;

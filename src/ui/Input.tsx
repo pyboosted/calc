@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { Box, useInput } from 'ink';
-import { InputLine } from './InputLine';
-import type { HistoryEntry } from '../types';
+import { Box, useInput } from "ink";
+import type React from "react";
+import { useState } from "react";
+import type { HistoryEntry } from "../types";
+import { InputLine } from "./InputLine";
 
 interface InputProps {
   value: string;
   cursorPosition: number;
   onChange: (value: string, cursorPosition: number) => void;
-  onSubmit: () => void;
   history: HistoryEntry[];
 }
 
-export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, onSubmit, history }) => {
+export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, history }) => {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
-  const [tempValue, setTempValue] = useState<string>('');
+  const [tempValue, setTempValue] = useState<string>("");
 
   useInput((input, key) => {
     if (key.return) {
-      onChange(value + '\n', cursorPosition + 1);
+      onChange(`${value}\n`, cursorPosition + 1);
       return;
     }
 
@@ -82,12 +82,12 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, o
     }
   });
 
-  const lines = value.split('\n');
+  const lines = value.split("\n");
   let currentPos = 0;
-  
+
   return (
     <Box flexDirection="column">
-      {lines.length === 0 || (lines.length === 1 && lines[0] === '') ? (
+      {lines.length === 0 || (lines.length === 1 && lines[0] === "") ? (
         <Box>
           <InputLine text="" cursorPosition={0} />
         </Box>
@@ -96,14 +96,17 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, o
           const lineStartPos = currentPos;
           const lineEndPos = lineStartPos + line.length;
           currentPos = lineEndPos + 1; // +1 for newline
-          
+
           const isLastLine = index === lines.length - 1;
-          const cursorOnThisLine = isLastLine && cursorPosition >= lineStartPos && cursorPosition <= lineEndPos;
-          
+          const cursorOnThisLine =
+            isLastLine && cursorPosition >= lineStartPos && cursorPosition <= lineEndPos;
+
+          // Create a stable key based on line content and position
+          const lineKey = `${index}-${line.length}-${line.slice(0, 10)}`;
           return (
-            <Box key={index}>
-              <InputLine 
-                text={line} 
+            <Box key={lineKey}>
+              <InputLine
+                text={line}
                 cursorPosition={cursorOnThisLine ? cursorPosition - lineStartPos : undefined}
               />
             </Box>
