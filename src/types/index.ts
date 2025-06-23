@@ -16,6 +16,7 @@ export interface CalculatedValue {
   value: number;
   unit?: string;
   date?: Date;
+  timezone?: string;
 }
 
 export enum TokenType {
@@ -27,6 +28,9 @@ export enum TokenType {
   KEYWORD = 'KEYWORD',
   CURRENCY = 'CURRENCY',
   DATE_LITERAL = 'DATE_LITERAL',
+  TIME_LITERAL = 'TIME_LITERAL',
+  TIMEZONE = 'TIMEZONE',
+  AT_SYMBOL = 'AT_SYMBOL',
   LPAREN = 'LPAREN',
   RPAREN = 'RPAREN',
   COMMA = 'COMMA',
@@ -88,6 +92,19 @@ export interface AggregateNode extends ASTNode {
 export interface DateNode extends ASTNode {
   type: 'date';
   value: string;
+}
+
+export interface TimeNode extends ASTNode {
+  type: 'time';
+  value: string;
+  timezone?: string;
+}
+
+export interface DateTimeNode extends ASTNode {
+  type: 'datetime';
+  dateValue: string;
+  timeValue: string;
+  timezone?: string;
 }
 
 export interface DateOperationNode extends ASTNode {

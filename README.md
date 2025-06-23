@@ -31,9 +31,14 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Date/time operations**: 
   - Keywords: `today`, `tomorrow`, `yesterday`, `now`, weekdays (`monday`, `tuesday`, etc.)
   - Date literals: `25.10.1988`, `25/07/2025` (DD.MM.YYYY or DD/MM/YYYY format)
+  - Time literals: `12:00`, `10:30` (HH:MM format, uses system timezone)
+  - Time with timezone: `12:00@moscow`, `10:30@utc-5`, `15:45@new york`
+  - DateTime with timezone: `25.10.2025T12:15@moscow`
+  - Timezone conversions: `12:00@moscow in utc`, `now in yerevan`
   - Arithmetic: `today + 5 days`, `now + 2 hours`, `tomorrow - 1 week`
+  - Time arithmetic: `12:15@moscow - 10:00@moscow in minutes`
   - Date differences: `25/07/2025 - today in days`, `(01.01.2025 - 25.12.2024) in hours`
-  - Supports: days, weeks, months, years, hours, minutes, seconds
+  - Supports: days, weeks, months, years, hours, minutes, seconds, milliseconds
 
 ### 🚧 Todo
 - Advanced percentage calculations (`20% of what is 30 cm`)
@@ -80,6 +85,14 @@ calc
 calc --file=budget.calc
 calc -f calculations.txt
 ```
+
+## Supported Timezones
+
+The calculator supports various timezone formats:
+- UTC offsets: `utc`, `utc+3`, `utc-5`, etc.
+- Common abbreviations: `est`, `pst`, `gmt`, `bst`, `cet`, etc.
+- Major cities: `moscow`, `london`, `new york`, `tokyo`, `sydney`, `dubai`, etc.
+- Multi-word cities: `new york`, `los angeles`, `hong kong`, `sao paulo`, etc.
 
 ## Configuration
 
@@ -198,6 +211,16 @@ monday + 3 days
 01.01.2025 + 30 days
 birthday = 25.10.1988
 today - birthday in days
+
+# Time and timezone operations
+12:00                          # Current timezone
+10:30@utc                      # UTC time
+12:00@moscow                   # Moscow time
+15:45@new york                 # New York time
+12:00@moscow in utc            # Convert to UTC
+now in yerevan                 # Current time in Yerevan
+12:15 - 10:00 in minutes       # Time difference
+25.10.2025T12:15@moscow        # DateTime with timezone
 
 # Comments and organization
 Calculate monthly budget:

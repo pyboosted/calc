@@ -1,4 +1,4 @@
-import { Token, TokenType, ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, DateNode, DateOperationNode } from '../types';
+import { Token, TokenType, ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, DateNode, TimeNode, DateTimeNode, DateOperationNode } from '../types';
 
 export class Parser {
   private tokens: Token[];
@@ -92,7 +92,7 @@ export class Parser {
   private parseConversion(): ASTNode {
     let node = this.parseAdditive();
     
-    // Handle "in", "to", "as" for unit conversion at expression level
+    // Handle "in", "to", "as" for unit and timezone conversion at expression level
     if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
       this.advance();
       if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
@@ -103,6 +103,16 @@ export class Parser {
           operator: 'convert',
           left: node,
           right: { type: 'number', value: 1, unit: targetUnit } as NumberNode
+        } as BinaryOpNode;
+      } else if (this.current.type === TokenType.TIMEZONE || this.current.type === TokenType.VARIABLE) {
+        // Timezone conversion
+        const targetTimezone = this.current.value;
+        this.advance();
+        node = {
+          type: 'binary',
+          operator: 'timezone_convert',
+          left: node,
+          right: { type: 'variable', name: targetTimezone } as VariableNode
         } as BinaryOpNode;
       }
     }
@@ -286,11 +296,53 @@ export class Parser {
       return { type: 'variable', name } as VariableNode;
     }
 
-    // Date literals (DD.MM.YYYY or DD/MM/YYYY)
+    // Date literals (DD.MM.YYYY or DD/MM/YYYY or DD.MM.YYYYTHH:MM)
     if (this.current.type === TokenType.DATE_LITERAL) {
       const dateValue = this.current.value;
       this.advance();
+      
+      // Check if it contains time (datetime format)
+      if (dateValue.includes('T')) {
+        const [datePart, timePart] = dateValue.split('T');
+        
+        // Check for timezone
+        if (this.current.type === TokenType.AT_SYMBOL) {
+          this.advance(); // consume @
+          if (this.current.type === TokenType.TIMEZONE || this.current.type === TokenType.VARIABLE) {
+            const timezone = this.current.value;
+            this.advance();
+            return { type: 'datetime', dateValue: datePart, timeValue: timePart, timezone } as DateTimeNode;
+          } else {
+            throw new Error('Expected timezone after @');
+          }
+        }
+        
+        // DateTime without timezone
+        return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
+      }
+      
       return { type: 'date', value: dateValue } as DateNode;
+    }
+    
+    // Time literals (HH:MM)
+    if (this.current.type === TokenType.TIME_LITERAL) {
+      const timeValue = this.current.value;
+      this.advance();
+      
+      // Check for timezone
+      if (this.current.type === TokenType.AT_SYMBOL) {
+        this.advance(); // consume @
+        if (this.current.type === TokenType.TIMEZONE || this.current.type === TokenType.VARIABLE) {
+          const timezone = this.current.value;
+          this.advance();
+          return { type: 'time', value: timeValue, timezone } as TimeNode;
+        } else {
+          throw new Error('Expected timezone after @');
+        }
+      }
+      
+      // Time without timezone uses system timezone
+      return { type: 'time', value: timeValue } as TimeNode;
     }
 
     // Keywords

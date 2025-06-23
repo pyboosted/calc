@@ -1,9 +1,10 @@
-import { ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, CalculatedValue, DateNode, DateOperationNode } from '../types';
+import { ASTNode, NumberNode, BinaryOpNode, UnaryOpNode, FunctionNode, VariableNode, AssignmentNode, AggregateNode, CalculatedValue, DateNode, TimeNode, DateTimeNode, DateOperationNode } from '../types';
 import { Tokenizer } from '../parser/tokenizer';
 import { Parser } from '../parser/parser';
 import { mathFunctions } from './mathFunctions';
 import { convertUnits } from './unitConverter';
 import { DateManager } from '../utils/dateManager';
+import { TimezoneManager } from '../utils/timezoneManager';
 
 function isTimePeriodUnit(unit: string | undefined): boolean {
   if (!unit) return false;
@@ -75,6 +76,32 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
         return leftResult;
       }
       
+      // Special handling for timezone conversion
+      if (binaryNode.operator === 'timezone_convert') {
+        const leftResult = evaluateNode(binaryNode.left, variables, context);
+        const rightNode = binaryNode.right as VariableNode;
+        const targetTimezone = rightNode.name;
+        
+        if (leftResult.unit === 'timestamp' && leftResult.date) {
+          const timezoneManager = TimezoneManager.getInstance();
+          
+          // Get source timezone (default to system timezone if not specified)
+          const sourceTimezone = leftResult.timezone || timezoneManager.getSystemTimezone();
+          
+          // For "now in timezone", we don't need to convert, just get current time in target timezone
+          if (leftResult.timezone === undefined && binaryNode.left.type === 'date' && (binaryNode.left as DateNode).value === 'now') {
+            const date = timezoneManager.getNowInTimezone(targetTimezone);
+            return { value: date.getTime(), unit: 'timestamp', date, timezone: targetTimezone };
+          }
+          
+          // Convert timezone
+          const convertedDate = timezoneManager.convertTimezone(leftResult.date, sourceTimezone, targetTimezone);
+          return { value: convertedDate.getTime(), unit: 'timestamp', date: convertedDate, timezone: targetTimezone };
+        }
+        
+        throw new Error('Timezone conversion requires a timestamp value');
+      }
+      
       const left = evaluateNode(binaryNode.left, variables, context);
       const right = evaluateNode(binaryNode.right, variables, context);
       
@@ -89,7 +116,9 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
             if (left.unit === 'timestamp' && left.date && right.unit === 'timestamp' && right.date) {
               if (binaryNode.operator === '-') {
                 const diffMs = left.date.getTime() - right.date.getTime();
-                return { value: diffMs, unit: 'milliseconds' };
+                // Convert to seconds for easier unit conversion
+                const diffSeconds = diffMs / 1000;
+                return { value: diffSeconds, unit: 'seconds' };
               } else {
                 throw new Error('Cannot add two dates');
               }
@@ -202,6 +231,63 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
       
       // Return the date as a timestamp with a special unit
       return { value: date.getTime(), unit: 'timestamp', date };
+    }
+    
+    case 'time': {
+      const timeNode = node as TimeNode;
+      const timezoneManager = TimezoneManager.getInstance();
+      
+      // Parse time components
+      const [hours, minutes] = timeNode.value.split(':').map(Number);
+      
+      // Get current date in the specified timezone
+      const timezone = timeNode.timezone || timezoneManager.getSystemTimezone();
+      const now = new Date();
+      
+      // Create date with time in specified timezone
+      const date = timezoneManager.createDateInTimezone(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        now.getDate(),
+        hours,
+        minutes,
+        timezone
+      );
+      
+      return { value: date.getTime(), unit: 'timestamp', date, timezone };
+    }
+    
+    case 'datetime': {
+      const datetimeNode = node as DateTimeNode;
+      const timezoneManager = TimezoneManager.getInstance();
+      
+      // Parse date components
+      const dateParts = datetimeNode.dateValue.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+      if (!dateParts) {
+        throw new Error(`Invalid date format: ${datetimeNode.dateValue}`);
+      }
+      
+      const day = parseInt(dateParts[1]);
+      const month = parseInt(dateParts[2]);
+      const year = parseInt(dateParts[3]);
+      
+      // Parse time components
+      const [hours, minutes] = datetimeNode.timeValue.split(':').map(Number);
+      
+      // Get timezone or use system timezone
+      const timezone = datetimeNode.timezone || timezoneManager.getSystemTimezone();
+      
+      // Create date in specified timezone
+      const date = timezoneManager.createDateInTimezone(
+        year,
+        month,
+        day,
+        hours,
+        minutes,
+        timezone
+      );
+      
+      return { value: date.getTime(), unit: 'timestamp', date, timezone };
     }
     
     case 'dateOperation': {

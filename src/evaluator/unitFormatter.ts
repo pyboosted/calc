@@ -8,7 +8,7 @@ export function formatResultWithUnit(result: CalculatedValue): string {
   
   // Special formatting for dates
   if (unit === 'timestamp' && result.date) {
-    return formatDate(result.date);
+    return formatDate(result.date, result.timezone);
   }
   
   if (!unit) {
@@ -32,72 +32,7 @@ function isTimeUnit(unit: string): boolean {
 }
 
 function formatTime(value: number, unit: string): string {
-  // Convert to hours for mixed display
-  let hours = value;
-  
-  switch (unit.toLowerCase()) {
-    case 'second':
-    case 'seconds':
-    case 's':
-    case 'sec':
-      hours = value / 3600;
-      break;
-    case 'minute':
-    case 'minutes':
-    case 'min':
-      hours = value / 60;
-      break;
-    case 'hour':
-    case 'hours':
-    case 'h':
-      hours = value;
-      break;
-    case 'day':
-    case 'days':
-    case 'd':
-      hours = value * 24;
-      break;
-    case 'week':
-    case 'weeks':
-      hours = value * 24 * 7;
-      break;
-    default:
-      return `${formatNumber(value)} ${formatUnit(unit)}`;
-  }
-  
-  // If it's a nice round number of the original unit, keep it simple
-  if (value % 1 === 0 && Math.abs(value) < 100) {
-    return `${formatNumber(value)} ${formatUnit(unit)}`;
-  }
-  
-  // For hours, show as hours and minutes if appropriate
-  if (unit.toLowerCase() === 'hour' || unit.toLowerCase() === 'hours' || unit.toLowerCase() === 'h') {
-    if (hours >= 1 && hours % 1 !== 0) {
-      const wholeHours = Math.floor(hours);
-      const minutes = Math.round((hours - wholeHours) * 60);
-      if (minutes === 60) {
-        return `${wholeHours + 1} h`;
-      } else if (minutes === 0) {
-        return `${wholeHours} h`;
-      } else {
-        return `${wholeHours} h ${minutes} min`;
-      }
-    }
-  }
-  
-  // For minutes, if it's more than 60, show as hours and minutes
-  if (unit.toLowerCase() === 'minute' || unit.toLowerCase() === 'minutes' || unit.toLowerCase() === 'min') {
-    if (value >= 60) {
-      const wholeHours = Math.floor(value / 60);
-      const minutes = Math.round(value % 60);
-      if (minutes === 0) {
-        return `${wholeHours} h`;
-      } else {
-        return `${wholeHours} h ${minutes} min`;
-      }
-    }
-  }
-  
+  // Always show the exact value in the requested unit
   return `${formatNumber(value)} ${formatUnit(unit)}`;
 }
 
@@ -129,23 +64,32 @@ export function formatNumber(num: number): string {
   return parts.join('.');
 }
 
-function formatDate(date: Date): string {
+function formatDate(date: Date, timezone?: string): string {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   
+  let baseFormat: string;
+  
   // If the date is today and the time is not midnight, show time
   if (startOfDate.getTime() === startOfToday.getTime() && 
       (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0)) {
-    return format(date, 'EEE, MMM d, yyyy \'at\' HH:mm');
+    baseFormat = format(date, 'EEE, MMM d, yyyy \'at\' HH:mm');
   }
-  
   // If the time component is not midnight, show it
-  if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
-    return format(date, 'EEE, MMM d, yyyy \'at\' HH:mm');
+  else if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
+    baseFormat = format(date, 'EEE, MMM d, yyyy \'at\' HH:mm');
+  }
+  else {
+    baseFormat = format(date, 'EEE, MMM d, yyyy');
   }
   
-  return format(date, 'EEE, MMM d, yyyy');
+  // Append timezone if provided
+  if (timezone) {
+    return `${baseFormat}@${timezone}`;
+  }
+  
+  return baseFormat;
 }
 
 export function formatUnit(unit: string): string {

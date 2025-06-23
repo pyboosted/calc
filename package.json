@@ -24,6 +24,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.1.8",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "ink": "^6.0.0",
     "react": "^19.1.0",
     "yaml": "^2.8.0"
