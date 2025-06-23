@@ -7,6 +7,7 @@ interface LineState {
   result: CalculatedValue | null;
   error: string | null;
   isComment: boolean;
+  assignedVariables?: Map<string, CalculatedValue>;
 }
 
 export class CalculatorEngine {
@@ -114,20 +115,12 @@ export class CalculatorEngine {
     for (let i = 0; i < startIndex; i++) {
       const line = this.lines[i];
       if (!line) continue;
-      if (line.result && !line.isComment) {
-        // Re-evaluate just to extract variables
-        try {
-          const lineVariables = new Map(cumulativeVariables);
-          evaluate(line.content, lineVariables);
-          // Copy back any new variables
-          lineVariables.forEach((value, key) => {
-            if (key !== "prev") {
-              cumulativeVariables.set(key, value);
-            }
-          });
-        } catch {
-          // Ignore errors, we're just extracting variables
-        }
+
+      // Use stored assigned variables if available
+      if (line.assignedVariables) {
+        line.assignedVariables.forEach((value, key) => {
+          cumulativeVariables.set(key, value);
+        });
       }
     }
 
@@ -207,12 +200,21 @@ export class CalculatorEngine {
       line.error = null;
       line.isComment = false;
 
+      // Track variables assigned in this line
+      const assignedInThisLine = new Map<string, CalculatedValue>();
+
       // Copy back any new variables
       lineVariables.forEach((value, key) => {
-        if (key !== "prev") {
+        if (key !== "prev" && !cumulativeVariables.has(key)) {
           cumulativeVariables.set(key, value);
+          assignedInThisLine.set(key, value);
         }
       });
+
+      // Store assigned variables with the line
+      if (assignedInThisLine.size > 0) {
+        line.assignedVariables = assignedInThisLine;
+      }
     } catch (_error) {
       // Mark as comment on error
       line.result = null;
