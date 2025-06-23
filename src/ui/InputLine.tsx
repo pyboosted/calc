@@ -1,7 +1,7 @@
 import { Text } from "ink";
 import type React from "react";
 import { Tokenizer } from "../parser/tokenizer";
-import { TokenType } from "../types";
+import { type Token, TokenType } from "../types";
 
 interface InputLineProps {
   text: string;

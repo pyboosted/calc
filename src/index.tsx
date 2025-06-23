@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { render } from "ink";
 import { Calculator } from "./ui/Calculator";
 

@@ -1,6 +1,6 @@
 {
   "name": "boosted-calc",
-  "version": "1.1.7",
+  "version": "1.1.9",
   "description": "A powerful terminal-based calculator with unit conversions, currency support, and more",
   "keywords": [
     "calculator",
@@ -9,8 +9,7 @@
     "unit-conversion",
     "currency",
     "math",
-    "typescript",
-    "bun"
+    "typescript"
   ],
   "author": "pyboosted",
   "license": "MIT",
@@ -22,14 +21,14 @@
   "bugs": {
     "url": "https://github.com/pyboosted/calc/issues"
   },
-  "module": "src/index.tsx",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "type": "module",
   "bin": {
-    "calc": "bin/calc"
+    "calc": "dist/cli.js"
   },
   "files": [
-    "src/**/*",
-    "bin/**/*",
+    "dist/**/*",
     "README.md",
     "LICENSE"
   ],
@@ -37,6 +36,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
+    "build": "tsup",
     "start": "bun run src/cli.tsx",
     "dev": "bun run --watch src/cli.tsx",
     "update-currencies": "bun run src/cli.tsx --update",
@@ -46,12 +46,14 @@
     "format": "biome format --write .",
     "lint": "biome lint --write .",
     "check": "biome check --write .",
-    "check:ci": "biome ci"
+    "check:ci": "biome ci",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.5",
     "@types/bun": "latest",
-    "@types/react": "^19.1.8"
+    "@types/react": "^19.1.8",
+    "tsup": "^8.5.0"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -263,21 +263,35 @@ export class Tokenizer {
       }
     }
 
-    // Scientific notation
+    // Scientific notation - only consume 'e' if followed by valid exponent
     if (this.current === "e" || this.current === "E") {
+      // Look ahead to check if this is valid scientific notation
+      const savedPos = this.position;
+      const savedCurrent = this.current;
+      const savedValue = value;
+
       value += this.current;
       this.advance();
 
-      // After advance(), current is a new character
+      // Check for optional sign
       const sign = this.current as string;
       if (sign === "+" || sign === "-") {
         value += sign;
         this.advance();
       }
 
-      while (/[0-9]/.test(this.current)) {
-        value += this.current;
-        this.advance();
+      // Must have at least one digit for valid scientific notation
+      if (/[0-9]/.test(this.current)) {
+        // Valid scientific notation - consume all digits
+        while (/[0-9]/.test(this.current)) {
+          value += this.current;
+          this.advance();
+        }
+      } else {
+        // Not valid scientific notation - backtrack
+        this.position = savedPos;
+        this.current = savedCurrent;
+        value = savedValue;
       }
     }
 
@@ -289,9 +303,22 @@ export class Tokenizer {
     let value = "";
 
     // First, read a normal identifier without spaces
-    while (/[\p{L}\p{N}_+-]/u.test(this.current)) {
+    while (/[\p{L}\p{N}_]/u.test(this.current)) {
       value += this.current;
       this.advance();
+    }
+
+    // Special handling for UTC offsets (utc+5, utc-5, etc.)
+    if (value.toLowerCase() === "utc" && (this.current === "+" || this.current === "-")) {
+      const sign = this.current;
+      value += sign;
+      this.advance();
+
+      // Read the offset number
+      while (/[0-9]/.test(this.current)) {
+        value += this.current;
+        this.advance();
+      }
     }
 
     // Check if this could be a multi-word timezone (only for known timezone prefixes)

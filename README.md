@@ -276,7 +276,12 @@ The calculator is built with a modular architecture:
 
 ## Development
 
+This project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+
 ```bash
+# Install dependencies
+bun install
+
 # Run tests
 bun test
 
@@ -285,6 +290,20 @@ bun test:watch
 
 # Type checking
 bun tsc --noEmit
+
+# Build for distribution (creates dist/ folder)
+bun run build
+
+# Run development mode with hot reload
+bun dev
+```
+
+### Publishing
+
+The package is automatically built before publishing via the `prepublishOnly` hook. Just run:
+
+```bash
+npm publish
 ```
 
 ## License
