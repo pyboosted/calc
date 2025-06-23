@@ -25,9 +25,99 @@ export class Tokenizer {
     }
   }
 
+  private tryReadDate(): Token | null {
+    const start = this.position;
+    const savedPosition = this.position;
+    const savedCurrent = this.current;
+    let value = '';
+    
+    // Try to read DD
+    let digits = 0;
+    while (/[0-9]/.test(this.current) && digits < 2) {
+      value += this.current;
+      this.advance();
+      digits++;
+    }
+    
+    if (digits === 0) {
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+    
+    // Check for separator (. or /)
+    if (this.current !== '.' && this.current !== '/') {
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+    
+    const separator = this.current;
+    value += this.current;
+    this.advance();
+    
+    // Try to read MM
+    digits = 0;
+    while (/[0-9]/.test(this.current) && digits < 2) {
+      value += this.current;
+      this.advance();
+      digits++;
+    }
+    
+    if (digits === 0) {
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+    
+    // Check for same separator
+    if (this.current !== separator) {
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+    
+    value += this.current;
+    this.advance();
+    
+    // Try to read YYYY
+    digits = 0;
+    while (/[0-9]/.test(this.current) && digits < 4) {
+      value += this.current;
+      this.advance();
+      digits++;
+    }
+    
+    if (digits !== 4) {
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+    
+    // Validate the date format
+    const parts = value.split(separator);
+    const day = parseInt(parts[0]);
+    const month = parseInt(parts[1]);
+    const year = parseInt(parts[2]);
+    
+    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+    
+    return { type: TokenType.DATE_LITERAL, value, position: start };
+  }
+
   private readNumber(): Token {
     const start = this.position;
     let value = '';
+
+    // Check if this could be a date pattern (DD.MM.YYYY or DD/MM/YYYY)
+    const dateToken = this.tryReadDate();
+    if (dateToken) {
+      return dateToken;
+    }
 
     while (/[0-9]/.test(this.current)) {
       value += this.current;

@@ -85,6 +85,16 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
           if ((left.unit === 'timestamp' && left.date) || (right.unit === 'timestamp' && right.date)) {
             const dateManager = DateManager.getInstance();
             
+            // Handle: date - date (returns difference in milliseconds)
+            if (left.unit === 'timestamp' && left.date && right.unit === 'timestamp' && right.date) {
+              if (binaryNode.operator === '-') {
+                const diffMs = left.date.getTime() - right.date.getTime();
+                return { value: diffMs, unit: 'milliseconds' };
+              } else {
+                throw new Error('Cannot add two dates');
+              }
+            }
+            
             // Handle: date + time period
             if (left.unit === 'timestamp' && left.date && isTimePeriodUnit(right.unit)) {
               const newDate = binaryNode.operator === '+' 

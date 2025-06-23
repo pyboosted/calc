@@ -61,7 +61,7 @@ export class DateManager {
   }
   
   /**
-   * Parse date strings like "today", "tomorrow", "yesterday"
+   * Parse date strings like "today", "tomorrow", "yesterday", "DD.MM.YYYY", "DD/MM/YYYY"
    */
   parseRelativeDate(input: string): Date | null {
     const now = new Date();
@@ -85,6 +85,26 @@ export class DateManager {
       case 'sunday':
         return this.getNextWeekday(lowerInput);
       default:
+        // Try parsing DD.MM.YYYY or DD/MM/YYYY format
+        const datePattern = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/;
+        const match = input.match(datePattern);
+        if (match) {
+          const day = parseInt(match[1]);
+          const month = parseInt(match[2]);
+          const year = parseInt(match[3]);
+          
+          // Validate date components
+          if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+            // Month is 0-indexed in JavaScript Date
+            const date = new Date(year, month - 1, day);
+            
+            // Check if the date is valid (handles cases like Feb 31)
+            if (date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year) {
+              return startOfDay(date);
+            }
+          }
+        }
+        
         // Try parsing ISO date
         try {
           const date = parseISO(input);

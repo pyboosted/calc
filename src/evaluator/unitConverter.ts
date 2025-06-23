@@ -52,6 +52,9 @@ const unitDefinitions: Record<string, UnitDefinition> = {
   st: { baseUnit: 'gram', factor: 6350.29318 },
   
   // Time - base unit: second
+  millisecond: { baseUnit: 'second', factor: 0.001 },
+  milliseconds: { baseUnit: 'second', factor: 0.001 },
+  ms: { baseUnit: 'second', factor: 0.001 },
   second: { baseUnit: 'second', factor: 1 },
   seconds: { baseUnit: 'second', factor: 1 },
   s: { baseUnit: 'second', factor: 1 },

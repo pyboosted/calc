@@ -282,11 +282,6 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
         })}
       </Box>
       
-      <Box marginTop={1}>
-        <Text dimColor>
-          Esc/Ctrl+C: Exit  •  Ctrl+L: Clear  •  Ctrl+E: Edit in $EDITOR  •  ↑↓: History
-        </Text>
-      </Box>
     </Box>
   );
 };

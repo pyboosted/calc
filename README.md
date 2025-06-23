@@ -30,7 +30,9 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Configurable precision**: Set decimal places for results via config.yaml
 - **Date/time operations**: 
   - Keywords: `today`, `tomorrow`, `yesterday`, `now`, weekdays (`monday`, `tuesday`, etc.)
+  - Date literals: `25.10.1988`, `25/07/2025` (DD.MM.YYYY or DD/MM/YYYY format)
   - Arithmetic: `today + 5 days`, `now + 2 hours`, `tomorrow - 1 week`
+  - Date differences: `25/07/2025 - today in days`, `(01.01.2025 - 25.12.2024) in hours`
   - Supports: days, weeks, months, years, hours, minutes, seconds
 
 ### 🚧 Todo
@@ -188,6 +190,14 @@ today + 5 days
 now + 2 hours
 tomorrow - 1 week
 monday + 3 days
+
+# Date literals (DD.MM.YYYY or DD/MM/YYYY)
+25.10.1988
+01/01/2025
+25/07/2025 - today in days
+01.01.2025 + 30 days
+birthday = 25.10.1988
+today - birthday in days
 
 # Comments and organization
 Calculate monthly budget:

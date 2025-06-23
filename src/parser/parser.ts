@@ -286,6 +286,13 @@ export class Parser {
       return { type: 'variable', name } as VariableNode;
     }
 
+    // Date literals (DD.MM.YYYY or DD/MM/YYYY)
+    if (this.current.type === TokenType.DATE_LITERAL) {
+      const dateValue = this.current.value;
+      this.advance();
+      return { type: 'date', value: dateValue } as DateNode;
+    }
+
     // Keywords
     if (this.current.type === TokenType.KEYWORD) {
       if (this.current.value === 'prev') {
