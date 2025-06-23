@@ -160,4 +160,48 @@ describe('Timezone Support', () => {
     expect(result.date).toBeDefined();
     // Should return original time without timezone conversion
   });
+  
+  test('timezone conversion with subsequent arithmetic', () => {
+    // Should be able to add hours after timezone conversion
+    const result1 = evaluate('10:00@moscow + 2 hours', new Map());
+    expect(result1.unit).toBe('timestamp');
+    expect(result1.date).toBeDefined();
+    expect(result1.timezone).toBe('moscow');
+    
+    // Should handle parentheses properly
+    const result1b = evaluate('(10:00@moscow) + 2 hours', new Map());
+    expect(result1b.unit).toBe('timestamp');
+    expect(result1b.date).toBeDefined();
+    expect(result1b.timezone).toBe('moscow');
+    
+    // Complex case: convert timezone then add hours
+    const result2 = evaluate('12:00@moscow in berlin + 2 hours', new Map());
+    expect(result2.unit).toBe('timestamp');
+    expect(result2.date).toBeDefined();
+    expect(result2.timezone).toBe('berlin');
+  });
+  
+  test('variable timezone conversion', () => {
+    const variables = new Map();
+    
+    // Variable with time
+    evaluate('meeting = 10:00@moscow', variables);
+    const result1 = evaluate('meeting in berlin', variables);
+    expect(result1.unit).toBe('timestamp');
+    expect(result1.date).toBeDefined();
+    expect(result1.timezone).toBe('berlin');
+    
+    // Variable with calculated timestamp
+    evaluate('later = now + 3 hours', variables);
+    const result2 = evaluate('later in yerevan', variables);
+    expect(result2.unit).toBe('timestamp');
+    expect(result2.date).toBeDefined();
+    expect(result2.timezone).toBe('yerevan');
+    
+    // Variable with unit should still do unit conversion
+    evaluate('distance = 100 km', variables);
+    const result3 = evaluate('distance in miles', variables);
+    expect(result3.unit).toBe('miles');
+    expect(result3.value).toBeCloseTo(62.137, 2);
+  });
 });

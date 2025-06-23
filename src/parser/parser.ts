@@ -57,52 +57,52 @@ export class Parser {
   }
 
   private parseExpression(): ASTNode {
-    return this.parseOf();
+    return this.parseConversionExpression();
   }
   
-  private parseOf(): ASTNode {
-    let node = this.parseConversion();
+  private isTimeNode(node: ASTNode): boolean {
+    // We can't determine at parse time if a variable contains a date/time
+    // So we should be conservative and treat all variables as potential time nodes
+    return node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
+           node.type === 'variable';
+  }
+  
+  private isTimestampResult(node: ASTNode): boolean {
+    // Helper to determine if a binary operation will result in a timestamp
+    if (node.type !== 'binary') return false;
+    const binNode = node as BinaryOpNode;
     
-    // Handle "of" for percentage calculations (e.g., "20% of 100")
-    if (this.current.type === TokenType.KEYWORD && this.current.value === 'of') {
-      // Check if left side is a percentage
-      if (node.type === 'binary' && (node as BinaryOpNode).operator === 'percent') {
-        this.advance(); // consume 'of'
-        const right = this.parseConversion();
-        
-        // Convert "X% of Y" to "(X/100) * Y"
-        const percentValue = (node as BinaryOpNode).left;
-        return {
-          type: 'binary',
-          operator: '*',
-          left: {
-            type: 'binary',
-            operator: '/',
-            left: percentValue,
-            right: { type: 'number', value: 100 } as NumberNode
-          } as BinaryOpNode,
-          right
-        } as BinaryOpNode;
-      }
+    // Subtraction of two times/dates results in a duration, not a timestamp
+    if (binNode.operator === '-') {
+      const leftIsTime = this.isTimeNode(binNode.left);
+      const rightIsTime = this.isTimeNode(binNode.right);
+      return !(leftIsTime && rightIsTime); // Not a timestamp if both are times
     }
     
-    return node;
+    return false;
   }
   
-  private parseConversion(): ASTNode {
-    let node = this.parseAdditive();
+  private parseConversionExpression(): ASTNode {
+    let node = this.parseOf();
     
-    // Handle "in", "to", "as" for unit and timezone conversion at expression level
+    // Handle unit/timezone conversion at the expression level (lowest precedence)
     if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
+      const convKeyword = this.current.value;
       this.advance();
       
       // Check if we're converting a time/date (which could be a timezone conversion)
-      const isTimeOrDate = node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
-                          (node.type === 'variable' && (node as VariableNode).name === 'now') ||
-                          // Also check for date operations that result in timestamps
+      // But NOT if it's a duration (result of time subtraction)
+      const isDuration = node.type === 'binary' && (node as BinaryOpNode).operator === '-' &&
+                        this.isTimeNode((node as BinaryOpNode).left) && 
+                        this.isTimeNode((node as BinaryOpNode).right);
+      
+      const isTimeOrDate = !isDuration && (
+                          node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
+                          node.type === 'variable' || // Any variable could contain a timestamp
                           (node.type === 'dateOperation') ||
-                          // Check for binary operations that might involve dates
-                          (node.type === 'binary' && (node as BinaryOpNode).operator === 'timezone_convert');
+                          (node.type === 'binary' && (node as BinaryOpNode).operator === 'timezone_convert') ||
+                          // Also check if it's a timestamp result
+                          (node.type === 'binary' && this.isTimestampResult(node)));
       
       if (isTimeOrDate) {
         // For time/date nodes, any identifier could be a timezone
@@ -129,7 +129,7 @@ export class Parser {
           } as BinaryOpNode;
         }
       } else {
-        // For non-time/date nodes, do regular unit conversion
+        // For regular unit conversion of numeric results
         if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
           const targetUnit = this.current.value;
           this.advance();
@@ -145,7 +145,36 @@ export class Parser {
     
     return node;
   }
-
+  
+  private parseOf(): ASTNode {
+    let node = this.parseAdditive();
+    
+    // Handle "of" for percentage calculations (e.g., "20% of 100")
+    if (this.current.type === TokenType.KEYWORD && this.current.value === 'of') {
+      // Check if left side is a percentage
+      if (node.type === 'binary' && (node as BinaryOpNode).operator === 'percent') {
+        this.advance(); // consume 'of'
+        const right = this.parseAdditive();
+        
+        // Convert "X% of Y" to "(X/100) * Y"
+        const percentValue = (node as BinaryOpNode).left;
+        return {
+          type: 'binary',
+          operator: '*',
+          left: {
+            type: 'binary',
+            operator: '/',
+            left: percentValue,
+            right: { type: 'number', value: 100 } as NumberNode
+          } as BinaryOpNode,
+          right
+        } as BinaryOpNode;
+      }
+    }
+    
+    return node;
+  }
+  
   private parseAdditive(): ASTNode {
     let left = this.parseMultiplicative();
     
@@ -298,6 +327,57 @@ export class Parser {
           left: node,
           right: { type: 'number', value: 100 } as NumberNode
         } as BinaryOpNode;
+      } else if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
+        // Handle timezone conversion immediately after time/date nodes
+        // BUT only if it's not followed by a unit (which would indicate unit conversion at expression level)
+        const isTimeOrDate = node.type === 'time' || node.type === 'datetime' || node.type === 'date' ||
+                            (node.type === 'variable' && (node as VariableNode).name === 'now');
+        
+        if (isTimeOrDate) {
+          // Peek ahead to see what follows the conversion keyword
+          const nextToken = this.peek(1);
+          
+          // If the next token is a unit AND we're at expression level (could be time subtraction),
+          // don't consume the conversion here - let parseConversionExpression handle it
+          if (nextToken && nextToken.type === TokenType.UNIT) {
+            // Check if this might be part of a larger expression by looking further ahead
+            const tokenAfterUnit = this.peek(2);
+            if (!tokenAfterUnit || tokenAfterUnit.type === TokenType.EOF || 
+                tokenAfterUnit.type === TokenType.RPAREN) {
+              // This looks like expression-level unit conversion, don't handle it here
+              break;
+            }
+          }
+          
+          this.advance(); // consume 'in', 'to', or 'as'
+          
+          // For time/date nodes, any identifier could be a timezone
+          if (this.current.type === TokenType.TIMEZONE || 
+              this.current.type === TokenType.VARIABLE ||
+              this.current.type === TokenType.UNIT ||
+              this.current.type === TokenType.CURRENCY ||
+              this.current.type === TokenType.KEYWORD ||
+              this.current.type === TokenType.EOF) {
+            
+            if (this.current.type === TokenType.EOF) {
+              // Incomplete expression, just return the node as-is
+              return node;
+            }
+            
+            // Timezone conversion
+            const targetTimezone = this.current.value;
+            this.advance();
+            node = {
+              type: 'binary',
+              operator: 'timezone_convert',
+              left: node,
+              right: { type: 'variable', name: targetTimezone } as VariableNode
+            } as BinaryOpNode;
+          }
+        } else {
+          // Not a time/date node, don't consume the keyword
+          break;
+        }
       } else {
         break;
       }

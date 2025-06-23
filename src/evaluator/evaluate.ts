@@ -104,6 +104,17 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
           }
         }
         
+        // Not a timestamp - try regular unit conversion instead
+        if (leftResult.unit && targetTimezone) {
+          try {
+            const convertedValue = convertUnits(leftResult.value, leftResult.unit, targetTimezone);
+            return { value: convertedValue, unit: targetTimezone };
+          } catch (error) {
+            // If unit conversion also fails, throw the original error
+            throw new Error('Timezone conversion requires a timestamp value');
+          }
+        }
+        
         throw new Error('Timezone conversion requires a timestamp value');
       }
       
@@ -134,14 +145,16 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
               const newDate = binaryNode.operator === '+' 
                 ? dateManager.addPeriod(left.date, right.value, right.unit!)
                 : dateManager.subtractPeriod(left.date, right.value, right.unit!);
-              return { value: newDate.getTime(), unit: 'timestamp', date: newDate };
+              // Preserve timezone if present
+              return { value: newDate.getTime(), unit: 'timestamp', date: newDate, timezone: left.timezone };
             }
             
             // Handle: time period + date
             if (right.unit === 'timestamp' && right.date && isTimePeriodUnit(left.unit)) {
               if (binaryNode.operator === '+') {
                 const newDate = dateManager.addPeriod(right.date, left.value, left.unit!);
-                return { value: newDate.getTime(), unit: 'timestamp', date: newDate };
+                // Preserve timezone if present
+                return { value: newDate.getTime(), unit: 'timestamp', date: newDate, timezone: right.timezone };
               } else {
                 throw new Error('Cannot subtract a date from a time period');
               }
@@ -328,7 +341,8 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
           ? dateManager.addPeriod(date, value, unit)
           : dateManager.subtractPeriod(date, value, unit);
           
-        return { value: newDate.getTime(), unit: 'timestamp', date: newDate };
+        // Preserve timezone if present
+        return { value: newDate.getTime(), unit: 'timestamp', date: newDate, timezone: dateResult.timezone };
       }
       
       throw new Error(`Unknown date operation: ${dateOpNode.operation}`);
