@@ -186,8 +186,13 @@ export class Parser {
       // Check if this is a date operation
       if ((left.type === 'date' || (left as any).date) && right.type === 'number' && (right as NumberNode).unit) {
         const unit = (right as NumberNode).unit;
-        if (['day', 'days', 'week', 'weeks', 'month', 'months', 'year', 'years', 
-             'hour', 'hours', 'minute', 'minutes', 'second', 'seconds'].includes(unit!)) {
+        if (['day', 'days', 'd',
+             'week', 'weeks', 'w',
+             'month', 'months',
+             'year', 'years', 'yr',
+             'hour', 'hours', 'h', 'hr',
+             'minute', 'minutes', 'min', 'm',
+             'second', 'seconds', 's', 'sec'].includes(unit!)) {
           left = {
             type: 'dateOperation',
             date: left,

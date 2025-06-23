@@ -8,9 +8,13 @@ import { TimezoneManager } from '../utils/timezoneManager';
 
 function isTimePeriodUnit(unit: string | undefined): boolean {
   if (!unit) return false;
-  return ['second', 'seconds', 'minute', 'minutes', 'hour', 'hours', 
-          'day', 'days', 'week', 'weeks', 'month', 'months', 
-          'year', 'years'].includes(unit);
+  return ['second', 'seconds', 's', 'sec',
+          'minute', 'minutes', 'min', 'm',
+          'hour', 'hours', 'h', 'hr',
+          'day', 'days', 'd',
+          'week', 'weeks', 'w',
+          'month', 'months',
+          'year', 'years', 'yr'].includes(unit);
 }
 
 export interface EvaluationContext {

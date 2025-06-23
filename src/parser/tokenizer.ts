@@ -393,8 +393,8 @@ export class Tokenizer {
       // Temperature
       'celsius', 'c', 'fahrenheit', 'f', 'kelvin', 'k',
       // Time
-      'second', 'seconds', 's', 'sec', 'minute', 'minutes', 'min', 'hour', 'hours', 'h',
-      'day', 'days', 'd', 'week', 'weeks', 'month', 'months', 'year', 'years', 'yr',
+      'second', 'seconds', 's', 'sec', 'minute', 'minutes', 'min', 'm', 'hour', 'hours', 'h', 'hr',
+      'day', 'days', 'd', 'week', 'weeks', 'w', 'month', 'months', 'year', 'years', 'yr',
       // Volume
       'liter', 'liters', 'l', 'milliliter', 'milliliters', 'ml', 'gallon', 'gallons', 'gal',
       'quart', 'quarts', 'qt', 'pint', 'pints', 'pt', 'cup', 'cups', 'tablespoon', 'tablespoons',

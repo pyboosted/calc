@@ -139,24 +139,33 @@ export class DateManager {
     switch (unit.toLowerCase()) {
       case 'day':
       case 'days':
+      case 'd':
         return addDays(date, value);
       case 'week':
       case 'weeks':
+      case 'w':
         return addWeeks(date, value);
       case 'month':
       case 'months':
         return addMonths(date, value);
       case 'year':
       case 'years':
+      case 'yr':
         return addYears(date, value);
       case 'hour':
       case 'hours':
+      case 'h':
+      case 'hr':
         return addHours(date, value);
       case 'minute':
       case 'minutes':
+      case 'min':
+      case 'm':
         return addMinutes(date, value);
       case 'second':
       case 'seconds':
+      case 's':
+      case 'sec':
         return addSeconds(date, value);
       default:
         return date;
@@ -170,24 +179,33 @@ export class DateManager {
     switch (unit.toLowerCase()) {
       case 'day':
       case 'days':
+      case 'd':
         return subDays(date, value);
       case 'week':
       case 'weeks':
+      case 'w':
         return subWeeks(date, value);
       case 'month':
       case 'months':
         return subMonths(date, value);
       case 'year':
       case 'years':
+      case 'yr':
         return subYears(date, value);
       case 'hour':
       case 'hours':
+      case 'h':
+      case 'hr':
         return subHours(date, value);
       case 'minute':
       case 'minutes':
+      case 'min':
+      case 'm':
         return subMinutes(date, value);
       case 'second':
       case 'seconds':
+      case 's':
+      case 'sec':
         return subSeconds(date, value);
       default:
         return date;
