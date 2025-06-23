@@ -312,6 +312,9 @@ export class Parser {
             const timezone = this.current.value;
             this.advance();
             return { type: 'datetime', dateValue: datePart, timeValue: timePart, timezone } as DateTimeNode;
+          } else if (this.current.type === TokenType.EOF) {
+            // Incomplete expression - treat as datetime without timezone
+            return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
           } else {
             throw new Error('Expected timezone after @');
           }
@@ -336,6 +339,9 @@ export class Parser {
           const timezone = this.current.value;
           this.advance();
           return { type: 'time', value: timeValue, timezone } as TimeNode;
+        } else if (this.current.type === TokenType.EOF) {
+          // Incomplete expression - treat as time without timezone
+          return { type: 'time', value: timeValue } as TimeNode;
         } else {
           throw new Error('Expected timezone after @');
         }

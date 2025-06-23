@@ -96,4 +96,25 @@ describe('Timezone Support', () => {
     expect(result.timezone).toBe('utc-5');
     expect(result.unit).toBe('timestamp');
   });
+
+  test('incomplete timezone expression does not crash', () => {
+    // Should treat as time without timezone (uses system timezone)
+    const result = evaluate('10:00@', new Map());
+    expect(result.unit).toBe('timestamp');
+    expect(result.date).toBeDefined();
+    // Will have system timezone, not undefined
+    const hours = result.date!.getHours();
+    expect(hours).toBeGreaterThanOrEqual(0);
+    expect(hours).toBeLessThanOrEqual(23);
+  });
+
+  test('incomplete datetime timezone expression does not crash', () => {
+    // Should treat as datetime without timezone (uses system timezone)
+    const result = evaluate('25.10.2025T10:00@', new Map());
+    expect(result.unit).toBe('timestamp');
+    expect(result.date).toBeDefined();
+    expect(result.date!.getFullYear()).toBe(2025);
+    expect(result.date!.getMonth()).toBe(9); // October
+    expect(result.date!.getDate()).toBe(25);
+  });
 });
