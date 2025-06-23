@@ -308,15 +308,22 @@ export class Parser {
         // Check for timezone
         if (this.current.type === TokenType.AT_SYMBOL) {
           this.advance(); // consume @
-          if (this.current.type === TokenType.TIMEZONE || this.current.type === TokenType.VARIABLE) {
+          if (this.current.type === TokenType.EOF) {
+            // Incomplete expression - treat as datetime without timezone
+            return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
+          }
+          
+          // Accept any identifier-like token as a potential timezone
+          if (this.current.type === TokenType.TIMEZONE || 
+              this.current.type === TokenType.VARIABLE ||
+              this.current.type === TokenType.UNIT ||
+              this.current.type === TokenType.CURRENCY ||
+              this.current.type === TokenType.KEYWORD) {
             const timezone = this.current.value;
             this.advance();
             return { type: 'datetime', dateValue: datePart, timeValue: timePart, timezone } as DateTimeNode;
-          } else if (this.current.type === TokenType.EOF) {
-            // Incomplete expression - treat as datetime without timezone
-            return { type: 'datetime', dateValue: datePart, timeValue: timePart } as DateTimeNode;
           } else {
-            throw new Error('Expected timezone after @');
+            throw new Error(`Invalid timezone: ${this.current.value}`);
           }
         }
         
@@ -335,15 +342,22 @@ export class Parser {
       // Check for timezone
       if (this.current.type === TokenType.AT_SYMBOL) {
         this.advance(); // consume @
-        if (this.current.type === TokenType.TIMEZONE || this.current.type === TokenType.VARIABLE) {
+        if (this.current.type === TokenType.EOF) {
+          // Incomplete expression - treat as time without timezone
+          return { type: 'time', value: timeValue } as TimeNode;
+        }
+        
+        // Accept any identifier-like token as a potential timezone
+        if (this.current.type === TokenType.TIMEZONE || 
+            this.current.type === TokenType.VARIABLE ||
+            this.current.type === TokenType.UNIT ||
+            this.current.type === TokenType.CURRENCY ||
+            this.current.type === TokenType.KEYWORD) {
           const timezone = this.current.value;
           this.advance();
           return { type: 'time', value: timeValue, timezone } as TimeNode;
-        } else if (this.current.type === TokenType.EOF) {
-          // Incomplete expression - treat as time without timezone
-          return { type: 'time', value: timeValue } as TimeNode;
         } else {
-          throw new Error('Expected timezone after @');
+          throw new Error(`Invalid timezone: ${this.current.value}`);
         }
       }
       

@@ -145,6 +145,13 @@ export class TimezoneManager {
   createDateInTimezone(year: number, month: number, day: number, hour: number, minute: number, timezone: string): Date {
     const tz = this.getTimezone(timezone);
     
+    // If timezone is not valid, use system timezone
+    if (!this.isValidTimezone(tz)) {
+      const systemTz = this.getSystemTimezone();
+      const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
+      return fromZonedTime(localDate, systemTz);
+    }
+    
     // Create a date object representing the local time in the target timezone
     const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
     
