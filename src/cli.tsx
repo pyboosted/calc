@@ -100,7 +100,7 @@ async function main() {
         hasError = true;
       }
     }
-    
+
     if (hasError) {
       process.exit(1);
     }
