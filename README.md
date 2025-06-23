@@ -2,7 +2,7 @@
 
 A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScript, and Ink (React for CLI).
 
-![Boosted Calculator Example](docs/example.mp4)
+![Boosted Calculator Example](docs/example.gif)
 
 ## Features
 
