@@ -481,6 +481,27 @@ export class Parser {
       if (this.current.value === 'total' || this.current.value === 'average') {
         const aggregateType = this.current.value;
         this.advance();
+        
+        // Check for "in unit" syntax
+        if (this.current.type === TokenType.KEYWORD && ['in', 'to', 'as'].includes(this.current.value)) {
+          this.advance(); // consume 'in', 'to', or 'as'
+          
+          // Expect a unit or currency
+          if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
+            const targetUnit = this.current.value;
+            this.advance();
+            return { 
+              type: 'aggregate', 
+              operation: aggregateType,
+              targetUnit 
+            } as AggregateNode;
+          } else {
+            // If not a unit, back up and treat as regular aggregate
+            this.position--;
+            this.current = this.tokens[this.position];
+          }
+        }
+        
         return { type: 'aggregate', operation: aggregateType } as AggregateNode;
       }
       // Date keywords

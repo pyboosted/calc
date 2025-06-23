@@ -355,21 +355,114 @@ function evaluateNode(node: ASTNode, variables: Map<string, CalculatedValue>, co
         throw new Error(`No values to ${aggNode.operation}`);
       }
       
-      const values = context.previousResults
+      // Filter for numeric values with their units
+      const valuesWithUnits = context.previousResults
         .filter(result => result && typeof result.value === 'number')
-        .map(result => result.value);
+        .map(result => ({ value: result.value, unit: result.unit }));
       
-      if (values.length === 0) {
+      if (valuesWithUnits.length === 0) {
         throw new Error(`No numeric values to ${aggNode.operation}`);
       }
       
+      // Group by unit type
+      const unitGroups = new Map<string | undefined, Array<{value: number, unit?: string}>>();
+      
+      for (const item of valuesWithUnits) {
+        const key = item.unit || 'no-unit';
+        if (!unitGroups.has(key)) {
+          unitGroups.set(key, []);
+        }
+        unitGroups.get(key)!.push(item);
+      }
+      
+      // If we have a target unit, try to convert all compatible values
+      let totalValue = 0;
+      let resultUnit = aggNode.targetUnit;
+      
+      if (aggNode.targetUnit) {
+        // Convert all compatible values to target unit
+        for (const [unit, items] of unitGroups) {
+          for (const item of items) {
+            try {
+              if (item.unit && item.unit !== aggNode.targetUnit) {
+                // Try to convert
+                const converted = convertUnits(item.value, item.unit, aggNode.targetUnit);
+                totalValue += converted;
+              } else if (item.unit === aggNode.targetUnit) {
+                totalValue += item.value;
+              } else if (!item.unit) {
+                // No unit - just add the value
+                totalValue += item.value;
+              }
+            } catch (error) {
+              // Conversion failed - skip this value
+              // Could optionally warn the user
+            }
+          }
+        }
+      } else {
+        // No target unit specified - try to find a common unit
+        let commonUnit: string | undefined;
+        let allUnits: string[] = [];
+        
+        // Collect all unique units
+        for (const [key, items] of unitGroups) {
+          if (key !== 'no-unit' && items.length > 0) {
+            for (const item of items) {
+              if (item.unit && !allUnits.includes(item.unit)) {
+                allUnits.push(item.unit);
+              }
+            }
+          }
+        }
+        
+        if (allUnits.length === 0) {
+          // No units at all
+          totalValue = valuesWithUnits.reduce((sum, item) => sum + item.value, 0);
+          resultUnit = undefined;
+        } else if (allUnits.length === 1) {
+          // All same unit
+          totalValue = valuesWithUnits.reduce((sum, item) => sum + item.value, 0);
+          resultUnit = allUnits[0];
+        } else {
+          // Multiple units - check if they're compatible
+          // Use the first unit as the target
+          commonUnit = allUnits[0];
+          let allCompatible = true;
+          
+          // Try to convert all values to the common unit
+          for (const item of valuesWithUnits) {
+            if (item.unit && item.unit !== commonUnit) {
+              try {
+                const converted = convertUnits(item.value, item.unit, commonUnit);
+                totalValue += converted;
+              } catch (error) {
+                // Not compatible - fall back to raw sum
+                allCompatible = false;
+                break;
+              }
+            } else if (item.unit === commonUnit) {
+              totalValue += item.value;
+            } else if (!item.unit) {
+              totalValue += item.value;
+            }
+          }
+          
+          if (!allCompatible) {
+            // Units not compatible - just sum raw values
+            totalValue = valuesWithUnits.reduce((sum, item) => sum + item.value, 0);
+            resultUnit = undefined;
+          } else {
+            resultUnit = commonUnit;
+          }
+        }
+      }
+      
       if (aggNode.operation === 'total') {
-        const sum = values.reduce((acc, val) => acc + val, 0);
-        return { value: sum };
+        return { value: totalValue, unit: resultUnit };
       } else { // average
-        const sum = values.reduce((acc, val) => acc + val, 0);
-        const avg = sum / values.length;
-        return { value: avg };
+        const avg = totalValue / valuesWithUnits.length;
+        return { value: avg, unit: resultUnit };
       }
     }
     
