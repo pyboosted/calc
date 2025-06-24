@@ -103,50 +103,59 @@ bun test --name-pattern "percentage"
 3. **Evaluator** (`src/evaluator/evaluate.ts`): Executes AST to produce results
    - Maintains variable state across evaluations
    - Handles unit conversions through `convertUnits`
-   - Integrates with date/time operations via `DateManager`
+   - Integrates with date/time operations via `date-manager`
    - Returns `CalculatedValue` objects with value and optional unit
 
 ### UI Architecture (Ink/React)
 
-The UI uses Ink (React for CLI) with a multi-line editor approach:
+The UI uses Ink (React for CLI) with a sophisticated state management system:
 
-1. **Calculator** (`src/ui/Calculator.tsx`): Main component managing state
-   - Tracks multiple lines with individual results
-   - Handles keyboard navigation (arrows, enter, backspace)
-   - Manages variable state including `prev` (previous result)
-   - Implements exit handling for Esc and Ctrl+C
+1. **State Management**:
+   - **CalculatorStateManager** (`src/ui/calculator-state.ts`): EventEmitter-based state manager
+     - Manages lines, cursor position, text selection, copy highlighting
+     - Handles all keyboard input and navigation logic
+     - Emits 'stateChanged' events for React synchronization
+   - **CalculatorEngine** (`src/ui/calculator-engine.ts`): Manages line data and evaluation
+     - Maintains LineState objects with results and variable assignments
+     - Handles line evaluation and re-evaluation on variable changes
+   - **HotkeyManager** (`src/ui/hotkey-manager.ts`): Keyboard event processing
+     - Maps keyboard inputs to state manager methods
+     - Supports advanced text editing operations
 
-2. **InputWithResult** (`src/ui/InputWithResult.tsx`): Individual line component
-   - Renders input with syntax highlighting
-   - Shows results or errors aligned to the right
-   - Handles line-specific keyboard input when active
-   - Treats invalid expressions as comments (gray text)
-
-3. **InputLine** (`src/ui/InputLine.tsx`): Syntax highlighting and cursor
-   - Uses inverse character for cursor display
-   - Tokenizes input for color-coded syntax highlighting
-   - Handles empty lines and cursor positioning edge cases
+2. **React Components**:
+   - **Calculator** (`src/ui/Calculator.tsx`): Main component
+     - Creates and manages CalculatorStateManager instance
+     - Mirrors state manager's state in React for rendering
+     - Handles exit keys (Esc and Ctrl+C)
+   - **InputWithResult** (`src/ui/InputWithResult.tsx`): Individual line component
+     - Renders input with syntax highlighting
+     - Shows results or errors aligned to the right
+     - Displays variable assignments
+   - **InputLine** (`src/ui/InputLine.tsx`): Text rendering with selection
+     - Handles cursor display and text selection highlighting
+     - Uses tokenizer for syntax highlighting
+     - Supports Unicode and special character rendering
 
 ### Key Systems
 
-1. **Unit Conversion** (`src/evaluator/unitConverter.ts`)
+1. **Unit Conversion** (`src/evaluator/unit-converter.ts`)
    - Dimensional analysis for unit compatibility
    - Supports length, weight, temperature, time, volume, data units
    - Special handling for temperature conversions (not linear)
    - Uses decimal system for data units (1 GB = 1000 MB)
 
-2. **Currency Manager** (`src/utils/currencyManager.ts`)
+2. **Currency Manager** (`src/utils/currency-manager.ts`)
    - Fetches live rates from exchangerate-api.com
    - Caches rates for 24 hours in `~/.config/boomi/currency_cache.json`
    - Supports 300+ currencies
    - Auto-updates on startup if cache is stale
 
-3. **Configuration** (`src/utils/configManager.ts`)
+3. **Configuration** (`src/utils/config-manager.ts`)
    - YAML-based config at `~/.config/boomi/config.yaml`
    - Currently supports precision setting (decimal places)
    - Auto-creates config directory and file on first run
 
-4. **Date/Time Operations** (`src/utils/dateManager.ts`)
+4. **Date/Time Operations** (`src/utils/date-manager.ts`)
    - Keywords: today, tomorrow, yesterday, now, weekdays
    - Arithmetic with units: days, weeks, months, years, hours, minutes, seconds
    - Uses date-fns for reliable date manipulation
@@ -163,6 +172,17 @@ The project uses tsup to compile TypeScript/JSX to JavaScript:
 
 The app uses `exitOnCtrlC: false` in Ink render options and handles exit keys manually in Calculator component to ensure both Esc and Ctrl+C work properly on first press.
 
+### Keyboard Shortcuts
+
+The calculator supports advanced keyboard navigation and editing:
+- **Navigation**: Arrow keys, Ctrl+A/E (line start/end), Alt+Left/Right (word navigation)
+- **Selection**: Shift+Arrow keys, Shift+Ctrl+A/E, Shift+Alt+Left/Right
+- **Editing**: Ctrl+K (delete to end), Ctrl+U (delete to start), Alt+Backspace/Delete (word deletion)
+- **Clipboard**: Ctrl+C (copy), Ctrl+X (cut), Ctrl+V (paste)
+- **Line Operations**: Ctrl+J (join lines), Alt+Up/Down (move lines)
+- **History**: Up/Down arrows navigate through line history
+- **Special**: Tab (focus result), Ctrl+L (clear screen)
+
 ## Testing Strategy
 
 Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
@@ -176,7 +196,11 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Configuration and cache files are stored in `~/.config/boomi/`
 - The parser treats invalid expressions as comments for better UX
 - Percentage calculations are context-aware (addition/subtraction vs standalone)
-- Units take priority over variables - single letters like m, g, c, f, k, s, h, d, l are recognized as units, not variables
+- Unit parsing is context-aware - single letters are treated as units only when they follow numbers (e.g., `10 m`, `5kg`) or conversion keywords (e.g., `to m`, `in kg`)
 - Unicode variable names are supported, including Cyrillic (e.g., `цена = 100`)
 - Date arithmetic supports expressions like `variable * time_unit + date` (e.g., `test * 1 day + today`)
 - When fixing TypeScript errors in tests, avoid using non-null assertions (!); use proper type guards instead
+- Text selection is fully supported with Shift+Arrow keys and various editing operations
+- Clipboard operations (copy/cut/paste) work with system clipboard
+- Comments can be inline with `#` (e.g., `2 + 2 # basic math`)
+- The tokenizer supports multi-word timezone recognition (e.g., "new york", "los angeles")

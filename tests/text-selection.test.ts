@@ -412,12 +412,12 @@ describe("Text Selection", () => {
     test("should handle escape to cancel selection", () => {
       const state = stateManager.getState();
       expect(state.selection).toBeDefined();
-      
+
       // Type guard to ensure selection is not null
       if (!state.selection) {
         throw new Error("Selection should be defined");
       }
-      
+
       const originalTo = state.selection.to;
 
       const result = stateManager.handleSelectionEscape();

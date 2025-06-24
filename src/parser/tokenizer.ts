@@ -29,6 +29,7 @@ export class Tokenizer {
   private input: string;
   private position = 0;
   private current = "";
+  private lastToken: Token | null = null;
 
   constructor(input: string) {
     this.input = input;
@@ -472,12 +473,7 @@ export class Tokenizer {
       };
     }
 
-    // Units
-    if (this.isUnit(value)) {
-      return { type: TokenType.UNIT, value, position: start };
-    }
-
-    // Currency
+    // Currency (keep this check before units since currencies are less likely to conflict with variables)
     if (this.isCurrency(value)) {
       return {
         type: TokenType.CURRENCY,
@@ -485,6 +481,8 @@ export class Tokenizer {
         position: start,
       };
     }
+
+    // Don't automatically classify as unit - let context determine this
 
     // Word operators
     if (
@@ -784,6 +782,29 @@ export class Tokenizer {
     return timezones.includes(lowerValue);
   }
 
+  private shouldTokenizeAsUnit(token: Token): boolean {
+    // Check if this identifier should be treated as a unit based on context
+    if (token.type !== TokenType.VARIABLE || !this.isUnit(token.value)) {
+      return false;
+    }
+
+    // Case 1: Unit follows a number (directly or with space)
+    if (this.lastToken && this.lastToken.type === TokenType.NUMBER) {
+      return true;
+    }
+
+    // Case 2: Unit follows a conversion keyword (in, to, as)
+    if (
+      this.lastToken &&
+      this.lastToken.type === TokenType.KEYWORD &&
+      ["in", "to", "as"].includes(this.lastToken.value)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   tokenize(): Token[] {
     const tokens: Token[] = [];
 
@@ -801,155 +822,212 @@ export class Tokenizer {
         DIGIT_PATTERN.test(this.current) ||
         (this.current === "." && DIGIT_PATTERN.test(this.peek()))
       ) {
-        tokens.push(this.readNumber());
+        const token = this.readNumber();
+        tokens.push(token);
+        this.lastToken = token;
         continue;
       }
 
       // Identifiers (variables, functions, units, keywords)
       // Support Unicode letters including Cyrillic
       if (UNICODE_LETTER_PATTERN.test(this.current)) {
-        tokens.push(this.readIdentifier());
+        let token = this.readIdentifier();
+
+        // Check if this variable should be converted to a unit based on context
+        if (this.shouldTokenizeAsUnit(token)) {
+          token = { ...token, type: TokenType.UNIT };
+        }
+
+        tokens.push(token);
+        this.lastToken = token;
         continue;
       }
 
       // Operators and symbols
       switch (this.current) {
-        case "+":
-          tokens.push({
+        case "+": {
+          const token = {
             type: TokenType.OPERATOR,
             value: "+",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "-":
-          tokens.push({
+        }
+        case "-": {
+          const token = {
             type: TokenType.OPERATOR,
             value: "-",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "*":
-          tokens.push({
+        }
+        case "*": {
+          const token = {
             type: TokenType.OPERATOR,
             value: "*",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "/":
-          tokens.push({
+        }
+        case "/": {
+          const token = {
             type: TokenType.OPERATOR,
             value: "/",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "^":
-          tokens.push({
+        }
+        case "^": {
+          const token = {
             type: TokenType.OPERATOR,
             value: "^",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "%":
-          tokens.push({
+        }
+        case "%": {
+          const token = {
             type: TokenType.OPERATOR,
             value: "%",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "(":
-          tokens.push({ type: TokenType.LPAREN, value: "(", position: start });
+        }
+        case "(": {
+          const token = { type: TokenType.LPAREN, value: "(", position: start };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case ")":
-          tokens.push({ type: TokenType.RPAREN, value: ")", position: start });
+        }
+        case ")": {
+          const token = { type: TokenType.RPAREN, value: ")", position: start };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case ",":
-          tokens.push({ type: TokenType.COMMA, value: ",", position: start });
+        }
+        case ",": {
+          const token = { type: TokenType.COMMA, value: ",", position: start };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "=":
-          tokens.push({ type: TokenType.EQUALS, value: "=", position: start });
+        }
+        case "=": {
+          const token = { type: TokenType.EQUALS, value: "=", position: start };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "@":
-          tokens.push({
+        }
+        case "@": {
+          const token = {
             type: TokenType.AT_SYMBOL,
             value: "@",
             position: start,
-          });
+          };
+          tokens.push(token);
+          this.lastToken = token;
           this.advance();
           break;
-        case "&":
+        }
+        case "&": {
+          let token: Token;
           if (this.peek() === "&") {
             this.advance();
             this.advance();
-            tokens.push({
+            token = {
               type: TokenType.OPERATOR,
               value: "&",
               position: start,
-            });
+            };
           } else {
-            tokens.push({
+            token = {
               type: TokenType.OPERATOR,
               value: "&",
               position: start,
-            });
+            };
             this.advance();
           }
+          tokens.push(token);
+          this.lastToken = token;
           break;
-        case "|":
+        }
+        case "|": {
+          let token: Token;
           if (this.peek() === "|") {
             this.advance();
             this.advance();
-            tokens.push({
+            token = {
               type: TokenType.OPERATOR,
               value: "|",
               position: start,
-            });
+            };
           } else {
-            tokens.push({
+            token = {
               type: TokenType.OPERATOR,
               value: "|",
               position: start,
-            });
+            };
             this.advance();
           }
+          tokens.push(token);
+          this.lastToken = token;
           break;
-        case "<":
+        }
+        case "<": {
           if (this.peek() === "<") {
             this.advance();
             this.advance();
-            tokens.push({
+            const token = {
               type: TokenType.OPERATOR,
               value: "<<",
               position: start,
-            });
+            };
+            tokens.push(token);
+            this.lastToken = token;
           } else {
             // Skip unknown character
             this.advance();
           }
           break;
-        case ">":
+        }
+        case ">": {
           if (this.peek() === ">") {
             this.advance();
             this.advance();
-            tokens.push({
+            const token = {
               type: TokenType.OPERATOR,
               value: ">>",
               position: start,
-            });
+            };
+            tokens.push(token);
+            this.lastToken = token;
           } else {
             // Skip unknown character
             this.advance();
           }
           break;
+        }
         case "#":
           // Comment - skip the rest of the line
           while (this.position < this.input.length) {
