@@ -183,7 +183,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
     // Deletion - bind modified keys BEFORE plain keys
     hk.bind(
-      "Alt+Backspace,Meta+Backspace,Option+Backspace,\\\\x17,\\\\x1b\\\\x7f,\\\\x1b\\\\x08,Ctrl+W",
+      "Alt+Backspace,Meta+Backspace,Option+Backspace,Alt+Delete,Meta+Delete,Option+Delete,\\\\x17,\\\\x1b\\\\x7f,\\\\x1b\\\\x08,Ctrl+W",
       () => {
         manager()?.handleDeleteWord();
         return true;
