@@ -1,2 +1,1 @@
-bun format
-bun test
+bun format && bun test

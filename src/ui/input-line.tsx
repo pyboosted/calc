@@ -2,6 +2,7 @@ import { Text } from "ink";
 import type React from "react";
 import { Tokenizer } from "../parser/tokenizer";
 import { type Token, TokenType } from "../types";
+import { getTokenColor } from "./token-colors";
 
 interface InputLineProps {
   text: string;
@@ -187,12 +188,12 @@ function getHighlightedPartsWithoutComment(
       let charColor: string | undefined;
 
       if (tokenInfo) {
-        charColor = getTokenColor(tokenInfo.token.type);
+        charColor = getTokenColor(tokenInfo.token.type, tokenInfo.token.value);
       } else {
         // Check if we're inside a token
         for (const [start, info] of tokenMap) {
           if (i >= start && i < info.end) {
-            charColor = getTokenColor(info.token.type);
+            charColor = getTokenColor(info.token.type, info.token.value);
             break;
           }
         }
@@ -217,25 +218,5 @@ function getHighlightedPartsWithoutComment(
   } catch (_error) {
     // If tokenization fails, just return plain text
     return [{ text }];
-  }
-}
-
-function getTokenColor(type: TokenType): string {
-  switch (type) {
-    case TokenType.NUMBER:
-      return "green";
-    case TokenType.OPERATOR:
-      return "blue";
-    case TokenType.UNIT:
-    case TokenType.CURRENCY:
-      return "yellow";
-    case TokenType.FUNCTION:
-      return "magenta";
-    case TokenType.VARIABLE:
-      return "#d19a66";
-    case TokenType.KEYWORD:
-      return "blue";
-    default:
-      return "white";
   }
 }

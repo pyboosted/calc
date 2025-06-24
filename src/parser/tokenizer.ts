@@ -8,6 +8,21 @@ const UNICODE_LETTER_OR_DIGIT_PATTERN = /[\p{L}\p{N}_]/u;
 const DATETIME_LOOKAHEAD_PATTERN = /^\d{1,2}[./]\d{1,2}[./]\d{4}[Tt]/;
 const UTC_OFFSET_PATTERN = /^utc[+-]\d{1,2}$/;
 
+// Date keywords
+export const DATE_KEYWORDS = [
+  "today",
+  "tomorrow",
+  "yesterday",
+  "now",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
 export class Tokenizer {
   private input: string;
   private position = 0;
@@ -404,17 +419,7 @@ export class Tokenizer {
         "prev",
         "total",
         "average",
-        "today",
-        "now",
-        "tomorrow",
-        "yesterday",
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
+        ...DATE_KEYWORDS,
         "from",
         "ago",
         "hence",

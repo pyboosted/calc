@@ -2,6 +2,7 @@ import { Text } from "ink";
 import type React from "react";
 import { Tokenizer } from "../parser/tokenizer";
 import { TokenType } from "../types";
+import { getTokenColor } from "./token-colors";
 
 interface HighlightedTextProps {
   text: string;
@@ -55,42 +56,3 @@ export const HighlightedText: React.FC<HighlightedTextProps> = ({ text }) => {
     return <Text>{text}</Text>;
   }
 };
-
-function getTokenColor(type: TokenType, value?: string): string {
-  switch (type) {
-    case TokenType.NUMBER:
-      return "green";
-    case TokenType.OPERATOR:
-      return "blue";
-    case TokenType.UNIT:
-    case TokenType.CURRENCY:
-      return "yellow";
-    case TokenType.FUNCTION:
-      return "magenta";
-    case TokenType.VARIABLE:
-      return "#d19a66"; // Orange
-    case TokenType.KEYWORD:
-      // Date keywords get special color
-      if (
-        value &&
-        [
-          "today",
-          "tomorrow",
-          "yesterday",
-          "now",
-          "monday",
-          "tuesday",
-          "wednesday",
-          "thursday",
-          "friday",
-          "saturday",
-          "sunday",
-        ].includes(value)
-      ) {
-        return "cyan";
-      }
-      return "blue";
-    default:
-      return "white";
-  }
-}
