@@ -4,6 +4,9 @@ import type { ASTNode, CalculatedValue, Token } from "../types";
 // Global debug state
 let debugMode = false;
 
+// Regex for printable characters
+const PRINTABLE_CHARS_REGEX = /^[\x20-\x7E]+$/;
+
 export function setDebugMode(enabled: boolean) {
   debugMode = enabled;
 }
@@ -55,6 +58,14 @@ export function debugKeypress(
   const keyInfo = {
     input: input || "(empty)",
     sequence: key.sequence,
+    // Add hex representation for non-printable sequences
+    sequenceHex:
+      key.sequence && !key.sequence.match(PRINTABLE_CHARS_REGEX)
+        ? key.sequence
+            .split("")
+            .map((c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`)
+            .join("")
+        : undefined,
     // Modifiers
     ctrl: key.ctrl,
     meta: key.meta,
@@ -71,12 +82,40 @@ export function debugKeypress(
     backspace: key.backspace,
     delete: key.delete,
     tab: key.tab,
+    // Add all other properties that might exist
+    ...Object.entries(key).reduce(
+      (acc, [k, v]) => {
+        if (
+          ![
+            "sequence",
+            "ctrl",
+            "meta",
+            "shift",
+            "upArrow",
+            "downArrow",
+            "leftArrow",
+            "rightArrow",
+            "pageUp",
+            "pageDown",
+            "return",
+            "escape",
+            "backspace",
+            "delete",
+            "tab",
+          ].includes(k)
+        ) {
+          acc[k] = v;
+        }
+        return acc;
+      },
+      {} as Record<string, unknown>
+    ),
   };
 
   // Filter out undefined values for cleaner output
   const cleanKeyInfo = Object.entries(keyInfo).reduce(
     (acc, [k, v]) => {
-      if (v !== undefined && v !== false) {
+      if (v !== undefined && v !== false && v !== null && v !== "") {
         acc[k] = v;
       }
       return acc;

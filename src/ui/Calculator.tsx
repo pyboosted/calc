@@ -181,9 +181,18 @@ export const Calculator: React.FC<CalculatorProps> = ({
       { description: "Move cursor right" }
     );
 
-    // Deletion
+    // Deletion - bind modified keys BEFORE plain keys
     hk.bind(
-      "Backspace",
+      "Alt+Backspace,Meta+Backspace,Option+Backspace,\\\\x17,\\\\x1b\\\\x7f,\\\\x1b\\\\x08,Ctrl+W",
+      () => {
+        manager()?.handleDeleteWord();
+        return true;
+      },
+      { description: "Delete word" }
+    );
+
+    hk.bind(
+      "Backspace,Delete",
       () => {
         const m = manager();
         if (m) {
@@ -193,28 +202,6 @@ export const Calculator: React.FC<CalculatorProps> = ({
         return false;
       },
       { description: "Delete character backward" }
-    );
-
-    hk.bind(
-      "Delete",
-      () => {
-        const m = manager();
-        if (m) {
-          m.handleDelete();
-          return true;
-        }
-        return false;
-      },
-      { description: "Delete character forward" }
-    );
-
-    hk.bind(
-      "Alt+Backspace,Meta+Backspace,Option+Backspace,\\\\x17,\\\\x1b\\\\x7f,\\\\x1b\\\\x08,Ctrl+W",
-      () => {
-        manager()?.handleDeleteWord();
-        return true;
-      },
-      { description: "Delete word" }
     );
     hk.bind(
       "Ctrl+K",

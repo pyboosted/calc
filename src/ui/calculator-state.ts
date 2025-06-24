@@ -117,6 +117,15 @@ export class CalculatorStateManager extends EventEmitter {
     if (this.cursorPosition > 0) {
       this.cursorPosition--;
       this.emit("stateChanged");
+    } else if (this.currentLineIndex > 0) {
+      // At beginning of line, move to end of previous line
+      this.currentLineIndex--;
+      const lines = this.engine.getLines();
+      const prevLine = lines[this.currentLineIndex];
+      if (prevLine) {
+        this.cursorPosition = prevLine.content.length;
+      }
+      this.emit("stateChanged");
     }
   }
 
@@ -129,6 +138,11 @@ export class CalculatorStateManager extends EventEmitter {
 
     if (this.cursorPosition < line.content.length) {
       this.cursorPosition++;
+      this.emit("stateChanged");
+    } else if (this.currentLineIndex < lines.length - 1) {
+      // At end of line, move to beginning of next line
+      this.currentLineIndex++;
+      this.cursorPosition = 0;
       this.emit("stateChanged");
     }
   }
@@ -164,7 +178,36 @@ export class CalculatorStateManager extends EventEmitter {
   handleMoveWordLeft() {
     const lines = this.engine.getLines();
     const line = lines[this.currentLineIndex];
-    if (!line || this.cursorPosition === 0) {
+
+    if (!line) {
+      return;
+    }
+
+    // If at beginning of line
+    if (this.cursorPosition === 0) {
+      if (this.currentLineIndex > 0) {
+        // Move to previous line
+        this.currentLineIndex--;
+        const prevLine = lines[this.currentLineIndex];
+        if (prevLine) {
+          // Move to the last word of previous line
+          const content = prevLine.content;
+          let newPos = content.length;
+
+          // Skip trailing whitespace
+          while (newPos > 0 && this.isWhitespace(content[newPos - 1])) {
+            newPos--;
+          }
+
+          // Find beginning of last word
+          while (newPos > 0 && !this.isWordBoundary(content[newPos - 1])) {
+            newPos--;
+          }
+
+          this.cursorPosition = newPos;
+        }
+        this.emit("stateChanged");
+      }
       return;
     }
 
@@ -194,18 +237,11 @@ export class CalculatorStateManager extends EventEmitter {
     this.emit("stateChanged");
   }
 
-  // Move cursor one word right (Option+Right)
-  handleMoveWordRight() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line || this.cursorPosition >= line.content.length) {
-      return;
-    }
+  // Helper to find position after next word in content
+  private findNextWordPosition(content: string, startPos: number): number {
+    let newPos = startPos;
 
-    const content = line.content;
-    let newPos = this.cursorPosition;
-
-    // First, skip any whitespace we're currently in
+    // Skip any whitespace we're currently in
     while (newPos < content.length && this.isWhitespace(content[newPos])) {
       newPos++;
     }
@@ -224,7 +260,36 @@ export class CalculatorStateManager extends EventEmitter {
       }
     }
 
-    this.cursorPosition = newPos;
+    return newPos;
+  }
+
+  // Move cursor one word right (Option+Right)
+  handleMoveWordRight() {
+    const lines = this.engine.getLines();
+    const line = lines[this.currentLineIndex];
+
+    if (!line) {
+      return;
+    }
+
+    // If at end of line
+    if (this.cursorPosition >= line.content.length) {
+      if (this.currentLineIndex < lines.length - 1) {
+        // Move to next line
+        this.currentLineIndex++;
+        const nextLine = lines[this.currentLineIndex];
+        if (nextLine) {
+          this.cursorPosition = this.findNextWordPosition(nextLine.content, 0);
+        }
+        this.emit("stateChanged");
+      }
+      return;
+    }
+
+    this.cursorPosition = this.findNextWordPosition(
+      line.content,
+      this.cursorPosition
+    );
     this.emit("stateChanged");
   }
 
@@ -246,64 +311,133 @@ export class CalculatorStateManager extends EventEmitter {
     this.emit("stateChanged");
   }
 
-  // Delete word or whitespace (Option+Backspace)
-  handleDeleteWord() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line || this.cursorPosition === 0) {
-      return;
+  // Helper to find position to delete last word from end of content
+  private findLastWordDeletePos(content: string): number {
+    let deleteFromPos = content.length;
+
+    // Skip trailing whitespace
+    while (deleteFromPos > 0 && this.isWhitespace(content[deleteFromPos - 1])) {
+      deleteFromPos--;
     }
 
-    const content = line.content;
-    let deleteToPos = this.cursorPosition;
+    // Delete the last word
+    if (deleteFromPos > 0) {
+      if (
+        this.isWordBoundary(content[deleteFromPos - 1]) &&
+        !this.isWhitespace(content[deleteFromPos - 1])
+      ) {
+        // It's a special character, delete just that one
+        deleteFromPos--;
+      } else {
+        // It's a regular word, delete the whole word
+        while (
+          deleteFromPos > 0 &&
+          !this.isWordBoundary(content[deleteFromPos - 1])
+        ) {
+          deleteFromPos--;
+        }
+      }
+    }
+
+    return deleteFromPos;
+  }
+
+  // Helper to delete last word from previous line
+  private deleteWordFromPrevLine() {
+    const lines = this.engine.getLines();
+    if (this.currentLineIndex > 0) {
+      const prevLine = lines[this.currentLineIndex - 1];
+      const currentLine = lines[this.currentLineIndex];
+      if (prevLine && currentLine) {
+        const deleteFromPos = this.findLastWordDeletePos(prevLine.content);
+        const newPrevContent = prevLine.content.slice(0, deleteFromPos);
+
+        // Check if current line is empty (no content after cursor)
+        const remainingContent = currentLine.content.slice(this.cursorPosition);
+
+        if (remainingContent.trim() === "") {
+          // Current line is empty, delete it and move to previous line
+          this.engine.updateLine(this.currentLineIndex - 1, newPrevContent);
+          this.engine.deleteLine(this.currentLineIndex);
+          this.currentLineIndex--;
+          this.cursorPosition = deleteFromPos;
+        } else {
+          // Current line has content, merge it with previous line
+          const mergedContent = newPrevContent + remainingContent;
+          this.engine.updateLine(this.currentLineIndex - 1, mergedContent);
+          this.engine.deleteLine(this.currentLineIndex);
+          this.currentLineIndex--;
+          this.cursorPosition = deleteFromPos;
+        }
+
+        this.emit("stateChanged");
+      }
+    }
+  }
+
+  // Helper to find position to delete word from current position
+  private findWordDeletePos(content: string, fromPos: number): number {
+    let deleteToPos = fromPos;
 
     // First, skip any trailing whitespace to the left of cursor
     while (deleteToPos > 0 && this.isWhitespace(content[deleteToPos - 1])) {
       deleteToPos--;
     }
 
-    // If we've only deleted whitespace, we're done
-    if (deleteToPos < this.cursorPosition) {
+    // If we've only deleted whitespace, check special case
+    if (deleteToPos < fromPos) {
       // Special case: if there's only one whitespace, also delete the word before it
-      if (this.cursorPosition - deleteToPos === 1 && deleteToPos > 0) {
-        // Delete the word before the whitespace
-        if (
-          this.isWordBoundary(content[deleteToPos - 1]) &&
-          !this.isWhitespace(content[deleteToPos - 1])
-        ) {
-          // It's a special character, delete just that one
-          deleteToPos--;
-        } else {
-          // It's a regular word, delete the whole word
-          while (
-            deleteToPos > 0 &&
-            !this.isWordBoundary(content[deleteToPos - 1])
-          ) {
-            deleteToPos--;
-          }
-        }
+      if (fromPos - deleteToPos === 1 && deleteToPos > 0) {
+        deleteToPos = this.deleteWordAtPosition(content, deleteToPos);
       }
     } else if (deleteToPos > 0) {
       // No whitespace was found, delete the word/character to the left
-      if (
-        this.isWordBoundary(content[deleteToPos - 1]) &&
-        !this.isWhitespace(content[deleteToPos - 1])
-      ) {
-        // It's a special character, delete just that one
-        deleteToPos--;
-      } else {
-        // It's a regular word, delete the whole word
-        while (
-          deleteToPos > 0 &&
-          !this.isWordBoundary(content[deleteToPos - 1])
-        ) {
-          deleteToPos--;
-        }
-      }
+      deleteToPos = this.deleteWordAtPosition(content, deleteToPos);
     }
 
+    return deleteToPos;
+  }
+
+  // Helper to delete word at specific position
+  private deleteWordAtPosition(content: string, pos: number): number {
+    if (
+      this.isWordBoundary(content[pos - 1]) &&
+      !this.isWhitespace(content[pos - 1])
+    ) {
+      // It's a special character, delete just that one
+      return pos - 1;
+    }
+    // It's a regular word, delete the whole word
+    let newPos = pos;
+    while (newPos > 0 && !this.isWordBoundary(content[newPos - 1])) {
+      newPos--;
+    }
+    return newPos;
+  }
+
+  // Delete word or whitespace (Option+Backspace)
+  handleDeleteWord() {
+    const lines = this.engine.getLines();
+    const line = lines[this.currentLineIndex];
+
+    if (!line) {
+      return;
+    }
+
+    // If at beginning of line, delete last word from previous line
+    if (this.cursorPosition === 0) {
+      this.deleteWordFromPrevLine();
+      return;
+    }
+
+    // Delete word from current line
+    const deleteToPos = this.findWordDeletePos(
+      line.content,
+      this.cursorPosition
+    );
     const newValue =
-      content.slice(0, deleteToPos) + content.slice(this.cursorPosition);
+      line.content.slice(0, deleteToPos) +
+      line.content.slice(this.cursorPosition);
     this.engine.updateLine(this.currentLineIndex, newValue);
     this.cursorPosition = deleteToPos;
     this.emit("stateChanged");
@@ -319,51 +453,6 @@ export class CalculatorStateManager extends EventEmitter {
 
     const newValue = line.content.slice(0, this.cursorPosition);
     this.engine.updateLine(this.currentLineIndex, newValue);
-    this.emit("stateChanged");
-  }
-
-  handleDelete() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line) {
-      return;
-    }
-
-    if (this.cursorPosition >= line.content.length) {
-      // At end of line, merge with next line
-      this.handleDeleteAtLineEnd();
-    } else {
-      // Delete character forward
-      const newValue =
-        line.content.slice(0, this.cursorPosition) +
-        line.content.slice(this.cursorPosition + 1);
-
-      this.engine.updateLine(this.currentLineIndex, newValue);
-      this.emit("stateChanged");
-    }
-  }
-
-  handleDeleteAtLineEnd() {
-    const lines = this.engine.getLines();
-
-    // Check if there's a next line to merge
-    if (this.currentLineIndex >= lines.length - 1) {
-      return;
-    }
-
-    const currentLine = lines[this.currentLineIndex];
-    const nextLine = lines[this.currentLineIndex + 1];
-
-    if (!(currentLine && nextLine)) {
-      return;
-    }
-
-    // Merge next line content to current line
-    const mergedContent = currentLine.content + nextLine.content;
-
-    this.engine.updateLine(this.currentLineIndex, mergedContent);
-    this.engine.deleteLine(this.currentLineIndex + 1);
-
     this.emit("stateChanged");
   }
 
