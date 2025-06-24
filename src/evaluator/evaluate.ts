@@ -16,6 +16,12 @@ import type {
   VariableNode,
 } from "../types";
 import { DateManager } from "../utils/date-manager";
+import {
+  debugAST,
+  debugEvaluation,
+  debugLog,
+  debugToken,
+} from "../utils/debug";
 import { TimezoneManager } from "../utils/timezone-manager";
 import { mathFunctions } from "./math-functions";
 import { convertUnits } from "./unit-converter";
@@ -56,6 +62,7 @@ function isTimePeriodUnit(unit: string | undefined): boolean {
 
 export interface EvaluationContext {
   previousResults?: CalculatedValue[];
+  debugMode?: boolean;
 }
 
 export function evaluate(
@@ -63,13 +70,38 @@ export function evaluate(
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
 ): CalculatedValue {
+  if (context?.debugMode) {
+    debugLog("EVAL", `Starting evaluation: ${input}`);
+  }
+
   const tokenizer = new Tokenizer(input);
   const tokens = tokenizer.tokenize();
+
+  if (context?.debugMode) {
+    for (const token of tokens) {
+      debugToken(token);
+    }
+  }
 
   const parser = new Parser(tokens);
   const ast = parser.parse();
 
-  return evaluateNode(ast, variables, context);
+  if (context?.debugMode) {
+    debugAST(ast);
+  }
+
+  try {
+    const result = evaluateNode(ast, variables, context);
+    if (context?.debugMode) {
+      debugEvaluation(input, result);
+    }
+    return result;
+  } catch (error) {
+    if (context?.debugMode) {
+      debugEvaluation(input, null, error as Error);
+    }
+    throw error;
+  }
 }
 
 // Handler functions for each node type

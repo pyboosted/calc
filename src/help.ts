@@ -10,6 +10,7 @@ ${chalk.bold.yellow("USAGE:")}
   ${chalk.green("calc")} ${chalk.cyan("--file=<path>")}          Load calculations from file
   ${chalk.green("calc")} ${chalk.cyan("-f <path>")}              Load calculations from file (alternative)
   ${chalk.green("calc")} ${chalk.cyan("--update")}               Update currency exchange rates
+  ${chalk.green("calc")} ${chalk.cyan("--debug")}                Enable debug mode (verbose logging)
   ${chalk.green("calc")} ${chalk.cyan("--version")}              Show version number
   ${chalk.green("calc")} ${chalk.cyan("-v")}                     Show version number (alternative)
   ${chalk.green("calc")} ${chalk.cyan("--help")}                 Show this help message
@@ -42,6 +43,14 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Live currency conversion ${chalk.cyan("(300+ currencies)")}
   ${chalk.gray("•")} Date/time operations with timezone support
   ${chalk.gray("•")} Comments with ${chalk.cyan("#")} symbol
+
+${chalk.bold.yellow("DEBUG MODE:")}
+  When enabled with ${chalk.cyan("--debug")}, provides verbose logging to stderr:
+  ${chalk.gray("•")} Shows all keypresses with metadata (key codes, modifiers)
+  ${chalk.gray("•")} Displays errors in red instead of treating them as comments
+  ${chalk.gray("•")} Logs tokenization process for debugging syntax issues
+  ${chalk.gray("•")} Shows AST (Abstract Syntax Tree) for parsed expressions
+  ${chalk.gray("•")} Tracks evaluation steps and intermediate results
 
 For more information, visit: ${chalk.blue.underline("https://github.com/pyboosted/calc")}
 `);

@@ -14,12 +14,14 @@ export class CalculatorEngine {
   private lines: LineState[] = [];
   private variables = new Map<string, CalculatedValue>();
   private nextId = 1;
+  private debugMode: boolean;
 
   private generateId(): string {
     return `line-${this.nextId++}`;
   }
 
-  constructor(initialContent?: string) {
+  constructor(initialContent?: string, debugMode = false) {
+    this.debugMode = debugMode;
     if (initialContent) {
       const contentLines = initialContent.split("\n");
       this.lines = contentLines.map((content) => ({
@@ -214,7 +216,10 @@ export class CalculatorEngine {
         previousResults.unshift(prevLine.result);
       }
 
-      const result = evaluate(line.content, lineVariables, { previousResults });
+      const result = evaluate(line.content, lineVariables, {
+        previousResults,
+        debugMode: this.debugMode,
+      });
       line.result = result;
       line.error = null;
       line.isComment = false;
@@ -234,11 +239,18 @@ export class CalculatorEngine {
       if (assignedInThisLine.size > 0) {
         line.assignedVariables = assignedInThisLine;
       }
-    } catch (_error) {
-      // Mark as comment on error
-      line.result = null;
-      line.error = null;
-      line.isComment = true;
+    } catch (error) {
+      // In debug mode, store the error instead of treating as comment
+      if (this.debugMode) {
+        line.result = null;
+        line.error = (error as Error).message;
+        line.isComment = false;
+      } else {
+        // Mark as comment on error in normal mode
+        line.result = null;
+        line.error = null;
+        line.isComment = true;
+      }
     }
   }
 }

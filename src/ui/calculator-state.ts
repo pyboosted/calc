@@ -19,9 +19,9 @@ export class CalculatorStateManager extends EventEmitter {
   private copyHighlight: "result" | "full" | null = null;
   private highlightTimer: NodeJS.Timeout | null = null;
 
-  constructor(initialContent?: string) {
+  constructor(initialContent?: string, debugMode = false) {
     super();
-    this.engine = new CalculatorEngine(initialContent);
+    this.engine = new CalculatorEngine(initialContent, debugMode);
   }
 
   getState(): CalculatorState {

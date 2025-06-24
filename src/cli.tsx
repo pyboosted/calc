@@ -7,6 +7,7 @@ import { showHelp } from "./help";
 import { Calculator } from "./ui/calculator";
 import { ConfigManager } from "./utils/config-manager";
 import { CurrencyManager } from "./utils/currency-manager";
+import { setDebugMode } from "./utils/debug";
 import { getVersion } from "./utils/version";
 
 function handleEarlyFlags(args: string[]) {
@@ -21,6 +22,10 @@ function handleEarlyFlags(args: string[]) {
     console.log(getVersion());
     process.exit(0);
   }
+}
+
+function isDebugMode(args: string[]): boolean {
+  return args.includes("--debug");
 }
 
 async function initializeManagers(args: string[]) {
@@ -62,7 +67,10 @@ function loadFileContent(args: string[]): string | undefined {
   }
 }
 
-function processNonInteractiveMode(input: string) {
+function processNonInteractiveMode(input: string, debugMode: boolean) {
+  // Set debug mode for non-interactive execution
+  setDebugMode(debugMode);
+
   const lines = input.split("\n").filter((line) => line.trim());
   const variables = new Map();
   const previousResults: import("./types").CalculatedValue[] = [];
@@ -74,7 +82,10 @@ function processNonInteractiveMode(input: string) {
     }
 
     try {
-      const result = evaluate(line.trim(), variables, { previousResults });
+      const result = evaluate(line.trim(), variables, {
+        previousResults,
+        debugMode,
+      });
       console.log(chalk.green(formatResultWithUnit(result)));
 
       // Add result to previousResults for aggregate operations
@@ -99,20 +110,26 @@ async function main() {
   // Handle early flags before loading dependencies
   handleEarlyFlags(args);
 
+  // Check debug mode
+  const debugMode = isDebugMode(args);
+
   // Initialize managers
   await initializeManagers(args);
 
   // Load file content if specified
   const fileContent = loadFileContent(args);
 
+  // Filter out --debug from args for input processing
+  const inputArgs = args.filter((arg) => arg !== "--debug");
+
   // Determine mode and execute
-  const input = fileContent || args.join(" ");
+  const input = fileContent || inputArgs.join(" ");
   if (input.trim()) {
     // Non-interactive mode
-    processNonInteractiveMode(input);
+    processNonInteractiveMode(input, debugMode);
   } else {
     // Interactive mode
-    render(<Calculator initialContent={input} />);
+    render(<Calculator debugMode={debugMode} initialContent={input} />);
   }
 }
 

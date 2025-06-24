@@ -3,21 +3,34 @@ import { Box, type Key, Text, useApp, useInput } from "ink";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { formatResultWithUnit } from "../evaluator/unit-formatter";
+import { debugKeypress, setDebugMode } from "../utils/debug";
 import { getVersion } from "../utils/version";
 import { CalculatorStateManager } from "./calculator-state";
 import { InputWithResult } from "./input-with-result";
 
 interface CalculatorProps {
   initialContent?: string;
+  debugMode?: boolean;
 }
 
-export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
+export const Calculator: React.FC<CalculatorProps> = ({
+  initialContent,
+  debugMode = false,
+}) => {
   useApp(); // Keep app context available
+
+  // Initialize debug mode
+  useEffect(() => {
+    setDebugMode(debugMode);
+  }, [debugMode]);
 
   // Create state manager outside of React
   const stateManagerRef = useRef<CalculatorStateManager | null>(null);
   if (!stateManagerRef.current) {
-    stateManagerRef.current = new CalculatorStateManager(initialContent);
+    stateManagerRef.current = new CalculatorStateManager(
+      initialContent,
+      debugMode
+    );
   }
 
   const [state, setState] = useState(() => {
@@ -194,6 +207,11 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
     const manager = stateManagerRef.current;
     if (!manager) {
       return;
+    }
+
+    // Log keypress in debug mode
+    if (debugMode) {
+      debugKeypress({ ...key, raw: input });
     }
 
     // Exit handling
