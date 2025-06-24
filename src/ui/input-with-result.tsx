@@ -1,7 +1,7 @@
 import clipboardy from "clipboardy";
 import { Box, Text, useInput } from "ink";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatResultWithUnit } from "../evaluator/unit-formatter";
 import type { CalculatedValue } from "../types";
 import { InputLine } from "./input-line";
@@ -36,6 +36,19 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   const [copyHighlight, setCopyHighlight] = useState<"result" | "full" | null>(
     null
   );
+
+  // Use refs to ensure we always have the latest values in the input handler
+  const valueRef = useRef(value);
+  const cursorRef = useRef(cursorPosition);
+
+  // Update refs whenever props change
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    cursorRef.current = cursorPosition;
+  }, [cursorPosition]);
 
   useEffect(() => {
     if (copyHighlight) {
@@ -83,13 +96,16 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
       }
 
       if (key.backspace || key.delete) {
-        if (cursorPosition === 0) {
+        const currentCursor = cursorRef.current;
+        if (currentCursor === 0) {
           // Backspace at beginning of line (empty or non-empty)
           onBackspaceOnEmptyLine?.();
-        } else if (cursorPosition !== undefined && cursorPosition > 0) {
+        } else if (currentCursor !== undefined && currentCursor > 0) {
+          const currentValue = valueRef.current;
           const newValue =
-            value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
-          onChange(newValue, cursorPosition - 1);
+            currentValue.slice(0, currentCursor - 1) +
+            currentValue.slice(currentCursor);
+          onChange(newValue, currentCursor - 1);
         }
         return;
       }
@@ -116,10 +132,14 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
       }
 
       // Regular character input
-      if (input && !key.ctrl && !key.meta && cursorPosition !== undefined) {
+      if (input && !key.ctrl && !key.meta && cursorRef.current !== undefined) {
+        const currentValue = valueRef.current;
+        const currentCursor = cursorRef.current;
         const newValue =
-          value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
-        onChange(newValue, cursorPosition + input.length);
+          currentValue.slice(0, currentCursor) +
+          input +
+          currentValue.slice(currentCursor);
+        onChange(newValue, currentCursor + input.length);
       }
     },
     { isActive }
