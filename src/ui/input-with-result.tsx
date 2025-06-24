@@ -2,6 +2,7 @@ import { Box, Text } from "ink";
 import type React from "react";
 import { formatResultWithUnit } from "../evaluator/unit-formatter";
 import type { CalculatedValue } from "../types";
+import type { TextSelection } from "./calculator-state";
 import { InputLine } from "./input-line";
 
 interface InputWithResultProps {
@@ -11,7 +12,9 @@ interface InputWithResultProps {
   error: string | null;
   isComment?: boolean;
   isActive: boolean;
-  copyHighlight: "result" | "full" | null;
+  copyHighlight: "result" | "full" | "selection" | null;
+  selection?: TextSelection | null;
+  lineIndex?: number;
 }
 
 export const InputWithResult: React.FC<InputWithResultProps> = ({
@@ -22,6 +25,8 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   isComment,
   isActive,
   copyHighlight,
+  selection,
+  lineIndex,
 }) => {
   // Format result
   let resultText = "";
@@ -39,19 +44,6 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
             // Render empty lines with a space to ensure they take up height
             return <Text> </Text>;
           }
-          if (isComment && !isActive) {
-            return (
-              <Text
-                backgroundColor={
-                  copyHighlight === "full" ? "yellow" : undefined
-                }
-                color={copyHighlight === "full" ? "black" : undefined}
-                dimColor={copyHighlight !== "full"}
-              >
-                {value}
-              </Text>
-            );
-          }
           if (copyHighlight === "full") {
             return (
               <Text backgroundColor="yellow" color="black">
@@ -61,14 +53,17 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
           }
           return (
             <InputLine
+              copyHighlight={copyHighlight}
               cursorPosition={isActive ? cursorPosition : undefined}
               dimColor={isComment}
+              lineIndex={lineIndex}
+              selection={selection}
               text={value}
             />
           );
         })()}
       </Box>
-      {resultText && !isComment && (
+      {resultText && (!isComment || error) && (
         <Box marginLeft={copyHighlight === "full" ? 1 : 2}>
           <Text
             backgroundColor={

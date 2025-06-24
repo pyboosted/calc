@@ -41,6 +41,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
         currentLineIndex: 0,
         cursorPosition: 0,
         copyHighlight: null,
+        selection: null,
       }
     );
   });
@@ -80,13 +81,17 @@ export const Calculator: React.FC<CalculatorProps> = ({
     const hk = new HotkeyManager();
     const manager = () => stateManagerRef.current;
 
-    // Exit shortcuts
+    // Exit shortcuts (but handle selection first)
     hk.bind(
       "Escape",
       () => {
+        const m = manager();
+        if (m?.handleSelectionEscape()) {
+          return true; // Selection was cancelled
+        }
         process.exit(0);
       },
-      { description: "Exit calculator" }
+      { description: "Cancel selection or exit calculator" }
     );
     hk.bind(
       "Ctrl+C",
@@ -109,11 +114,56 @@ export const Calculator: React.FC<CalculatorProps> = ({
       { description: "New line" }
     );
 
-    // Word navigation - bind these BEFORE plain arrow keys
+    // Selection-aware word navigation with Shift - BIND FIRST
+    hk.bind(
+      "Shift+Alt+Left,Shift+Meta+Left,Shift+Option+Left",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveWordLeft(), true, "word-left");
+        return true;
+      },
+      { description: "Extend selection word left" }
+    );
+    hk.bind(
+      "Shift+Alt+Right,Shift+Meta+Right,Shift+Option+Right",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(
+          () => m.handleMoveWordRight(),
+          true,
+          "word-right"
+        );
+        return true;
+      },
+      { description: "Extend selection word right" }
+    );
+
+    // Selection-aware line start/end with Shift - BIND FIRST
+    hk.bind(
+      "Shift+Ctrl+Left,Shift+Home,Shift+Ctrl+A",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveToLineStart(), true);
+        return true;
+      },
+      { description: "Extend selection to line start" }
+    );
+    hk.bind(
+      "Shift+Ctrl+Right,Shift+End,Shift+Ctrl+E",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveToLineEnd(), true);
+        return true;
+      },
+      { description: "Extend selection to line end" }
+    );
+
+    // Word navigation - bind these AFTER Shift versions
     hk.bind(
       "Alt+Left,Meta+Left,Option+Left,\\\\x1bb,Esc b,Meta+B",
       () => {
-        manager()?.handleMoveWordLeft();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveWordLeft(), false);
         return true;
       },
       { description: "Move word left" }
@@ -121,17 +171,19 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Alt+Right,Meta+Right,Option+Right,\\\\x1bf,Esc f,Meta+F",
       () => {
-        manager()?.handleMoveWordRight();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveWordRight(), false);
         return true;
       },
       { description: "Move word right" }
     );
 
-    // Line start/end - also before plain arrow keys
+    // Line start/end - bind after Shift versions
     hk.bind(
       "Ctrl+Left,Home,\\\\x1b[H,\\\\x1b[1~,Ctrl+A",
       () => {
-        manager()?.handleMoveToLineStart();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveToLineStart(), false);
         return true;
       },
       { description: "Move to line start" }
@@ -139,7 +191,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Ctrl+Right,End,\\\\x1b[F,\\\\x1b[4~,Ctrl+E",
       () => {
-        manager()?.handleMoveToLineEnd();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleMoveToLineEnd(), false);
         return true;
       },
       { description: "Move to line end" }
@@ -148,7 +201,12 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Alt+Shift+Up,Meta+Shift+Up,Option+Shift+Up",
       () => {
-        manager()?.handleCopyLineUp();
+        const m = manager();
+        // Disable in selection mode
+        if (m?.hasSelection()) {
+          return false;
+        }
+        m?.handleCopyLineUp();
         return true;
       },
       { description: "Copy line up" }
@@ -156,7 +214,12 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Alt+Shift+Down,Meta+Shift+Down,Option+Shift+Down",
       () => {
-        manager()?.handleCopyLineDown();
+        const m = manager();
+        // Disable in selection mode
+        if (m?.hasSelection()) {
+          return false;
+        }
+        m?.handleCopyLineDown();
         return true;
       },
       { description: "Copy line down" }
@@ -166,7 +229,12 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Alt+Up,Meta+Up,Option+Up",
       () => {
-        manager()?.handleSwapLineUp();
+        const m = manager();
+        // Disable in selection mode
+        if (m?.hasSelection()) {
+          return false;
+        }
+        m?.handleSwapLineUp();
         return true;
       },
       { description: "Swap line up" }
@@ -174,17 +242,61 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Alt+Down,Meta+Down,Option+Down",
       () => {
-        manager()?.handleSwapLineDown();
+        const m = manager();
+        // Disable in selection mode
+        if (m?.hasSelection()) {
+          return false;
+        }
+        m?.handleSwapLineDown();
         return true;
       },
       { description: "Swap line down" }
+    );
+
+    // Selection extensions with Shift+navigation keys
+    hk.bind(
+      "Shift+Left",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowLeft(), true, "left");
+        return true;
+      },
+      { description: "Extend selection left" }
+    );
+    hk.bind(
+      "Shift+Right",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowRight(), true, "right");
+        return true;
+      },
+      { description: "Extend selection right" }
+    );
+    hk.bind(
+      "Shift+Up",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowUp(), true);
+        return true;
+      },
+      { description: "Extend selection up" }
+    );
+    hk.bind(
+      "Shift+Down",
+      () => {
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowDown(), true);
+        return true;
+      },
+      { description: "Extend selection down" }
     );
 
     // Plain arrow keys - bind these AFTER modified versions
     hk.bind(
       "Up",
       () => {
-        manager()?.handleArrowUp();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowUp(), false);
         return true;
       },
       { description: "Navigate up" }
@@ -192,7 +304,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Down",
       () => {
-        manager()?.handleArrowDown();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowDown(), false);
         return true;
       },
       { description: "Navigate down" }
@@ -200,7 +313,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Left",
       () => {
-        manager()?.handleArrowLeft();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowLeft(), false, "left");
         return true;
       },
       { description: "Move cursor left" }
@@ -208,7 +322,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
     hk.bind(
       "Right",
       () => {
-        manager()?.handleArrowRight();
+        const m = manager();
+        m?.handleNavigationKey(() => m.handleArrowRight(), false, "right");
         return true;
       },
       { description: "Move cursor right" }
@@ -271,6 +386,43 @@ export const Calculator: React.FC<CalculatorProps> = ({
       { description: "Copy result" }
     );
 
+    // Selection mode keybinds (only work when selection is active)
+    hk.bind(
+      "c,C,y,Y",
+      () => {
+        return manager()?.handleSelectionCopy();
+      },
+      { description: "Copy selection to clipboard" }
+    );
+    hk.bind(
+      "p,P",
+      () => {
+        return manager()?.handleSelectionPaste();
+      },
+      { description: "Paste clipboard content replacing selection" }
+    );
+    hk.bind(
+      "d,D",
+      () => {
+        return manager()?.handleSelectionDelete();
+      },
+      { description: "Delete selection" }
+    );
+    hk.bind(
+      "x,X",
+      () => {
+        return manager()?.handleSelectionCut();
+      },
+      { description: "Cut selection to clipboard" }
+    );
+    hk.bind(
+      "e,E",
+      () => {
+        return manager()?.handleSelectionExpand();
+      },
+      { description: "Expand selection to full lines" }
+    );
+
     return hk;
   }, [handleCopyResult]);
 
@@ -291,8 +443,12 @@ export const Calculator: React.FC<CalculatorProps> = ({
       return;
     }
 
-    // Regular character input (if not handled by hotkeys)
+    // Regular character input (if not handled by hotkeys and not in selection mode)
     if (input && !key.ctrl && !key.meta) {
+      // Don't allow regular character input in selection mode
+      if (manager.hasSelection()) {
+        return; // Selection mode - only special keybinds work
+      }
       manager.handleCharacterInput(input);
     }
   });
@@ -304,15 +460,39 @@ export const Calculator: React.FC<CalculatorProps> = ({
           Boosted Calculator
         </Text>
         <Text color="gray"> v{getVersion()}</Text>
+        {debugMode && <Text color="yellow"> [DEBUG]</Text>}
       </Box>
+
+      {debugMode && (
+        <Box marginBottom={1}>
+          <Text color="gray">
+            {state.selection ? (
+              <>
+                Selection: ({state.selection.from.line}:
+                {state.selection.from.char}) to ({state.selection.to.line}:
+                {state.selection.to.char}) |
+              </>
+            ) : (
+              ""
+            )}
+            Cursor: Line {state.currentLineIndex}, Char {state.cursorPosition}
+          </Text>
+        </Box>
+      )}
 
       <Box flexDirection="column">
         {state.lines.map((line, index) => {
           return (
             <InputWithResult
-              copyHighlight={
-                index === state.currentLineIndex ? state.copyHighlight : null
-              }
+              copyHighlight={(() => {
+                if (index === state.currentLineIndex) {
+                  return state.copyHighlight;
+                }
+                if (state.copyHighlight === "selection") {
+                  return state.copyHighlight;
+                }
+                return null;
+              })()}
               cursorPosition={
                 index === state.currentLineIndex
                   ? state.cursorPosition
@@ -321,8 +501,11 @@ export const Calculator: React.FC<CalculatorProps> = ({
               error={line.error}
               isActive={index === state.currentLineIndex}
               isComment={line.isComment}
-              key={line.id}
+              // biome-ignore lint/suspicious/noArrayIndexKey: Order of lines is stable in our calculator
+              key={`line-${index}`}
+              lineIndex={index}
               result={line.result}
+              selection={state.selection}
               value={line.content}
             />
           );

@@ -240,16 +240,15 @@ export class CalculatorEngine {
         line.assignedVariables = assignedInThisLine;
       }
     } catch (error) {
-      // In debug mode, store the error instead of treating as comment
+      // Both modes now treat invalid expressions as comments for consistent rendering
+      line.result = null;
+      line.isComment = true;
+
+      // In debug mode, also store the error for display
       if (this.debugMode) {
-        line.result = null;
         line.error = (error as Error).message;
-        line.isComment = false;
       } else {
-        // Mark as comment on error in normal mode
-        line.result = null;
         line.error = null;
-        line.isComment = true;
       }
     }
   }

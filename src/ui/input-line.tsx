@@ -1,20 +1,87 @@
 import { Text } from "ink";
 import type React from "react";
-import { Tokenizer } from "../parser/tokenizer";
-import { type Token, TokenType } from "../types";
-import { getTokenColor } from "./token-colors";
+import type { TextSelection } from "./calculator-state";
+import { buildCharacterParts } from "./input-line-builder";
+import {
+  getLineSelectionRange,
+  LINE_END_CHAR,
+  normalizeSelection,
+  renderCharPart,
+  shouldShowLineEndIndicator,
+} from "./input-line-helpers";
+import { getHighlightedParts } from "./input-line-syntax";
 
 interface InputLineProps {
   text: string;
   cursorPosition?: number;
   dimColor?: boolean;
+  selection?: TextSelection | null;
+  lineIndex?: number;
+  copyHighlight?: "result" | "full" | "selection" | null;
+}
+
+// Helper to check if a character position is at the selection edge near cursor
+function isAtSelectionEdge(
+  charPos: number,
+  selection: TextSelection | null,
+  lineIndex: number | undefined
+): boolean {
+  if (!selection || lineIndex === undefined) {
+    return false;
+  }
+
+  // For regular characters, only check if we're on the line with the cursor
+  // Line endings are handled separately by isLineEndSelectionEdge
+  if (lineIndex !== selection.to.line) {
+    return false;
+  }
+
+  const cursorPos = selection.to.char;
+
+  // During selection, show cyan cursor at the active selection position
+  if (selection.from.line === selection.to.line) {
+    // Single line selection
+    if (selection.from.char < selection.to.char) {
+      // Selecting right: cursor is just after the last selected char
+      return charPos === cursorPos - 1;
+    }
+    if (selection.from.char > selection.to.char) {
+      // Selecting left: cursor is at the start of selection
+      return charPos === cursorPos;
+    }
+  } else {
+    // Multi-line selection
+    const normalized = normalizeSelection(selection);
+    if (
+      selection.to.line === normalized.to.line &&
+      selection.to.char === normalized.to.char
+    ) {
+      // Cursor at end (selecting down/right)
+      // When cursor is at position 0 on next line, no character on this line should have edge
+      if (cursorPos === 0) {
+        return false;
+      }
+      return charPos === cursorPos - 1;
+    }
+    // Cursor at start (selecting up/left)
+    return charPos === cursorPos;
+  }
+
+  return false;
 }
 
 export const InputLine: React.FC<InputLineProps> = ({
   text,
   cursorPosition,
   dimColor,
+  selection,
+  lineIndex,
+  copyHighlight,
 }) => {
+  // Get selection range for this line
+  const selectionRange = getLineSelectionRange(selection, lineIndex);
+  const showLineEndIndicator = shouldShowLineEndIndicator(selection, lineIndex);
+
   // For empty input with cursor at position 0
   if (text === "" && cursorPosition === 0) {
     return <Text inverse> </Text>;
@@ -22,87 +89,32 @@ export const InputLine: React.FC<InputLineProps> = ({
 
   if (cursorPosition === undefined) {
     // No cursor on this line, just render highlighted text
-    return dimColor ? (
-      <Text dimColor>{text}</Text>
-    ) : (
-      <HighlightedText text={text} />
+    return (
+      <HighlightedText
+        copyHighlight={copyHighlight}
+        dimColor={dimColor}
+        lineIndex={lineIndex}
+        selection={selection}
+        selectionRange={selectionRange}
+        showLineEndIndicator={showLineEndIndicator}
+        text={text}
+      />
     );
   }
 
-  // When we have a cursor position, we need to be careful about rendering
-  // We'll render everything in a single Text component to avoid layout issues
-  const parts: Array<{ text: string; inverse?: boolean; color?: string }> = [];
-
-  // Build parts with syntax highlighting
-  if (text === "") {
-    parts.push({ text: " ", inverse: true });
-  } else {
-    // Get highlighted parts for the entire text
-    const highlightedParts = getHighlightedParts(text);
-
-    // Now split these parts around the cursor
-    let charIndex = 0;
-    for (const part of highlightedParts) {
-      const partEnd = charIndex + part.text.length;
-
-      if (cursorPosition >= charIndex && cursorPosition < partEnd) {
-        // Cursor is within this part, split it
-        const relPos = cursorPosition - charIndex;
-        if (relPos > 0) {
-          parts.push({ text: part.text.slice(0, relPos), color: part.color });
-        }
-        parts.push({ text: part.text[relPos] || " ", inverse: true });
-        if (relPos < part.text.length - 1) {
-          parts.push({ text: part.text.slice(relPos + 1), color: part.color });
-        }
-      } else if (cursorPosition === partEnd && partEnd === text.length) {
-        // Cursor is at the end of text
-        parts.push({ text: part.text, color: part.color });
-        parts.push({ text: " ", inverse: true });
-      } else {
-        // Cursor is not in this part
-        parts.push({ text: part.text, color: part.color });
-      }
-
-      charIndex = partEnd;
-    }
-  }
+  // Build the character parts for rendering
+  const parts = buildCharacterParts({
+    text,
+    cursorPosition,
+    selection: selection ?? null,
+    selectionRange,
+    showLineEndIndicator,
+    lineIndex,
+    isAtSelectionEdge: (charPos) =>
+      isAtSelectionEdge(charPos, selection ?? null, lineIndex),
+  });
 
   // Render all parts in a single Text component
-  // Create cumulative position for unique keys
-  let cumulativePosition = 0;
-
-  return (
-    <Text dimColor={dimColor}>
-      {parts.map((part, _i) => {
-        const startPos = cumulativePosition;
-        cumulativePosition += part.text.length;
-
-        // Create a unique key based on absolute position and content
-        const key = `part-${startPos}-${cumulativePosition}-${part.color || "def"}-${part.inverse ? "inv" : "norm"}`;
-
-        return (
-          <Text
-            color={dimColor || part.color === "dim" ? undefined : part.color}
-            dimColor={part.color === "dim"}
-            inverse={part.inverse}
-            key={key}
-          >
-            {part.text}
-          </Text>
-        );
-      })}
-    </Text>
-  );
-};
-
-const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
-  if (!text) {
-    return null;
-  }
-
-  const parts = getHighlightedParts(text);
-
   // Create cumulative position for unique keys
   let cumulativePosition = 0;
 
@@ -112,14 +124,201 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
         const startPos = cumulativePosition;
         cumulativePosition += part.text.length;
 
-        // Create a unique key based on absolute position in text
-        const key = `hl-${startPos}-${cumulativePosition}-${part.color || "def"}`;
+        // Create a unique key based on absolute position and content
+        const key = `part-${startPos}-${cumulativePosition}-${part.color || "def"}-${part.inverse ? "inv" : "norm"}-${part.selected ? "sel" : "unsel"}`;
+
+        return renderCharPart(part, key, { dimColor, copyHighlight });
+      })}
+    </Text>
+  );
+};
+
+const HighlightedText: React.FC<{
+  text: string;
+  selectionRange?: { start: number; end: number } | null;
+  dimColor?: boolean;
+  copyHighlight?: "result" | "full" | "selection" | null;
+  showLineEndIndicator?: boolean;
+  selection?: TextSelection | null;
+  lineIndex?: number;
+}> = ({
+  text,
+  selectionRange,
+  dimColor,
+  copyHighlight,
+  showLineEndIndicator,
+  selection,
+  lineIndex,
+}) => {
+  if (!text) {
+    return null;
+  }
+
+  const parts = getHighlightedParts(text);
+
+  // If there's no selection, render normally
+  if (!selectionRange) {
+    // Create cumulative position for unique keys
+    let cumulativePosition = 0;
+
+    return (
+      <Text>
+        {parts.map((part, _i) => {
+          const startPos = cumulativePosition;
+          cumulativePosition += part.text.length;
+
+          // Create a unique key based on absolute position in text
+          const key = `hl-${startPos}-${cumulativePosition}-${part.color || "def"}`;
+
+          return (
+            <Text
+              color={dimColor || part.color === "dim" ? undefined : part.color}
+              dimColor={dimColor || part.color === "dim"}
+              key={key}
+            >
+              {part.text}
+            </Text>
+          );
+        })}
+        {showLineEndIndicator &&
+          (() => {
+            // Check if line ending has selection edge
+            const hasEdge =
+              selection &&
+              lineIndex !== undefined &&
+              // Forward selection: cursor wrapped to next line
+              ((lineIndex === selection.to.line - 1 &&
+                selection.to.char === 0) ||
+                // Backward selection: cursor at end of current line
+                (lineIndex === selection.to.line &&
+                  selection.to.char === text.length));
+
+            if (hasEdge) {
+              return (
+                <Text backgroundColor="cyan" color="black">
+                  {LINE_END_CHAR}
+                </Text>
+              );
+            }
+            return <Text color="dim">{LINE_END_CHAR}</Text>;
+          })()}
+      </Text>
+    );
+  }
+
+  // Render with syntax highlighting AND selection highlighting
+  // We need to combine both syntax colors and selection state
+  const syntaxParts = getHighlightedParts(text);
+  const combinedParts: Array<{
+    text: string;
+    selected: boolean;
+    color?: string;
+    hasEdge?: boolean;
+  }> = [];
+
+  // Split syntax parts by selection boundaries
+  let charIndex = 0;
+  for (const syntaxPart of syntaxParts) {
+    let partIndex = 0;
+    while (partIndex < syntaxPart.text.length) {
+      const globalCharIndex = charIndex + partIndex;
+      const isSelected =
+        globalCharIndex >= selectionRange.start &&
+        globalCharIndex < selectionRange.end;
+
+      // Find the end of this selection state within this syntax part
+      let groupEnd = partIndex + 1;
+      while (groupEnd < syntaxPart.text.length) {
+        const nextGlobalIndex = charIndex + groupEnd;
+        const nextIsSelected =
+          nextGlobalIndex >= selectionRange.start &&
+          nextGlobalIndex < selectionRange.end;
+
+        if (nextIsSelected === isSelected) {
+          groupEnd++;
+        } else {
+          break;
+        }
+      }
+
+      combinedParts.push({
+        text: syntaxPart.text.slice(partIndex, groupEnd),
+        selected: isSelected,
+        color: syntaxPart.color,
+      });
+
+      partIndex = groupEnd;
+    }
+    charIndex += syntaxPart.text.length;
+  }
+
+  // Add line ending indicator if needed
+  if (showLineEndIndicator) {
+    const isLineEndSelected =
+      selectionRange && text.length < selectionRange.end;
+
+    // Check if line ending has selection edge
+    const hasEdge =
+      selection &&
+      lineIndex !== undefined &&
+      // Forward selection: cursor wrapped to next line
+      ((lineIndex === selection.to.line - 1 && selection.to.char === 0) ||
+        // Backward selection: cursor at end of current line
+        (lineIndex === selection.to.line && selection.to.char === text.length));
+
+    combinedParts.push({
+      text: LINE_END_CHAR,
+      selected: isLineEndSelected,
+      color: "dim",
+      hasEdge: hasEdge || undefined,
+    });
+  }
+
+  return (
+    <Text>
+      {combinedParts.map((part, i) => {
+        // Check if this part has selection edge
+        if (part.hasEdge) {
+          return (
+            <Text
+              backgroundColor="cyan"
+              color="black"
+              key={`combined-${i}-edge-${part.color || "def"}`}
+            >
+              {part.text}
+            </Text>
+          );
+        }
 
         return (
           <Text
-            color={part.color === "dim" ? undefined : part.color}
-            dimColor={part.color === "dim"}
-            key={key}
+            {...(part.selected
+              ? (() => {
+                  const selectionProps: Record<string, unknown> = {};
+                  if (copyHighlight === "selection") {
+                    selectionProps.backgroundColor = "yellow";
+                    selectionProps.color = "black";
+                  } else {
+                    selectionProps.backgroundColor = "blue";
+                    selectionProps.color = "black";
+                  }
+                  return selectionProps;
+                })()
+              : (() => {
+                  const props: Record<string, unknown> = {};
+                  if (dimColor) {
+                    props.dimColor = true;
+                  } else if (part.color && part.color !== "dim") {
+                    props.color = part.color;
+                  } else if (
+                    part.color === "dim" ||
+                    part.text === LINE_END_CHAR
+                  ) {
+                    props.dimColor = true;
+                  }
+                  return props;
+                })())}
+            key={`combined-${i}-${part.selected ? "sel" : "unsel"}-${part.color || "def"}`}
           >
             {part.text}
           </Text>
@@ -128,95 +327,3 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
     </Text>
   );
 };
-
-function getHighlightedParts(
-  text: string
-): Array<{ text: string; color?: string }> {
-  if (!text) {
-    return [];
-  }
-
-  // Check for comment
-  const commentIndex = text.indexOf("#");
-  if (commentIndex !== -1) {
-    const parts: Array<{ text: string; color?: string }> = [];
-
-    // Process the part before the comment
-    if (commentIndex > 0) {
-      const beforeComment = text.substring(0, commentIndex);
-      parts.push(...getHighlightedPartsWithoutComment(beforeComment));
-    }
-
-    // Add the comment part in dim color
-    parts.push({ text: text.substring(commentIndex), color: "dim" });
-
-    return parts;
-  }
-
-  return getHighlightedPartsWithoutComment(text);
-}
-
-function getHighlightedPartsWithoutComment(
-  text: string
-): Array<{ text: string; color?: string }> {
-  if (!text) {
-    return [];
-  }
-
-  try {
-    const tokenizer = new Tokenizer(text);
-    const tokens = tokenizer.tokenize();
-
-    // Create a map of positions to tokens
-    const tokenMap = new Map<number, { token: Token; end: number }>();
-    for (const token of tokens) {
-      if (token.type !== TokenType.EOF) {
-        tokenMap.set(token.position, {
-          token,
-          end: token.position + token.value.length,
-        });
-      }
-    }
-
-    // Build the parts preserving spaces
-    const parts: Array<{ text: string; color?: string }> = [];
-    let currentColor: string | undefined;
-    let currentText = "";
-
-    for (let i = 0; i < text.length; i++) {
-      const tokenInfo = tokenMap.get(i);
-      let charColor: string | undefined;
-
-      if (tokenInfo) {
-        charColor = getTokenColor(tokenInfo.token.type, tokenInfo.token.value);
-      } else {
-        // Check if we're inside a token
-        for (const [start, info] of tokenMap) {
-          if (i >= start && i < info.end) {
-            charColor = getTokenColor(info.token.type, info.token.value);
-            break;
-          }
-        }
-      }
-
-      // If color changed, flush current text
-      if (charColor !== currentColor && currentText) {
-        parts.push({ text: currentText, color: currentColor });
-        currentText = "";
-      }
-
-      currentColor = charColor;
-      currentText += text[i];
-    }
-
-    // Flush any remaining text
-    if (currentText) {
-      parts.push({ text: currentText, color: currentColor });
-    }
-
-    return parts;
-  } catch (_error) {
-    // If tokenization fails, just return plain text
-    return [{ text }];
-  }
-}

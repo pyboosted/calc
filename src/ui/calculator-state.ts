@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import clipboardy from "clipboardy";
 import { CalculatorEngine } from "./calculator-engine";
 
 // Regular expressions for word navigation
@@ -6,19 +7,26 @@ import { CalculatorEngine } from "./calculator-engine";
 const WORD_BOUNDARY_REGEX = /[^\p{L}\p{N}_]/u;
 const WHITESPACE_REGEX = /\s/;
 
+export interface TextSelection {
+  from: { line: number; char: number };
+  to: { line: number; char: number };
+}
+
 export interface CalculatorState {
   lines: ReturnType<CalculatorEngine["getLines"]>;
   currentLineIndex: number;
   cursorPosition: number;
-  copyHighlight: "result" | "full" | null;
+  copyHighlight: "result" | "full" | "selection" | null;
+  selection: TextSelection | null;
 }
 
 export class CalculatorStateManager extends EventEmitter {
   private engine: CalculatorEngine;
   private currentLineIndex = 0;
   private cursorPosition = 0;
-  private copyHighlight: "result" | "full" | null = null;
+  private copyHighlight: "result" | "full" | "selection" | null = null;
   private highlightTimer: NodeJS.Timeout | null = null;
+  private selection: TextSelection | null = null;
 
   constructor(initialContent?: string, debugMode = false) {
     super();
@@ -31,11 +39,17 @@ export class CalculatorStateManager extends EventEmitter {
       currentLineIndex: this.currentLineIndex,
       cursorPosition: this.cursorPosition,
       copyHighlight: this.copyHighlight,
+      selection: this.selection,
     };
   }
 
   // Input handling methods
   handleCharacterInput(char: string) {
+    // If we have a selection, delete it first
+    if (this.selection) {
+      this.deleteSelectedText();
+    }
+
     const lines = this.engine.getLines();
     const line = lines[this.currentLineIndex];
     if (!line) {
@@ -53,6 +67,12 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleBackspace() {
+    // If we have a selection, delete it instead
+    if (this.selection) {
+      this.deleteSelectedText();
+      return;
+    }
+
     if (this.cursorPosition === 0) {
       this.handleBackspaceAtLineStart();
     } else {
@@ -96,6 +116,9 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleNewLine() {
+    // Clear any selection when pressing Enter
+    this.selection = null;
+
     const lines = this.engine.getLines();
     const currentLine = lines[this.currentLineIndex];
     if (!currentLine) {
@@ -111,6 +134,13 @@ export class CalculatorStateManager extends EventEmitter {
 
     this.currentLineIndex++;
     this.cursorPosition = 0;
+
+    // Ensure currentLineIndex is valid
+    const newLines = this.engine.getLines();
+    if (this.currentLineIndex >= newLines.length) {
+      this.currentLineIndex = newLines.length - 1;
+    }
+
     this.emit("stateChanged");
   }
 
@@ -463,6 +493,8 @@ export class CalculatorStateManager extends EventEmitter {
       const lines = this.engine.getLines();
       const newLine = lines[this.currentLineIndex];
       if (newLine) {
+        // Keep cursor at same position, but cap at the line length (not length + 1)
+        // This prevents cursor from being at virtual position when moving up/down
         this.cursorPosition = Math.min(
           this.cursorPosition,
           newLine.content.length
@@ -478,6 +510,8 @@ export class CalculatorStateManager extends EventEmitter {
       this.currentLineIndex++;
       const newLine = lines[this.currentLineIndex];
       if (newLine) {
+        // Keep cursor at same position, but cap at the line length (not length + 1)
+        // This prevents cursor from being at virtual position when moving up/down
         this.cursorPosition = Math.min(
           this.cursorPosition,
           newLine.content.length
@@ -588,7 +622,7 @@ export class CalculatorStateManager extends EventEmitter {
     return lines[this.currentLineIndex];
   }
 
-  setCopyHighlight(type: "result" | "full") {
+  setCopyHighlight(type: "result" | "full" | "selection") {
     // Clear existing timer
     if (this.highlightTimer) {
       clearTimeout(this.highlightTimer);
@@ -603,5 +637,301 @@ export class CalculatorStateManager extends EventEmitter {
       this.highlightTimer = null;
       this.emit("stateChanged");
     }, 300);
+  }
+
+  // Selection management methods
+  startSelection() {
+    this.selection = {
+      from: { line: this.currentLineIndex, char: this.cursorPosition },
+      to: { line: this.currentLineIndex, char: this.cursorPosition },
+    };
+    this.emit("stateChanged");
+  }
+
+  updateSelection() {
+    if (this.selection) {
+      this.selection.to = {
+        line: this.currentLineIndex,
+        char: this.cursorPosition,
+      };
+      this.emit("stateChanged");
+    }
+  }
+
+  clearSelection() {
+    this.selection = null;
+    this.emit("stateChanged");
+  }
+
+  hasSelection(): boolean {
+    return this.selection !== null;
+  }
+
+  getSelectedText(): string {
+    if (!this.selection) {
+      return "";
+    }
+
+    const lines = this.engine.getLines();
+    const { from, to } = this.normalizeSelection(this.selection);
+
+    if (from.line === to.line) {
+      // Single line selection
+      const line = lines[from.line];
+      return line ? line.content.slice(from.char, to.char) : "";
+    }
+
+    // Multi-line selection
+    let result = "";
+    for (let lineIndex = from.line; lineIndex <= to.line; lineIndex++) {
+      const line = lines[lineIndex];
+      if (!line) {
+        continue;
+      }
+
+      if (lineIndex === from.line) {
+        // First line: from start position to end
+        result += line.content.slice(from.char);
+      } else if (lineIndex === to.line) {
+        // Last line: from start to end position
+        result += line.content.slice(0, to.char);
+      } else {
+        // Middle lines: entire content
+        result += line.content;
+      }
+
+      // Add newline except for the last line
+      if (lineIndex < to.line) {
+        result += "\n";
+      }
+    }
+
+    return result;
+  }
+
+  deleteSelectedText() {
+    if (!this.selection) {
+      return;
+    }
+
+    const lines = this.engine.getLines();
+    const { from, to } = this.normalizeSelection(this.selection);
+
+    if (from.line === to.line) {
+      // Single line deletion
+      const line = lines[from.line];
+      if (line) {
+        const newContent =
+          line.content.slice(0, from.char) + line.content.slice(to.char);
+        this.engine.updateLine(from.line, newContent);
+      }
+    } else {
+      // Multi-line deletion
+      const firstLine = lines[from.line];
+      const lastLine = lines[to.line];
+
+      if (firstLine && lastLine) {
+        // Merge first and last line parts
+        const newContent =
+          firstLine.content.slice(0, from.char) +
+          lastLine.content.slice(to.char);
+        this.engine.updateLine(from.line, newContent);
+
+        // Delete all lines in between (in reverse order to maintain indices)
+        for (let lineIndex = to.line; lineIndex > from.line; lineIndex--) {
+          this.engine.deleteLine(lineIndex);
+        }
+      }
+    }
+
+    // Move cursor to selection start
+    this.currentLineIndex = from.line;
+    this.cursorPosition = from.char;
+    this.clearSelection();
+    this.emit("stateChanged");
+  }
+
+  expandSelectionToFullLines() {
+    if (!this.selection) {
+      return;
+    }
+
+    const lines = this.engine.getLines();
+    const { from, to } = this.normalizeSelection(this.selection);
+
+    // Expand to include full lines
+    this.selection = {
+      from: { line: from.line, char: 0 },
+      to: {
+        line: to.line,
+        char: lines[to.line]?.content.length || 0,
+      },
+    };
+
+    this.emit("stateChanged");
+  }
+
+  private normalizeSelection(selection: TextSelection): TextSelection {
+    const { from, to } = selection;
+
+    // Ensure from is before to
+    if (from.line > to.line || (from.line === to.line && from.char > to.char)) {
+      return { from: to, to: from };
+    }
+
+    return { from, to };
+  }
+
+  // Handle navigation with optional selection extension
+  handleNavigationKey(
+    action: () => void,
+    extending: boolean,
+    actionType?: string
+  ) {
+    if (extending) {
+      // Start selection if not already started
+      if (this.selection) {
+        // Selection already exists, just extend it
+        action();
+
+        // Update selection end position
+        if (this.selection) {
+          this.selection.to = {
+            line: this.currentLineIndex,
+            char: this.cursorPosition,
+          };
+
+          // Check if selection became empty (backtracked to start)
+          if (
+            this.selection.from.line === this.selection.to.line &&
+            this.selection.from.char === this.selection.to.char
+          ) {
+            // Exit selection mode
+            this.selection = null;
+          }
+        }
+      } else {
+        // Initialize new selection - simple approach
+        this.selection = {
+          from: { line: this.currentLineIndex, char: this.cursorPosition },
+          to: { line: this.currentLineIndex, char: this.cursorPosition },
+        };
+
+        // Perform the navigation
+        action();
+
+        // Update selection end position
+        if (this.selection) {
+          this.selection.to = {
+            line: this.currentLineIndex,
+            char: this.cursorPosition,
+          };
+        }
+      }
+      // Emit state change only once
+      this.emit("stateChanged");
+    } else {
+      // Clear selection if exists
+      if (this.selection) {
+        // For left/right arrows, move to selection edge
+        if (actionType === "left") {
+          const { from } = this.normalizeSelection(this.selection);
+          this.currentLineIndex = from.line;
+          this.cursorPosition = from.char;
+          this.selection = null;
+          this.emit("stateChanged");
+          return;
+        }
+        if (actionType === "right") {
+          const { to } = this.normalizeSelection(this.selection);
+          this.currentLineIndex = to.line;
+          this.cursorPosition = to.char;
+          this.selection = null;
+          this.emit("stateChanged");
+          return;
+        }
+        // For other navigation, just clear selection
+        this.selection = null;
+      }
+      // Perform normal navigation
+      action();
+    }
+  }
+
+  // Selection mode actions (when selection exists)
+  handleSelectionCopy() {
+    if (!this.selection) {
+      return false;
+    }
+
+    const selectedText = this.getSelectedText();
+    if (selectedText) {
+      clipboardy.writeSync(selectedText);
+      // Show visual feedback for copy
+      this.setCopyHighlight("selection");
+      // Keep selection active
+      return true;
+    }
+    return false;
+  }
+
+  handleSelectionPaste() {
+    if (!this.selection) {
+      return false;
+    }
+
+    try {
+      const clipboardText = clipboardy.readSync();
+      this.deleteSelectedText();
+      this.handleCharacterInput(clipboardText);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  handleSelectionCut() {
+    if (!this.selection) {
+      return false;
+    }
+
+    const selectedText = this.getSelectedText();
+    if (selectedText) {
+      clipboardy.writeSync(selectedText);
+      this.deleteSelectedText();
+      return true;
+    }
+    return false;
+  }
+
+  handleSelectionDelete() {
+    if (!this.selection) {
+      return false;
+    }
+
+    this.deleteSelectedText();
+    return true;
+  }
+
+  handleSelectionExpand() {
+    if (!this.selection) {
+      return false;
+    }
+
+    this.expandSelectionToFullLines();
+    return true;
+  }
+
+  handleSelectionEscape() {
+    if (!this.selection) {
+      return false;
+    }
+
+    // Move cursor to where user was actively selecting (selection.to)
+    this.currentLineIndex = this.selection.to.line;
+    this.cursorPosition = this.selection.to.char;
+    this.clearSelection();
+    this.emit("stateChanged");
+    return true;
   }
 }
