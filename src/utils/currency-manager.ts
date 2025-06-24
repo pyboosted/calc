@@ -159,4 +159,8 @@ export class CurrencyManager {
   getRate(currency: string): number | undefined {
     return this.currencyRates[currency.toUpperCase()];
   }
+
+  getAvailableCurrencies(): string[] {
+    return Object.keys(this.currencyRates);
+  }
 }
