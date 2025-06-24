@@ -2,11 +2,13 @@ import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Box, Text, useApp, useInput } from "ink";
+import clipboardy from "clipboardy";
+import { Box, type Key, Text, useApp, useInput } from "ink";
 import type React from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatResultWithUnit } from "../evaluator/unit-formatter";
 import { getVersion } from "../utils/version";
-import { CalculatorEngine } from "./calculator-engine";
+import { CalculatorStateManager } from "./calculator-state";
 import { InputWithResult } from "./input-with-result";
 
 interface CalculatorProps {
@@ -15,123 +17,51 @@ interface CalculatorProps {
 
 export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
   useApp(); // Keep app context available
-  const engineRef = useRef(new CalculatorEngine(initialContent));
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [cursorPosition, setCursorPosition] = useState(0);
-  const [, forceUpdate] = useState({});
 
-  const engine = engineRef.current;
-  const lines = engine.getLines();
+  // Create state manager outside of React
+  const stateManagerRef = useRef<CalculatorStateManager | null>(null);
+  if (!stateManagerRef.current) {
+    stateManagerRef.current = new CalculatorStateManager(initialContent);
+  }
 
-  useInput((input, key) => {
-    if (key.escape) {
-      process.exit(0);
-    }
-
-    if (key.ctrl && input === "c") {
-      process.exit(0);
-    }
-
-    if (key.ctrl && input === "l") {
-      engineRef.current = new CalculatorEngine();
-      setCurrentLineIndex(0);
-      setCursorPosition(0);
-      forceUpdate({});
-    }
-
-    if (key.ctrl && input === "e") {
-      openInEditor();
-    }
+  const [state, setState] = useState(() => {
+    return (
+      stateManagerRef.current?.getState() || {
+        lines: [],
+        currentLineIndex: 0,
+        cursorPosition: 0,
+        copyHighlight: null,
+      }
+    );
   });
 
-  const handleInputChange = (value: string, newCursorPosition: number) => {
-    engine.updateLine(currentLineIndex, value);
-    setCursorPosition(newCursorPosition);
-    forceUpdate({});
-  };
-
-  const handleBackspaceAtLineStart = () => {
-    if (currentLineIndex > 0) {
-      const currentLine = lines[currentLineIndex];
-      const prevLineIndex = currentLineIndex - 1;
-      const prevLine = lines[prevLineIndex];
-
-      if (!(currentLine && prevLine)) {
-        return;
-      }
-
-      const currentContent = currentLine.content;
-      const prevContent = prevLine.content;
-
-      // Merge current line with previous line
-      const mergedLine = prevContent + currentContent;
-      const newCursorPosition = prevContent.length;
-
-      // Update the previous line with merged content
-      engine.updateLine(prevLineIndex, mergedLine);
-      // Delete the current line
-      engine.deleteLine(currentLineIndex);
-
-      setCurrentLineIndex(prevLineIndex);
-      setCursorPosition(newCursorPosition);
-      forceUpdate({});
+  // Listen for state changes
+  useEffect(() => {
+    const manager = stateManagerRef.current;
+    if (!manager) {
+      return;
     }
-  };
 
-  const handleNewLine = () => {
-    const currentContent = lines[currentLineIndex]?.content || "";
-    const beforeCursor = currentContent.slice(0, cursorPosition);
-    const afterCursor = currentContent.slice(cursorPosition);
+    const handleStateChange = () => {
+      setState(manager.getState());
+    };
 
-    // Update current line with text before cursor
-    engine.updateLine(currentLineIndex, beforeCursor);
-
-    // Insert new line with text after cursor
-    engine.insertLine(currentLineIndex + 1);
-    engine.updateLine(currentLineIndex + 1, afterCursor);
-
-    setCurrentLineIndex(currentLineIndex + 1);
-    setCursorPosition(0);
-    forceUpdate({});
-  };
-
-  const handleArrowUp = () => {
-    if (currentLineIndex > 0) {
-      const targetIndex = currentLineIndex - 1;
-      const targetLine = lines[targetIndex];
-      if (!targetLine) {
-        return;
-      }
-      const targetContent = targetLine.content;
-      const newCursorPosition = Math.min(cursorPosition, targetContent.length);
-
-      setCurrentLineIndex(targetIndex);
-      setCursorPosition(newCursorPosition);
-    }
-  };
-
-  const handleArrowDown = () => {
-    if (currentLineIndex < lines.length - 1) {
-      const targetIndex = currentLineIndex + 1;
-      const targetLine = lines[targetIndex];
-      if (!targetLine) {
-        return;
-      }
-      const targetContent = targetLine.content;
-      const newCursorPosition = Math.min(cursorPosition, targetContent.length);
-
-      setCurrentLineIndex(targetIndex);
-      setCursorPosition(newCursorPosition);
-    }
-  };
+    manager.on("stateChanged", handleStateChange);
+    return () => {
+      manager.removeListener("stateChanged", handleStateChange);
+    };
+  }, []);
 
   const openInEditor = () => {
     const editor = process.env.EDITOR || "nano";
     const tempFile = join(tmpdir(), `calc-${Date.now()}.txt`);
+    const manager = stateManagerRef.current;
+    if (!manager) {
+      return;
+    }
 
     // Write current content to temp file
-    const content = lines.map((l) => l.content).join("\n");
-    writeFileSync(tempFile, content);
+    writeFileSync(tempFile, manager.getContent());
 
     try {
       // Open editor and wait for it to close
@@ -140,16 +70,112 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
       // Read the edited content
       const editedContent = readFileSync(tempFile, "utf-8");
 
-      // Create a new engine with the edited content
-      engineRef.current = new CalculatorEngine(editedContent);
-      setCurrentLineIndex(0);
-      setCursorPosition(0);
-      forceUpdate({});
+      // Update the state manager
+      manager.setContent(editedContent);
     } catch (error) {
       // If editor fails, just return without changes
       console.error("Failed to open editor:", error);
     }
   };
+
+  const handleCopyResult = () => {
+    const manager = stateManagerRef.current;
+    if (!manager) {
+      return;
+    }
+    const currentLine = manager.getCurrentLine();
+    if (currentLine?.result && !currentLine.error) {
+      const resultToCopy = formatResultWithUnit(currentLine.result);
+      clipboardy.writeSync(resultToCopy);
+      manager.setCopyHighlight("result");
+    }
+  };
+
+  const handleCopyFull = () => {
+    const manager = stateManagerRef.current;
+    if (!manager) {
+      return;
+    }
+    const currentLine = manager.getCurrentLine();
+    if (currentLine?.result && !currentLine.error) {
+      const resultToCopy = formatResultWithUnit(currentLine.result);
+      const fullLine = `${currentLine.content} = ${resultToCopy}`;
+      clipboardy.writeSync(fullLine);
+      manager.setCopyHighlight("full");
+    }
+  };
+
+  const handleNavigation = (key: Key) => {
+    const manager = stateManagerRef.current;
+    if (!manager) {
+      return false;
+    }
+
+    if (key.return) {
+      manager.handleNewLine();
+      return true;
+    }
+    if (key.upArrow) {
+      manager.handleArrowUp();
+      return true;
+    }
+    if (key.downArrow) {
+      manager.handleArrowDown();
+      return true;
+    }
+    if (key.leftArrow) {
+      manager.handleArrowLeft();
+      return true;
+    }
+    if (key.rightArrow) {
+      manager.handleArrowRight();
+      return true;
+    }
+    if (key.backspace || key.delete) {
+      manager.handleBackspace();
+      return true;
+    }
+    return false;
+  };
+
+  // Handle all input through the state manager
+  useInput((input, key) => {
+    const manager = stateManagerRef.current;
+    if (!manager) {
+      return;
+    }
+
+    // Exit handling
+    if (key.escape || (key.ctrl && input === "c")) {
+      process.exit(0);
+    }
+
+    // Ctrl commands
+    if (key.ctrl) {
+      if (input === "l") {
+        manager.clearAll();
+        return;
+      }
+      if (input === "e") {
+        openInEditor();
+        return;
+      }
+      if (input === "y" && !key.shift) {
+        handleCopyResult();
+        return;
+      }
+      if (input === "u" || (input === "y" && key.shift)) {
+        handleCopyFull();
+        return;
+      }
+    }
+
+    // Navigation and editing
+    if (!handleNavigation(key) && input && !key.ctrl && !key.meta) {
+      // Regular character input
+      manager.handleCharacterInput(input);
+    }
+  });
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -161,29 +187,21 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
       </Box>
 
       <Box flexDirection="column">
-        {lines.map((line, index) => {
+        {state.lines.map((line, index) => {
           return (
             <InputWithResult
+              copyHighlight={
+                index === state.currentLineIndex ? state.copyHighlight : null
+              }
               cursorPosition={
-                index === currentLineIndex ? cursorPosition : undefined
-              }
-              error={line.error}
-              isActive={index === currentLineIndex}
-              isComment={line.isComment}
-              key={line.id}
-              onArrowDown={
-                index === currentLineIndex ? handleArrowDown : undefined
-              }
-              onArrowUp={index === currentLineIndex ? handleArrowUp : undefined}
-              onBackspaceOnEmptyLine={
-                index === currentLineIndex
-                  ? handleBackspaceAtLineStart
+                index === state.currentLineIndex
+                  ? state.cursorPosition
                   : undefined
               }
-              onChange={
-                index === currentLineIndex ? handleInputChange : undefined
-              }
-              onNewLine={index === currentLineIndex ? handleNewLine : undefined}
+              error={line.error}
+              isActive={index === state.currentLineIndex}
+              isComment={line.isComment}
+              key={line.id}
               result={line.result}
               value={line.content}
             />
