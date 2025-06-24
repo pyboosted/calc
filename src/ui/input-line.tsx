@@ -4,6 +4,7 @@ import type { TextSelection } from "./calculator-state";
 import { buildCharacterParts } from "./input-line-builder";
 import {
   getLineSelectionRange,
+  isLineEndSelectionEdge,
   LINE_END_CHAR,
   normalizeSelection,
   renderCharPart,
@@ -19,6 +20,100 @@ interface InputLineProps {
   lineIndex?: number;
   copyHighlight?: "result" | "full" | "selection" | null;
 }
+
+// Component for empty line with cursor
+const EmptyLineWithCursor: React.FC<{
+  selection: TextSelection | null;
+  selectionRange: { start: number; end: number } | null;
+  lineIndex: number | undefined;
+  showLineEndIndicator: boolean;
+  copyHighlight?: "result" | "full" | "selection" | null;
+}> = ({
+  selection,
+  selectionRange,
+  lineIndex,
+  showLineEndIndicator,
+  copyHighlight,
+}) => {
+  // In selection mode, check if this line should show anything
+  if (selectionRange) {
+    // Show the line end indicator with appropriate styling
+    const hasEdge = isAtSelectionEdge(0, selection, lineIndex);
+    const isSelected = selectionRange.start <= 0 && selectionRange.end > 0;
+
+    if (hasEdge) {
+      return (
+        <Text backgroundColor="cyan" color="black">
+          {showLineEndIndicator ? LINE_END_CHAR : " "}
+        </Text>
+      );
+    }
+    if (isSelected) {
+      return (
+        <Text
+          backgroundColor={copyHighlight === "selection" ? "yellow" : "blue"}
+          color="black"
+        >
+          {showLineEndIndicator ? LINE_END_CHAR : " "}
+        </Text>
+      );
+    }
+    if (showLineEndIndicator) {
+      return <Text color="dim">{LINE_END_CHAR}</Text>;
+    }
+  }
+  // In selection mode but this line is not selected - don't show cursor
+  return <Text> </Text>;
+};
+
+// Component for rendering empty lines with selection
+const EmptyLineWithSelection: React.FC<{
+  showLineEndIndicator: boolean;
+  selectionRange: { start: number; end: number } | null;
+  selection: TextSelection | null;
+  lineIndex: number | undefined;
+  copyHighlight?: "result" | "full" | "selection" | null;
+}> = ({
+  showLineEndIndicator,
+  selectionRange,
+  selection,
+  lineIndex,
+  copyHighlight,
+}) => {
+  if (!showLineEndIndicator) {
+    return null;
+  }
+
+  const isLineEndSelected = selectionRange && selectionRange.end > 0;
+  const hasEdge = isLineEndSelectionEdge(selection, lineIndex, 0);
+
+  if (hasEdge) {
+    return (
+      <Text>
+        <Text backgroundColor="cyan" color="black">
+          {LINE_END_CHAR}
+        </Text>
+      </Text>
+    );
+  }
+  if (isLineEndSelected) {
+    return (
+      <Text>
+        <Text
+          backgroundColor={copyHighlight === "selection" ? "yellow" : "blue"}
+          color="black"
+        >
+          {LINE_END_CHAR}
+        </Text>
+      </Text>
+    );
+  }
+  return (
+    <Text>
+      <Text color="dim">{LINE_END_CHAR}</Text>
+    </Text>
+  );
+};
 
 // Helper to check if a character position is at the selection edge near cursor
 function isAtSelectionEdge(
@@ -84,6 +179,19 @@ export const InputLine: React.FC<InputLineProps> = ({
 
   // For empty input with cursor at position 0
   if (text === "" && cursorPosition === 0) {
+    // Check if we're in selection mode
+    if (selection) {
+      return (
+        <EmptyLineWithCursor
+          copyHighlight={copyHighlight}
+          lineIndex={lineIndex}
+          selection={selection}
+          selectionRange={selectionRange}
+          showLineEndIndicator={showLineEndIndicator}
+        />
+      );
+    }
+    // Normal cursor (no selection)
     return <Text inverse> </Text>;
   }
 
@@ -150,8 +258,22 @@ const HighlightedText: React.FC<{
   selection,
   lineIndex,
 }) => {
+  // Handle empty lines - they should still show selection indicator
   if (!text) {
-    return null;
+    const isSelected =
+      selectionRange && selectionRange.start <= 0 && selectionRange.end > 0;
+    if (!(isSelected || showLineEndIndicator)) {
+      return null;
+    }
+    return (
+      <EmptyLineWithSelection
+        copyHighlight={copyHighlight}
+        lineIndex={lineIndex}
+        selection={selection || null}
+        selectionRange={selectionRange || null}
+        showLineEndIndicator={!!(isSelected || showLineEndIndicator)}
+      />
+    );
   }
 
   const parts = getHighlightedParts(text);

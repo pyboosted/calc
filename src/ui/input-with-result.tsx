@@ -41,8 +41,31 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
       <Box flexGrow={1}>
         {(() => {
           if (value === "" && !isActive) {
-            // Render empty lines with a space to ensure they take up height
-            return <Text> </Text>;
+            // Check if this empty line is part of the selection
+            const isLineSelected =
+              selection &&
+              lineIndex !== undefined &&
+              (() => {
+                const normalizedSelection = (() => {
+                  const { from, to } = selection;
+                  if (
+                    from.line > to.line ||
+                    (from.line === to.line && from.char > to.char)
+                  ) {
+                    return { from: to, to: from };
+                  }
+                  return { from, to };
+                })();
+                return (
+                  lineIndex >= normalizedSelection.from.line &&
+                  lineIndex <= normalizedSelection.to.line
+                );
+              })();
+
+            if (!isLineSelected) {
+              // Render empty lines with a space to ensure they take up height
+              return <Text> </Text>;
+            }
           }
           if (copyHighlight === "full") {
             return (

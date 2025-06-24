@@ -507,6 +507,7 @@ export class CalculatorStateManager extends EventEmitter {
   handleArrowDown() {
     const lines = this.engine.getLines();
     if (this.currentLineIndex < lines.length - 1) {
+      // Move to next line
       this.currentLineIndex++;
       const newLine = lines[this.currentLineIndex];
       if (newLine) {
@@ -518,6 +519,13 @@ export class CalculatorStateManager extends EventEmitter {
         );
       }
       this.emit("stateChanged");
+    } else if (this.cursorPosition === 0) {
+      // On last line at position 0 - move to end of line
+      const currentLine = lines[this.currentLineIndex];
+      if (currentLine) {
+        this.cursorPosition = currentLine.content.length;
+        this.emit("stateChanged");
+      }
     }
   }
 
