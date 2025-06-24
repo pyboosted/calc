@@ -29,9 +29,7 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Comments**: Use `#` for inline comments (e.g., `5 * 4 # multiply numbers`)
 - **Formatting**: Invalid expressions are treated as comments (gray text), empty lines for organization
 - **Clipboard copy**: 
-  - `Ctrl+Y`: Copy just the result value
-  - `Ctrl+U` or `Ctrl+Shift+Y`: Copy the full line (expression = result)
-  - Visual feedback with yellow background highlight
+  - `Ctrl+Y`: Copy the result value with visual feedback (yellow highlight)
 - **Configurable precision**: Set decimal places for results via config.yaml
 - **Date/time operations**: 
   - Keywords: `today`, `tomorrow`, `yesterday`, `now`, weekdays (`monday`, `tuesday`, etc.)
@@ -128,15 +126,26 @@ precision: 4
 
 ## Keyboard Shortcuts
 
+### Basic Controls
 - **Ctrl+C / ESC**: Exit the calculator
 - **Ctrl+L**: Clear all calculations
-- **Ctrl+E**: Open current content in external editor ($EDITOR)
 - **Ctrl+Y**: Copy result to clipboard
-- **Ctrl+U / Ctrl+Shift+Y**: Copy full line (expression = result) to clipboard
 - **Enter**: Add a new line (for multi-line expressions)
+
+### Navigation
 - **Up/Down arrows**: Navigate through calculation history
 - **Left/Right arrows**: Move cursor within input
+- **Cmd+Left / Ctrl+A**: Move to beginning of line
+- **Cmd+Right / Ctrl+E**: Move to end of line
+- **Option+Left**: Move one word left
+- **Option+Right**: Move one word right
+
+### Editing
+- **Backspace**: Delete character before cursor
 - **Backspace at line start**: Merge with previous line
+- **Cmd+Backspace / Ctrl+U**: Delete to beginning of line
+- **Option+Backspace / Ctrl+W**: Delete word backwards
+- **Ctrl+K**: Delete to end of line
 
 ## Examples
 

@@ -29,10 +29,7 @@ ${chalk.bold.yellow("INTERACTIVE MODE:")}
 ${chalk.bold.yellow("KEYBOARD SHORTCUTS:")}
   ${chalk.magenta("Ctrl+C, ESC")}                 Exit calculator
   ${chalk.magenta("Ctrl+L")}                      Clear all calculations
-  ${chalk.magenta("Ctrl+E")}                      Open in external editor
   ${chalk.magenta("Ctrl+Y")}                      Copy result to clipboard
-  ${chalk.magenta("Ctrl+U, Ctrl+Shift+Y")}        Copy full line to clipboard
-  ${chalk.magenta("Up/Down arrows")}              Navigate history
   ${chalk.magenta("Enter")}                       New line
 
 ${chalk.bold.yellow("FEATURES:")}

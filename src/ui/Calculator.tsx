@@ -1,7 +1,3 @@
-import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import clipboardy from "clipboardy";
 import { Box, type Key, Text, useApp, useInput } from "ink";
 import type React from "react";
@@ -52,32 +48,6 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
     };
   }, []);
 
-  const openInEditor = () => {
-    const editor = process.env.EDITOR || "nano";
-    const tempFile = join(tmpdir(), `calc-${Date.now()}.txt`);
-    const manager = stateManagerRef.current;
-    if (!manager) {
-      return;
-    }
-
-    // Write current content to temp file
-    writeFileSync(tempFile, manager.getContent());
-
-    try {
-      // Open editor and wait for it to close
-      execSync(`${editor} ${tempFile}`, { stdio: "inherit" });
-
-      // Read the edited content
-      const editedContent = readFileSync(tempFile, "utf-8");
-
-      // Update the state manager
-      manager.setContent(editedContent);
-    } catch (error) {
-      // If editor fails, just return without changes
-      console.error("Failed to open editor:", error);
-    }
-  };
-
   const handleCopyResult = () => {
     const manager = stateManagerRef.current;
     if (!manager) {
@@ -91,26 +61,88 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
     }
   };
 
-  const handleCopyFull = () => {
-    const manager = stateManagerRef.current;
-    if (!manager) {
-      return;
+  const handleSpecialKeys = (
+    key: Key,
+    input: string,
+    manager: CalculatorStateManager
+  ) => {
+    // Handle special terminal sequences for word navigation
+    // Option+Left: can be meta+b, ESC+b or specific sequences
+    if (
+      input === "\x1bb" ||
+      (key.escape && input === "b") ||
+      (key.meta && input === "b")
+    ) {
+      manager.handleMoveWordLeft();
+      return true;
     }
-    const currentLine = manager.getCurrentLine();
-    if (currentLine?.result && !currentLine.error) {
-      const resultToCopy = formatResultWithUnit(currentLine.result);
-      const fullLine = `${currentLine.content} = ${resultToCopy}`;
-      clipboardy.writeSync(fullLine);
-      manager.setCopyHighlight("full");
+    // Option+Right: can be meta+f, ESC+f or specific sequences
+    if (
+      input === "\x1bf" ||
+      (key.escape && input === "f") ||
+      (key.meta && input === "f")
+    ) {
+      manager.handleMoveWordRight();
+      return true;
+    }
+
+    // Option+Backspace sequences (for word deletion)
+    if (input === "\x17" || input === "\x1b\x7f" || input === "\x1b\x08") {
+      manager.handleDeleteWord();
+      return true;
+    }
+
+    // Check for Cmd+Arrow keys (if your terminal sends meta for Cmd)
+    if (key.meta && key.leftArrow) {
+      manager.handleMoveToLineStart();
+      return true;
+    }
+    if (key.meta && key.rightArrow) {
+      manager.handleMoveToLineEnd();
+      return true;
+    }
+
+    // Meta+Backspace - check if it's Cmd+Backspace (delete to line start) or Option+Backspace (delete word)
+    if (key.meta && (key.backspace || key.delete)) {
+      // In most terminals, Cmd+Backspace would delete to line start
+      // but Option+Backspace would delete word.
+      // Since we can't distinguish, let's use delete word as it's more common
+      manager.handleDeleteWord();
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleCtrlKeys = (input: string, manager: CalculatorStateManager) => {
+    switch (input) {
+      case "a": // Beginning of line
+        manager.handleMoveToLineStart();
+        return true;
+      case "e": // End of line
+        manager.handleMoveToLineEnd();
+        return true;
+      case "w": // Delete word backwards (also sent by Option+Backspace on some terminals)
+        manager.handleDeleteWord();
+        return true;
+      case "k": // Delete to end of line
+        manager.handleDeleteToLineEnd();
+        return true;
+      case "u": // Delete to beginning of line (also sent by Cmd+Backspace on some terminals)
+        manager.handleDeleteToLineStart();
+        return true;
+      default:
+        return false;
     }
   };
 
-  const handleNavigation = (key: Key) => {
+  const handleNavigation = (key: Key, input: string) => {
     const manager = stateManagerRef.current;
     if (!manager) {
       return false;
     }
 
+    // Basic navigation
     if (key.return) {
       manager.handleNewLine();
       return true;
@@ -131,10 +163,29 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
       manager.handleArrowRight();
       return true;
     }
-    if (key.backspace || key.delete) {
+
+    // Ctrl key combinations
+    if (key.ctrl && !key.meta) {
+      return handleCtrlKeys(input, manager);
+    }
+
+    // Special sequences (Option keys, etc)
+    if (handleSpecialKeys(key, input, manager)) {
+      return true;
+    }
+
+    // Regular backspace (not with modifiers)
+    if (
+      (key.backspace || key.delete) &&
+      !key.meta &&
+      input !== "\x17" &&
+      input !== "\x1b\x7f" &&
+      input !== "\x1b\x08"
+    ) {
       manager.handleBackspace();
       return true;
     }
+
     return false;
   };
 
@@ -156,22 +207,14 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
         manager.clearAll();
         return;
       }
-      if (input === "e") {
-        openInEditor();
-        return;
-      }
       if (input === "y" && !key.shift) {
         handleCopyResult();
-        return;
-      }
-      if (input === "u" || (input === "y" && key.shift)) {
-        handleCopyFull();
         return;
       }
     }
 
     // Navigation and editing
-    if (!handleNavigation(key) && input && !key.ctrl && !key.meta) {
+    if (!handleNavigation(key, input) && input && !key.ctrl && !key.meta) {
       // Regular character input
       manager.handleCharacterInput(input);
     }
