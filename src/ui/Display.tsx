@@ -21,7 +21,7 @@ export const Display: React.FC<DisplayProps> = ({ result, error, input }) => {
     const formattedResult = formatResult(result);
     return (
       <Box>
-        <Text color="green" bold>
+        <Text bold color="green">
           = {formattedResult}
         </Text>
       </Box>

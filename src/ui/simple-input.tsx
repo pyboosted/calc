@@ -6,7 +6,10 @@ interface SimpleInputProps {
   cursorPosition: number;
 }
 
-export const SimpleInput: React.FC<SimpleInputProps> = ({ value, cursorPosition }) => {
+export const SimpleInput: React.FC<SimpleInputProps> = ({
+  value,
+  cursorPosition,
+}) => {
   // For empty input, show just cursor
   if (value === "") {
     return (

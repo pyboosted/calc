@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
-import { TimezoneManager } from "../src/utils/timezoneManager";
+import { TimezoneManager } from "../src/utils/timezone-manager";
 
 describe("Timezone Support", () => {
   test("parses time literals without timezone", () => {
@@ -40,7 +40,10 @@ describe("Timezone Support", () => {
   });
 
   test("time subtraction in same timezone", () => {
-    const result = evaluate("12:15@moscow - 10:00@moscow in minutes", new Map());
+    const result = evaluate(
+      "12:15@moscow - 10:00@moscow in minutes",
+      new Map()
+    );
     expect(result.unit).toBe("minutes");
     expect(result.value).toBe(135); // 2 hours 15 minutes = 135 minutes
   });

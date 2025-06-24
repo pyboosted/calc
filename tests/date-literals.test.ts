@@ -24,7 +24,7 @@ describe("Date Literals", () => {
     const futureDate = new Date(2025, 6, 25); // July 25, 2025
     const today = new Date();
     const expectedDays = Math.floor(
-      (futureDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+      (futureDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
 
     const result = evaluate("25/07/2025 - today in days", new Map());
@@ -69,6 +69,6 @@ describe("Date Literals", () => {
     evaluate("birthday = 25.10.1988", variables);
     const result = evaluate("today - birthday in days", variables);
     expect(result.unit).toBe("days");
-    expect(result.value).toBeGreaterThan(12000); // At least 12000 days old
+    expect(result.value).toBeGreaterThan(12_000); // At least 12000 days old
   });
 });

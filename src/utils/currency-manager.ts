@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -34,7 +40,7 @@ export class CurrencyManager {
     }
 
     // Load existing currency data
-    await this.loadCurrencyData();
+    this.loadCurrencyData();
 
     // Check if we need to update
     if (this.shouldUpdate()) {
@@ -42,7 +48,7 @@ export class CurrencyManager {
     }
   }
 
-  private async loadCurrencyData(): Promise<void> {
+  private loadCurrencyData(): void {
     try {
       if (existsSync(CURRENCY_FILE)) {
         const content = readFileSync(CURRENCY_FILE, "utf-8");
@@ -85,7 +91,10 @@ export class CurrencyManager {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = (await response.json()) as { date: string; usd: Record<string, number> };
+      const data = (await response.json()) as {
+        date: string;
+        usd: Record<string, number>;
+      };
 
       // Add metadata
       const currencyData: CurrencyData = {
@@ -99,12 +108,14 @@ export class CurrencyManager {
 
       // Update internal rates
       this.currencyRates = {};
-      for (const [currency, rate] of Object.entries(data.usd as Record<string, number>)) {
+      for (const [currency, rate] of Object.entries(
+        data.usd as Record<string, number>
+      )) {
         this.currencyRates[currency.toUpperCase()] = rate;
       }
 
       console.log(
-        `Currency rates updated successfully. Found ${Object.keys(this.currencyRates).length} currencies.`,
+        `Currency rates updated successfully. Found ${Object.keys(this.currencyRates).length} currencies.`
       );
     } catch (error) {
       console.error("Failed to update currency data:", error);

@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import { Box, Text, useApp, useInput } from "ink";
 import type React from "react";
 import { useRef, useState } from "react";
-import { CalculatorEngine } from "./CalculatorEngine";
-import { InputWithResult } from "./InputWithResult";
+import { CalculatorEngine } from "./calculator-engine";
+import { InputWithResult } from "./input-with-result";
 
 // Get package version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -77,7 +77,9 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
       const prevLineIndex = currentLineIndex - 1;
       const prevLine = lines[prevLineIndex];
 
-      if (!currentLine || !prevLine) return;
+      if (!(currentLine && prevLine)) {
+        return;
+      }
 
       const currentContent = currentLine.content;
       const prevContent = prevLine.content;
@@ -118,7 +120,9 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
     if (currentLineIndex > 0) {
       const targetIndex = currentLineIndex - 1;
       const targetLine = lines[targetIndex];
-      if (!targetLine) return;
+      if (!targetLine) {
+        return;
+      }
       const targetContent = targetLine.content;
       const newCursorPosition = Math.min(cursorPosition, targetContent.length);
 
@@ -131,7 +135,9 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
     if (currentLineIndex < lines.length - 1) {
       const targetIndex = currentLineIndex + 1;
       const targetLine = lines[targetIndex];
-      if (!targetLine) return;
+      if (!targetLine) {
+        return;
+      }
       const targetContent = targetLine.content;
       const newCursorPosition = Math.min(cursorPosition, targetContent.length);
 
@@ -179,20 +185,28 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
         {lines.map((line, index) => {
           return (
             <InputWithResult
-              key={line.id}
-              value={line.content}
-              cursorPosition={index === currentLineIndex ? cursorPosition : undefined}
-              result={line.result}
-              error={line.error}
-              isComment={line.isComment}
-              onChange={index === currentLineIndex ? handleInputChange : undefined}
-              onNewLine={index === currentLineIndex ? handleNewLine : undefined}
-              onArrowUp={index === currentLineIndex ? handleArrowUp : undefined}
-              onArrowDown={index === currentLineIndex ? handleArrowDown : undefined}
-              onBackspaceOnEmptyLine={
-                index === currentLineIndex ? handleBackspaceAtLineStart : undefined
+              cursorPosition={
+                index === currentLineIndex ? cursorPosition : undefined
               }
+              error={line.error}
               isActive={index === currentLineIndex}
+              isComment={line.isComment}
+              key={line.id}
+              onArrowDown={
+                index === currentLineIndex ? handleArrowDown : undefined
+              }
+              onArrowUp={index === currentLineIndex ? handleArrowUp : undefined}
+              onBackspaceOnEmptyLine={
+                index === currentLineIndex
+                  ? handleBackspaceAtLineStart
+                  : undefined
+              }
+              onChange={
+                index === currentLineIndex ? handleInputChange : undefined
+              }
+              onNewLine={index === currentLineIndex ? handleNewLine : undefined}
+              result={line.result}
+              value={line.content}
             />
           );
         })}

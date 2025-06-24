@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CalculatorEngine } from "../src/ui/CalculatorEngine";
+import { CalculatorEngine } from "../src/ui/calculator-engine";
 
 describe("Prev Variable with Consecutive Lines", () => {
   test("prev works with consecutive non-empty lines", () => {

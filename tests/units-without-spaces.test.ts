@@ -42,7 +42,7 @@ describe("Units Without Spaces", () => {
 
   test("compound expressions without spaces", () => {
     const result1 = evaluate("1d+1h", new Map());
-    expect(result1.value).toBeCloseTo(1.0416666666666667);
+    expect(result1.value).toBeCloseTo(1.041_666_666_666_666_7);
     expect(result1.unit).toBe("d");
 
     const result2 = evaluate("2kg+500g", new Map());
@@ -56,11 +56,11 @@ describe("Units Without Spaces", () => {
 
   test("scientific notation not confused with units", () => {
     const result1 = evaluate("1e5", new Map());
-    expect(result1.value).toBe(100000);
+    expect(result1.value).toBe(100_000);
     expect(result1.unit).toBeUndefined();
 
     const result2 = evaluate("1.5e10", new Map());
-    expect(result2.value).toBe(15000000000);
+    expect(result2.value).toBe(15_000_000_000);
     expect(result2.unit).toBeUndefined();
 
     const result3 = evaluate("2e-3", new Map());

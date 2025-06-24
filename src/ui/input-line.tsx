@@ -9,7 +9,11 @@ interface InputLineProps {
   dimColor?: boolean;
 }
 
-export const InputLine: React.FC<InputLineProps> = ({ text, cursorPosition, dimColor }) => {
+export const InputLine: React.FC<InputLineProps> = ({
+  text,
+  cursorPosition,
+  dimColor,
+}) => {
   // For empty input with cursor at position 0
   if (text === "" && cursorPosition === 0) {
     return <Text inverse> </Text>;
@@ -17,7 +21,11 @@ export const InputLine: React.FC<InputLineProps> = ({ text, cursorPosition, dimC
 
   if (cursorPosition === undefined) {
     // No cursor on this line, just render highlighted text
-    return dimColor ? <Text dimColor>{text}</Text> : <HighlightedText text={text} />;
+    return dimColor ? (
+      <Text dimColor>{text}</Text>
+    ) : (
+      <HighlightedText text={text} />
+    );
   }
 
   // When we have a cursor position, we need to be careful about rendering
@@ -74,10 +82,10 @@ export const InputLine: React.FC<InputLineProps> = ({ text, cursorPosition, dimC
 
         return (
           <Text
-            key={key}
-            color={dimColor ? undefined : part.color === "dim" ? undefined : part.color}
+            color={dimColor || part.color === "dim" ? undefined : part.color}
             dimColor={part.color === "dim"}
             inverse={part.inverse}
+            key={key}
           >
             {part.text}
           </Text>
@@ -88,7 +96,9 @@ export const InputLine: React.FC<InputLineProps> = ({ text, cursorPosition, dimC
 };
 
 const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
 
   const parts = getHighlightedParts(text);
 
@@ -106,9 +116,9 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
 
         return (
           <Text
-            key={key}
             color={part.color === "dim" ? undefined : part.color}
             dimColor={part.color === "dim"}
+            key={key}
           >
             {part.text}
           </Text>
@@ -118,8 +128,12 @@ const HighlightedText: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
-function getHighlightedParts(text: string): Array<{ text: string; color?: string }> {
-  if (!text) return [];
+function getHighlightedParts(
+  text: string
+): Array<{ text: string; color?: string }> {
+  if (!text) {
+    return [];
+  }
 
   // Check for comment
   const commentIndex = text.indexOf("#");
@@ -141,8 +155,12 @@ function getHighlightedParts(text: string): Array<{ text: string; color?: string
   return getHighlightedPartsWithoutComment(text);
 }
 
-function getHighlightedPartsWithoutComment(text: string): Array<{ text: string; color?: string }> {
-  if (!text) return [];
+function getHighlightedPartsWithoutComment(
+  text: string
+): Array<{ text: string; color?: string }> {
+  if (!text) {
+    return [];
+  }
 
   try {
     const tokenizer = new Tokenizer(text);
@@ -150,14 +168,14 @@ function getHighlightedPartsWithoutComment(text: string): Array<{ text: string; 
 
     // Create a map of positions to tokens
     const tokenMap = new Map<number, { token: Token; end: number }>();
-    tokens.forEach((token) => {
+    for (const token of tokens) {
       if (token.type !== TokenType.EOF) {
         tokenMap.set(token.position, {
           token,
           end: token.position + token.value.length,
         });
       }
-    });
+    }
 
     // Build the parts preserving spaces
     const parts: Array<{ text: string; color?: string }> = [];

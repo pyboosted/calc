@@ -52,13 +52,19 @@ export class CalculatorEngine {
   }
 
   updateLine(index: number, content: string): void {
-    if (index < 0 || index >= this.lines.length) return;
+    if (index < 0 || index >= this.lines.length) {
+      return;
+    }
 
     const line = this.lines[index];
-    if (!line) return;
+    if (!line) {
+      return;
+    }
 
     const oldContent = line.content;
-    if (oldContent === content) return; // No change
+    if (oldContent === content) {
+      return; // No change
+    }
 
     line.content = content;
 
@@ -88,7 +94,9 @@ export class CalculatorEngine {
   }
 
   deleteLine(index: number): void {
-    if (index < 0 || index >= this.lines.length) return;
+    if (index < 0 || index >= this.lines.length) {
+      return;
+    }
     if (this.lines.length <= 1) {
       // Don't delete the last line, just clear it
       const existingId = this.lines[0]?.id || this.generateId();
@@ -114,7 +122,9 @@ export class CalculatorEngine {
 
     for (let i = 0; i < startIndex; i++) {
       const line = this.lines[i];
-      if (!line) continue;
+      if (!line) {
+        continue;
+      }
 
       // Use stored assigned variables if available
       if (line.assignedVariables) {
@@ -144,9 +154,14 @@ export class CalculatorEngine {
     this.variables = cumulativeVariables;
   }
 
-  private evaluateLine(index: number, cumulativeVariables: Map<string, CalculatedValue>): void {
+  private evaluateLine(
+    index: number,
+    cumulativeVariables: Map<string, CalculatedValue>
+  ): void {
     const line = this.lines[index];
-    if (!line) return;
+    if (!line) {
+      return;
+    }
 
     const trimmed = line.content.trim();
 
@@ -170,7 +185,9 @@ export class CalculatorEngine {
     let prevValue: CalculatedValue | undefined;
     for (let i = index - 1; i >= 0; i--) {
       const prevLine = this.lines[i];
-      if (!prevLine) continue;
+      if (!prevLine) {
+        continue;
+      }
       if (prevLine.result && !prevLine.isComment) {
         prevValue = prevLine.result;
         break;
@@ -188,7 +205,9 @@ export class CalculatorEngine {
       const previousResults: CalculatedValue[] = [];
       for (let i = index - 1; i >= 0; i--) {
         const prevLine = this.lines[i];
-        if (!prevLine) break;
+        if (!prevLine) {
+          break;
+        }
         if (!prevLine.result || prevLine.isComment) {
           break;
         }

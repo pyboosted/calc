@@ -38,6 +38,9 @@ import {
   subYears,
 } from "date-fns";
 
+// Regex patterns
+const DATE_PATTERN = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/;
+
 export class DateManager {
   private static instance: DateManager;
 
@@ -76,15 +79,21 @@ export class DateManager {
         return this.getNextWeekday(lowerInput);
       default: {
         // Try parsing DD.MM.YYYY or DD/MM/YYYY format
-        const datePattern = /^(\d{1,2})[./](\d{1,2})[./](\d{4})$/;
-        const match = input.match(datePattern);
+        const match = input.match(DATE_PATTERN);
         if (match?.[1] && match[2] && match[3]) {
-          const day = parseInt(match[1]);
-          const month = parseInt(match[2]);
-          const year = parseInt(match[3]);
+          const day = Number.parseInt(match[1], 10);
+          const month = Number.parseInt(match[2], 10);
+          const year = Number.parseInt(match[3], 10);
 
           // Validate date components
-          if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+          if (
+            day >= 1 &&
+            day <= 31 &&
+            month >= 1 &&
+            month <= 12 &&
+            year >= 1900 &&
+            year <= 2100
+          ) {
             // Month is 0-indexed in JavaScript Date
             const date = new Date(year, month - 1, day);
 
@@ -114,7 +123,15 @@ export class DateManager {
    * Get the next occurrence of a weekday
    */
   private getNextWeekday(weekday: string): Date {
-    const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const weekdays = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ];
     const targetDay = weekdays.indexOf(weekday);
     const today = new Date();
     const currentDay = getDay(today);
@@ -269,7 +286,11 @@ export class DateManager {
   /**
    * Get start/end of period
    */
-  getPeriodBoundary(date: Date, period: string, boundary: "start" | "end"): Date {
+  getPeriodBoundary(
+    date: Date,
+    period: string,
+    boundary: "start" | "end"
+  ): Date {
     const isStart = boundary === "start";
 
     switch (period.toLowerCase()) {

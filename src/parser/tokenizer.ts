@@ -1,9 +1,17 @@
 import { type Token, TokenType } from "../types";
 
+// Regex patterns
+const WHITESPACE_PATTERN = /\s/;
+const DIGIT_PATTERN = /[0-9]/;
+const UNICODE_LETTER_PATTERN = /\p{L}/u;
+const UNICODE_LETTER_OR_DIGIT_PATTERN = /[\p{L}\p{N}_]/u;
+const DATETIME_LOOKAHEAD_PATTERN = /^\d{1,2}[./]\d{1,2}[./]\d{4}[Tt]/;
+const UTC_OFFSET_PATTERN = /^utc[+-]\d{1,2}$/;
+
 export class Tokenizer {
   private input: string;
-  private position: number = 0;
-  private current: string = "";
+  private position = 0;
+  private current = "";
 
   constructor(input: string) {
     this.input = input;
@@ -15,12 +23,12 @@ export class Tokenizer {
     this.current = this.input[this.position] || "";
   }
 
-  private peek(offset: number = 1): string {
+  private peek(offset = 1): string {
     return this.input[this.position + offset] || "";
   }
 
   private skipWhitespace(): void {
-    while (/\s/.test(this.current)) {
+    while (WHITESPACE_PATTERN.test(this.current)) {
       this.advance();
     }
   }
@@ -33,7 +41,7 @@ export class Tokenizer {
 
     // Try to read DD
     let digits = 0;
-    while (/[0-9]/.test(this.current) && digits < 2) {
+    while (DIGIT_PATTERN.test(this.current) && digits < 2) {
       value += this.current;
       this.advance();
       digits++;
@@ -58,7 +66,7 @@ export class Tokenizer {
 
     // Try to read MM
     digits = 0;
-    while (/[0-9]/.test(this.current) && digits < 2) {
+    while (DIGIT_PATTERN.test(this.current) && digits < 2) {
       value += this.current;
       this.advance();
       digits++;
@@ -82,7 +90,7 @@ export class Tokenizer {
 
     // Try to read YYYY
     digits = 0;
-    while (/[0-9]/.test(this.current) && digits < 4) {
+    while (DIGIT_PATTERN.test(this.current) && digits < 4) {
       value += this.current;
       this.advance();
       digits++;
@@ -96,11 +104,18 @@ export class Tokenizer {
 
     // Validate the date format
     const parts = value.split(separator);
-    const day = parseInt(parts[0] ?? "1");
-    const month = parseInt(parts[1] ?? "1");
-    const year = parseInt(parts[2] ?? "2000");
+    const day = Number.parseInt(parts[0] ?? "1", 10);
+    const month = Number.parseInt(parts[1] ?? "1", 10);
+    const year = Number.parseInt(parts[2] ?? "2000", 10);
 
-    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900 || year > 2100) {
+    if (
+      day < 1 ||
+      day > 31 ||
+      month < 1 ||
+      month > 12 ||
+      year < 1900 ||
+      year > 2100
+    ) {
       this.position = savedPosition;
       this.current = savedCurrent;
       return null;
@@ -128,7 +143,7 @@ export class Tokenizer {
     }
 
     // Check if it matches datetime pattern
-    if (!/^\d{1,2}[./]\d{1,2}[./]\d{4}[Tt]/.test(lookahead)) {
+    if (!DATETIME_LOOKAHEAD_PATTERN.test(lookahead)) {
       return null;
     }
 
@@ -173,7 +188,7 @@ export class Tokenizer {
 
     // Try to read HH
     let digits = 0;
-    while (/[0-9]/.test(this.current) && digits < 2) {
+    while (DIGIT_PATTERN.test(this.current) && digits < 2) {
       value += this.current;
       this.advance();
       digits++;
@@ -185,7 +200,7 @@ export class Tokenizer {
       return null;
     }
 
-    const hours = parseInt(value);
+    const hours = Number.parseInt(value, 10);
     if (hours < 0 || hours > 23) {
       this.position = savedPosition;
       this.current = savedCurrent;
@@ -204,7 +219,7 @@ export class Tokenizer {
 
     // Try to read MM
     digits = 0;
-    while (/[0-9]/.test(this.current) && digits < 2) {
+    while (DIGIT_PATTERN.test(this.current) && digits < 2) {
       value += this.current;
       this.advance();
       digits++;
@@ -216,7 +231,7 @@ export class Tokenizer {
       return null;
     }
 
-    const minutes = parseInt(value.slice(-2));
+    const minutes = Number.parseInt(value.slice(-2), 10);
     if (minutes < 0 || minutes > 59) {
       this.position = savedPosition;
       this.current = savedCurrent;
@@ -248,7 +263,7 @@ export class Tokenizer {
       return dateToken;
     }
 
-    while (/[0-9]/.test(this.current)) {
+    while (DIGIT_PATTERN.test(this.current)) {
       value += this.current;
       this.advance();
     }
@@ -257,7 +272,7 @@ export class Tokenizer {
       value += this.current;
       this.advance();
 
-      while (/[0-9]/.test(this.current)) {
+      while (DIGIT_PATTERN.test(this.current)) {
         value += this.current;
         this.advance();
       }
@@ -281,9 +296,9 @@ export class Tokenizer {
       }
 
       // Must have at least one digit for valid scientific notation
-      if (/[0-9]/.test(this.current)) {
+      if (DIGIT_PATTERN.test(this.current)) {
         // Valid scientific notation - consume all digits
-        while (/[0-9]/.test(this.current)) {
+        while (DIGIT_PATTERN.test(this.current)) {
           value += this.current;
           this.advance();
         }
@@ -303,19 +318,22 @@ export class Tokenizer {
     let value = "";
 
     // First, read a normal identifier without spaces
-    while (/[\p{L}\p{N}_]/u.test(this.current)) {
+    while (UNICODE_LETTER_OR_DIGIT_PATTERN.test(this.current)) {
       value += this.current;
       this.advance();
     }
 
     // Special handling for UTC offsets (utc+5, utc-5, etc.)
-    if (value.toLowerCase() === "utc" && (this.current === "+" || this.current === "-")) {
+    if (
+      value.toLowerCase() === "utc" &&
+      (this.current === "+" || this.current === "-")
+    ) {
       const sign = this.current;
       value += sign;
       this.advance();
 
       // Read the offset number
-      while (/[0-9]/.test(this.current)) {
+      while (DIGIT_PATTERN.test(this.current)) {
         value += this.current;
         this.advance();
       }
@@ -344,7 +362,7 @@ export class Tokenizer {
       this.advance();
 
       let nextPart = "";
-      while (/[\p{L}]/u.test(this.current)) {
+      while (UNICODE_LETTER_PATTERN.test(this.current)) {
         nextPart += this.current;
         this.advance();
       }
@@ -405,7 +423,11 @@ export class Tokenizer {
         "beginning",
       ].includes(finalLowerValue)
     ) {
-      return { type: TokenType.KEYWORD, value: finalLowerValue, position: start };
+      return {
+        type: TokenType.KEYWORD,
+        value: finalLowerValue,
+        position: start,
+      };
     }
 
     // Functions
@@ -436,7 +458,11 @@ export class Tokenizer {
         "fromunix",
       ].includes(finalLowerValue)
     ) {
-      return { type: TokenType.FUNCTION, value: finalLowerValue, position: start };
+      return {
+        type: TokenType.FUNCTION,
+        value: finalLowerValue,
+        position: start,
+      };
     }
 
     // Units
@@ -446,12 +472,24 @@ export class Tokenizer {
 
     // Currency
     if (this.isCurrency(value)) {
-      return { type: TokenType.CURRENCY, value: value.toUpperCase(), position: start };
+      return {
+        type: TokenType.CURRENCY,
+        value: value.toUpperCase(),
+        position: start,
+      };
     }
 
     // Word operators
     if (
-      ["plus", "minus", "times", "multiplied", "divided", "mod", "xor"].includes(finalLowerValue)
+      [
+        "plus",
+        "minus",
+        "times",
+        "multiplied",
+        "divided",
+        "mod",
+        "xor",
+      ].includes(finalLowerValue)
     ) {
       return {
         type: TokenType.OPERATOR,
@@ -680,7 +718,7 @@ export class Tokenizer {
     const lowerValue = value.toLowerCase();
 
     // Check for UTC offsets
-    if (/^utc[+-]\d{1,2}$/.test(lowerValue)) {
+    if (UTC_OFFSET_PATTERN.test(lowerValue)) {
       return true;
     }
 
@@ -766,14 +804,17 @@ export class Tokenizer {
       const start = this.position;
 
       // Numbers
-      if (/[0-9]/.test(this.current) || (this.current === "." && /[0-9]/.test(this.peek()))) {
+      if (
+        DIGIT_PATTERN.test(this.current) ||
+        (this.current === "." && DIGIT_PATTERN.test(this.peek()))
+      ) {
         tokens.push(this.readNumber());
         continue;
       }
 
       // Identifiers (variables, functions, units, keywords)
       // Support Unicode letters including Cyrillic
-      if (/\p{L}/u.test(this.current)) {
+      if (UNICODE_LETTER_PATTERN.test(this.current)) {
         tokens.push(this.readIdentifier());
         continue;
       }
@@ -781,27 +822,51 @@ export class Tokenizer {
       // Operators and symbols
       switch (this.current) {
         case "+":
-          tokens.push({ type: TokenType.OPERATOR, value: "+", position: start });
+          tokens.push({
+            type: TokenType.OPERATOR,
+            value: "+",
+            position: start,
+          });
           this.advance();
           break;
         case "-":
-          tokens.push({ type: TokenType.OPERATOR, value: "-", position: start });
+          tokens.push({
+            type: TokenType.OPERATOR,
+            value: "-",
+            position: start,
+          });
           this.advance();
           break;
         case "*":
-          tokens.push({ type: TokenType.OPERATOR, value: "*", position: start });
+          tokens.push({
+            type: TokenType.OPERATOR,
+            value: "*",
+            position: start,
+          });
           this.advance();
           break;
         case "/":
-          tokens.push({ type: TokenType.OPERATOR, value: "/", position: start });
+          tokens.push({
+            type: TokenType.OPERATOR,
+            value: "/",
+            position: start,
+          });
           this.advance();
           break;
         case "^":
-          tokens.push({ type: TokenType.OPERATOR, value: "^", position: start });
+          tokens.push({
+            type: TokenType.OPERATOR,
+            value: "^",
+            position: start,
+          });
           this.advance();
           break;
         case "%":
-          tokens.push({ type: TokenType.OPERATOR, value: "%", position: start });
+          tokens.push({
+            type: TokenType.OPERATOR,
+            value: "%",
+            position: start,
+          });
           this.advance();
           break;
         case "(":
@@ -821,16 +886,28 @@ export class Tokenizer {
           this.advance();
           break;
         case "@":
-          tokens.push({ type: TokenType.AT_SYMBOL, value: "@", position: start });
+          tokens.push({
+            type: TokenType.AT_SYMBOL,
+            value: "@",
+            position: start,
+          });
           this.advance();
           break;
         case "&":
           if (this.peek() === "&") {
             this.advance();
             this.advance();
-            tokens.push({ type: TokenType.OPERATOR, value: "&", position: start });
+            tokens.push({
+              type: TokenType.OPERATOR,
+              value: "&",
+              position: start,
+            });
           } else {
-            tokens.push({ type: TokenType.OPERATOR, value: "&", position: start });
+            tokens.push({
+              type: TokenType.OPERATOR,
+              value: "&",
+              position: start,
+            });
             this.advance();
           }
           break;
@@ -838,9 +915,17 @@ export class Tokenizer {
           if (this.peek() === "|") {
             this.advance();
             this.advance();
-            tokens.push({ type: TokenType.OPERATOR, value: "|", position: start });
+            tokens.push({
+              type: TokenType.OPERATOR,
+              value: "|",
+              position: start,
+            });
           } else {
-            tokens.push({ type: TokenType.OPERATOR, value: "|", position: start });
+            tokens.push({
+              type: TokenType.OPERATOR,
+              value: "|",
+              position: start,
+            });
             this.advance();
           }
           break;
@@ -848,7 +933,11 @@ export class Tokenizer {
           if (this.peek() === "<") {
             this.advance();
             this.advance();
-            tokens.push({ type: TokenType.OPERATOR, value: "<<", position: start });
+            tokens.push({
+              type: TokenType.OPERATOR,
+              value: "<<",
+              position: start,
+            });
           } else {
             // Skip unknown character
             this.advance();
@@ -858,7 +947,11 @@ export class Tokenizer {
           if (this.peek() === ">") {
             this.advance();
             this.advance();
-            tokens.push({ type: TokenType.OPERATOR, value: ">>", position: start });
+            tokens.push({
+              type: TokenType.OPERATOR,
+              value: ">>",
+              position: start,
+            });
           } else {
             // Skip unknown character
             this.advance();

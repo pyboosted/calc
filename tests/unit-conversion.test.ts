@@ -11,7 +11,7 @@ describe("Unit Conversions", () => {
 
     test("km to miles", () => {
       const result = evaluate("1 km in miles", new Map());
-      expect(result.value).toBeCloseTo(0.621371, 5);
+      expect(result.value).toBeCloseTo(0.621_371, 5);
       expect(result.unit).toBe("miles");
     });
 
@@ -25,7 +25,7 @@ describe("Unit Conversions", () => {
   describe("Weight", () => {
     test("kg to pounds", () => {
       const result = evaluate("1 kg in pounds", new Map());
-      expect(result.value).toBeCloseTo(2.20462, 5);
+      expect(result.value).toBeCloseTo(2.204_62, 5);
       expect(result.unit).toBe("pounds");
     });
 

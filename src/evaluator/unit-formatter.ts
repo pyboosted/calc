@@ -1,6 +1,10 @@
 import { format } from "date-fns";
 import type { CalculatedValue } from "../types";
-import { ConfigManager } from "../utils/configManager";
+import { ConfigManager } from "../utils/config-manager";
+
+// Regex patterns
+const TRAILING_ZEROS_PATTERN = /0+$/;
+const THOUSANDS_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g;
 
 export function formatResultWithUnit(result: CalculatedValue): string {
   const num = result.value;
@@ -70,11 +74,11 @@ export function formatNumber(num: number): string {
 
   // Format with thousands separators
   const parts = rounded.toFixed(precision).split(".");
-  parts[0] = parts[0]?.replace(/\B(?=(\d{3})+(?!\d))/g, ",") ?? "";
+  parts[0] = parts[0]?.replace(THOUSANDS_SEPARATOR_PATTERN, ",") ?? "";
 
   // Remove trailing zeros after decimal point if precision > 0
   if (precision > 0 && parts[1]) {
-    parts[1] = parts[1].replace(/0+$/, "");
+    parts[1] = parts[1].replace(TRAILING_ZEROS_PATTERN, "");
     if (parts[1] === "") {
       return parts[0];
     }
@@ -85,20 +89,34 @@ export function formatNumber(num: number): string {
 
 function formatDate(date: Date, timezone?: string): string {
   const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+  const startOfDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
 
   let baseFormat: string;
 
   // If the date is today and the time is not midnight, show time
   if (
     startOfDate.getTime() === startOfToday.getTime() &&
-    (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0)
+    (date.getHours() !== 0 ||
+      date.getMinutes() !== 0 ||
+      date.getSeconds() !== 0)
   ) {
     baseFormat = format(date, "EEE, MMM d, yyyy 'at' HH:mm");
   }
   // If the time component is not midnight, show it
-  else if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
+  else if (
+    date.getHours() !== 0 ||
+    date.getMinutes() !== 0 ||
+    date.getSeconds() !== 0
+  ) {
     baseFormat = format(date, "EEE, MMM d, yyyy 'at' HH:mm");
   } else {
     baseFormat = format(date, "EEE, MMM d, yyyy");

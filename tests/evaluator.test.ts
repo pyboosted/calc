@@ -139,7 +139,10 @@ describe("Inline Comments", () => {
   });
 
   test("comment with special characters", () => {
-    const result = evaluate("2 * 3 # result: 6! (factorial notation in comment)", new Map());
+    const result = evaluate(
+      "2 * 3 # result: 6! (factorial notation in comment)",
+      new Map()
+    );
     expect(result.value).toBe(6);
   });
 

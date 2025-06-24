@@ -42,7 +42,7 @@ export class ConfigManager {
     }
   }
 
-  private async loadConfig(): Promise<void> {
+  private loadConfig(): void {
     try {
       const content = readFileSync(CONFIG_FILE, "utf-8");
       const loadedConfig = parse(content) as Partial<Config>;
@@ -61,7 +61,7 @@ export class ConfigManager {
     }
   }
 
-  private async saveConfig(): Promise<void> {
+  private saveConfig(): void {
     try {
       const yamlContent =
         "# Boosted Calculator Configuration\n" +
@@ -83,7 +83,7 @@ export class ConfigManager {
       this.config.precision > 20
     ) {
       console.warn(
-        `Invalid precision value: ${this.config.precision}, using default: ${DEFAULT_CONFIG.precision}`,
+        `Invalid precision value: ${this.config.precision}, using default: ${DEFAULT_CONFIG.precision}`
       );
       this.config.precision = DEFAULT_CONFIG.precision;
     }

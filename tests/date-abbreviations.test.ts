@@ -7,35 +7,53 @@ describe("Date Arithmetic with Abbreviations", () => {
     const now = new Date();
 
     // Test 'h' abbreviation
-    vars.set("testDate", { value: now.getTime(), unit: "timestamp", date: now });
+    vars.set("testDate", {
+      value: now.getTime(),
+      unit: "timestamp",
+      date: now,
+    });
     const result1 = evaluate("testDate + 2h", vars);
     expect(result1.unit).toBe("timestamp");
     expect(result1.date).toBeDefined();
-    if (!result1.date) throw new Error("Date should be defined");
-    const hourDiff1 = (result1.date.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (!result1.date) {
+      throw new Error("Date should be defined");
+    }
+    const hourDiff1 =
+      (result1.date.getTime() - now.getTime()) / (1000 * 60 * 60);
     expect(hourDiff1).toBeCloseTo(2, 1);
 
     // Test 'hr' abbreviation
     const result2 = evaluate("testDate + 3hr", vars);
-    if (!result2.date) throw new Error("Date should be defined");
-    const hourDiff2 = (result2.date.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (!result2.date) {
+      throw new Error("Date should be defined");
+    }
+    const hourDiff2 =
+      (result2.date.getTime() - now.getTime()) / (1000 * 60 * 60);
     expect(hourDiff2).toBeCloseTo(3, 1);
   });
 
   test("supports minute abbreviations", () => {
     const vars = new Map();
     const now = new Date();
-    vars.set("testDate", { value: now.getTime(), unit: "timestamp", date: now });
+    vars.set("testDate", {
+      value: now.getTime(),
+      unit: "timestamp",
+      date: now,
+    });
 
     // Test 'min' abbreviation
     const result1 = evaluate("testDate + 30min", vars);
-    if (!result1.date) throw new Error("Date should be defined");
+    if (!result1.date) {
+      throw new Error("Date should be defined");
+    }
     const minDiff1 = (result1.date.getTime() - now.getTime()) / (1000 * 60);
     expect(minDiff1).toBeCloseTo(30, 1);
 
     // Test 'm' abbreviation (should be minutes in date context)
     const result2 = evaluate("testDate + 15m", vars);
-    if (!result2.date) throw new Error("Date should be defined");
+    if (!result2.date) {
+      throw new Error("Date should be defined");
+    }
     const minDiff2 = (result2.date.getTime() - now.getTime()) / (1000 * 60);
     expect(minDiff2).toBeCloseTo(15, 1);
   });
@@ -46,8 +64,11 @@ describe("Date Arithmetic with Abbreviations", () => {
 
     // Test 'd' abbreviation
     const result = evaluate("today + 1d", vars);
-    if (!result.date || !today.date) throw new Error("Dates should be defined");
-    const dayDiff = (result.date.getTime() - today.date.getTime()) / (1000 * 60 * 60 * 24);
+    if (!(result.date && today.date)) {
+      throw new Error("Dates should be defined");
+    }
+    const dayDiff =
+      (result.date.getTime() - today.date.getTime()) / (1000 * 60 * 60 * 24);
     expect(dayDiff).toBeCloseTo(1, 1);
   });
 
@@ -57,25 +78,36 @@ describe("Date Arithmetic with Abbreviations", () => {
 
     // Test 'w' abbreviation
     const result = evaluate("today + 2w", vars);
-    if (!result.date || !today.date) throw new Error("Dates should be defined");
-    const dayDiff = (result.date.getTime() - today.date.getTime()) / (1000 * 60 * 60 * 24);
+    if (!(result.date && today.date)) {
+      throw new Error("Dates should be defined");
+    }
+    const dayDiff =
+      (result.date.getTime() - today.date.getTime()) / (1000 * 60 * 60 * 24);
     expect(dayDiff).toBeCloseTo(14, 1);
   });
 
   test("supports second abbreviations", () => {
     const vars = new Map();
     const now = new Date();
-    vars.set("testDate", { value: now.getTime(), unit: "timestamp", date: now });
+    vars.set("testDate", {
+      value: now.getTime(),
+      unit: "timestamp",
+      date: now,
+    });
 
     // Test 's' abbreviation
     const result1 = evaluate("testDate + 30s", vars);
-    if (!result1.date) throw new Error("Date should be defined");
+    if (!result1.date) {
+      throw new Error("Date should be defined");
+    }
     const secDiff1 = (result1.date.getTime() - now.getTime()) / 1000;
     expect(secDiff1).toBeCloseTo(30, 1);
 
     // Test 'sec' abbreviation
     const result2 = evaluate("testDate + 45sec", vars);
-    if (!result2.date) throw new Error("Date should be defined");
+    if (!result2.date) {
+      throw new Error("Date should be defined");
+    }
     const secDiff2 = (result2.date.getTime() - now.getTime()) / 1000;
     expect(secDiff2).toBeCloseTo(45, 1);
   });
@@ -85,9 +117,15 @@ describe("Date Arithmetic with Abbreviations", () => {
 
     // In date context, 'm' should be minutes
     const now = new Date();
-    vars.set("testDate", { value: now.getTime(), unit: "timestamp", date: now });
+    vars.set("testDate", {
+      value: now.getTime(),
+      unit: "timestamp",
+      date: now,
+    });
     const dateResult = evaluate("testDate + 5m", vars);
-    if (!dateResult.date) throw new Error("Date should be defined");
+    if (!dateResult.date) {
+      throw new Error("Date should be defined");
+    }
     const minDiff = (dateResult.date.getTime() - now.getTime()) / (1000 * 60);
     expect(minDiff).toBeCloseTo(5, 1);
 

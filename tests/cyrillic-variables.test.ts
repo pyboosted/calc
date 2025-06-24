@@ -52,7 +52,7 @@ describe("Cyrillic Variable Names", () => {
 
     evaluate("расстояние = 100", vars);
     const result = evaluate("расстояние * 1 km in meters", vars);
-    expect(result.value).toBe(100000);
+    expect(result.value).toBe(100_000);
     expect(result.unit).toBe("meters");
   });
 

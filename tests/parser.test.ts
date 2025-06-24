@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { Parser } from "../src/parser/parser";
 import { Tokenizer } from "../src/parser/tokenizer";
-import type { AssignmentNode, BinaryOpNode, FunctionNode, NumberNode } from "../src/types";
+import type {
+  AssignmentNode,
+  BinaryOpNode,
+  FunctionNode,
+  NumberNode,
+} from "../src/types";
 
 describe("Parser", () => {
   const parse = (input: string) => {

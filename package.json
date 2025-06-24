@@ -1,6 +1,6 @@
 {
   "name": "boosted-calc",
-  "version": "1.1.12",
+  "version": "1.1.13",
   "description": "A powerful terminal-based calculator with unit conversions, currency support, and more",
   "keywords": [
     "calculator",
@@ -43,17 +43,17 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit",
-    "format": "biome format --write .",
-    "lint": "biome lint --write .",
-    "check": "biome check --write .",
-    "check:ci": "biome ci",
+    "format": "ultracite format",
+    "lint": "ultracite lint",
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.5",
     "@types/bun": "latest",
     "@types/react": "^19.1.8",
-    "tsup": "^8.5.0"
+    "tsup": "^8.5.0",
+    "ultracite": "^5.0.12",
+    "husky": "^9.1.7"
   },
   "peerDependencies": {
     "typescript": "^5"

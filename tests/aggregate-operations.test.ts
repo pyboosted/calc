@@ -31,7 +31,7 @@ describe("Aggregate Operations", () => {
       { value: 10 },
       { value: 0, date: new Date(), unit: "timestamp" }, // Date result
       { value: 20 },
-      { value: NaN }, // Non-numeric value
+      { value: Number.NaN }, // Non-numeric value
       { value: 30 },
     ];
 
@@ -42,7 +42,11 @@ describe("Aggregate Operations", () => {
   test("works with decimal values", () => {
     const vars = new Map();
 
-    const previousResults = [{ value: 10.5 }, { value: 20.25 }, { value: 30.75 }];
+    const previousResults = [
+      { value: 10.5 },
+      { value: 20.25 },
+      { value: 30.75 },
+    ];
 
     const result = evaluate("average", vars, { previousResults });
     expect(result.value).toBe(20.5); // (10.5 + 20.25 + 30.75) / 3
@@ -51,10 +55,12 @@ describe("Aggregate Operations", () => {
   test("throws error when no previous values", () => {
     const vars = new Map();
 
-    expect(() => evaluate("total", vars, { previousResults: [] })).toThrow("No values to total");
+    expect(() => evaluate("total", vars, { previousResults: [] })).toThrow(
+      "No values to total"
+    );
 
     expect(() => evaluate("average", vars, { previousResults: [] })).toThrow(
-      "No values to average",
+      "No values to average"
     );
   });
 
@@ -62,11 +68,11 @@ describe("Aggregate Operations", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { value: NaN, date: new Date(), unit: "timestamp" },
+      { value: Number.NaN, date: new Date(), unit: "timestamp" },
     ];
 
     expect(() => evaluate("total", vars, { previousResults })).toThrow(
-      "No numeric values to total",
+      "No numeric values to total"
     );
   });
 
@@ -145,7 +151,11 @@ describe("Aggregate Operations", () => {
   test("handles values with and without units", () => {
     const vars = new Map();
 
-    const previousResults = [{ value: 100 }, { value: 50, unit: "km" }, { value: 25 }];
+    const previousResults = [
+      { value: 100 },
+      { value: 50, unit: "km" },
+      { value: 25 },
+    ];
 
     const result = evaluate("total", vars, { previousResults });
     expect(result.value).toBe(175);

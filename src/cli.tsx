@@ -24,9 +24,7 @@ for (const path of possiblePaths) {
   }
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-
+function handleEarlyFlags(args: string[]) {
   // Handle --help flag FIRST (before any heavy imports)
   if (args.includes("--help") || args.includes("-h")) {
     showHelp(packageJson?.version);
@@ -38,16 +36,33 @@ async function main() {
     console.log(packageJson?.version || "unknown");
     process.exit(0);
   }
+}
 
-  // Now we can lazy load all heavy dependencies
+async function loadDependencies() {
   const chalk = (await import("chalk")).default;
   const { render } = await import("ink");
   const { evaluate } = await import("./evaluator/evaluate");
-  const { formatResultWithUnit } = await import("./evaluator/unitFormatter");
-  const { Calculator } = await import("./ui/Calculator");
-  const { ConfigManager } = await import("./utils/configManager");
-  const { CurrencyManager } = await import("./utils/currencyManager");
+  const { formatResultWithUnit } = await import("./evaluator/unit-formatter");
+  const { Calculator } = await import("./ui/calculator");
+  const { ConfigManager } = await import("./utils/config-manager");
+  const { CurrencyManager } = await import("./utils/currency-manager");
 
+  return {
+    chalk,
+    render,
+    evaluate,
+    formatResultWithUnit,
+    Calculator,
+    ConfigManager,
+    CurrencyManager,
+  };
+}
+
+async function initializeManagers(
+  ConfigManager: typeof import("./utils/config-manager").ConfigManager,
+  CurrencyManager: typeof import("./utils/currency-manager").CurrencyManager,
+  args: string[]
+) {
   // Initialize config manager
   const configManager = ConfigManager.getInstance();
   await configManager.initialize();
@@ -63,54 +78,96 @@ async function main() {
 
   // Initialize currency data
   await currencyManager.initialize();
+}
 
-  // Check for file loading
-  let fileContent: string | undefined;
+function loadFileContent(
+  args: string[],
+  chalk: typeof import("chalk").default
+): string | undefined {
   const fileArg = args.find((arg) => arg.startsWith("--file=") || arg === "-f");
-  if (fileArg) {
-    const filePath = fileArg === "-f" ? args[args.indexOf("-f") + 1] : fileArg.split("=")[1];
-    if (!filePath) {
-      console.error(chalk.red("Error: No file path provided"));
-      process.exit(1);
+  if (!fileArg) {
+    return;
+  }
+
+  const filePath =
+    fileArg === "-f" ? args[args.indexOf("-f") + 1] : fileArg.split("=")[1];
+  if (!filePath) {
+    console.error(chalk.red("Error: No file path provided"));
+    process.exit(1);
+  }
+
+  try {
+    return readFileSync(filePath, "utf-8");
+  } catch (error) {
+    console.error(chalk.red(`Error reading file: ${error}`));
+    process.exit(1);
+  }
+}
+
+function processNonInteractiveMode(
+  input: string,
+  evaluate: typeof import("./evaluator/evaluate").evaluate,
+  formatResultWithUnit: typeof import("./evaluator/unit-formatter").formatResultWithUnit,
+  chalk: typeof import("chalk").default
+) {
+  const lines = input.split("\n").filter((line) => line.trim());
+  const variables = new Map();
+  const previousResults: import("./types").CalculatedValue[] = [];
+  let hasError = false;
+
+  for (const line of lines) {
+    if (line.trim().startsWith("#")) {
+      continue; // Skip comments
     }
+
     try {
-      fileContent = readFileSync(filePath, "utf-8");
+      const result = evaluate(line.trim(), variables, { previousResults });
+      console.log(chalk.green(formatResultWithUnit(result)));
+
+      // Add result to previousResults for aggregate operations
+      previousResults.push(result);
+
+      // Also update 'prev' variable with the latest result
+      variables.set("prev", result.value);
     } catch (error) {
-      console.error(chalk.red(`Error reading file: ${error}`));
-      process.exit(1);
+      console.error(chalk.red(`Error: ${(error as Error).message}`));
+      hasError = true;
     }
   }
 
-  // Non-interactive mode
+  if (hasError) {
+    process.exit(1);
+  }
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  // Handle early flags before loading dependencies
+  handleEarlyFlags(args);
+
+  // Load dependencies
+  const {
+    chalk,
+    render,
+    evaluate,
+    formatResultWithUnit,
+    Calculator,
+    ConfigManager,
+    CurrencyManager,
+  } = await loadDependencies();
+
+  // Initialize managers
+  await initializeManagers(ConfigManager, CurrencyManager, args);
+
+  // Load file content if specified
+  const fileContent = loadFileContent(args, chalk);
+
+  // Determine mode and execute
   const input = fileContent || args.join(" ");
   if (input.trim()) {
-    // Process file content line by line or single expression
-    const lines = input.split("\n").filter((line) => line.trim());
-    const variables = new Map();
-    const previousResults: Array<import("./types").CalculatedValue> = [];
-    let hasError = false;
-
-    for (const line of lines) {
-      if (line.trim().startsWith("#")) continue; // Skip comments
-
-      try {
-        const result = evaluate(line.trim(), variables, { previousResults });
-        console.log(chalk.green(formatResultWithUnit(result)));
-
-        // Add result to previousResults for aggregate operations
-        previousResults.push(result);
-
-        // Also update 'prev' variable with the latest result
-        variables.set("prev", result.value);
-      } catch (error) {
-        console.error(chalk.red(`Error: ${(error as Error).message}`));
-        hasError = true;
-      }
-    }
-
-    if (hasError) {
-      process.exit(1);
-    }
+    // Non-interactive mode
+    processNonInteractiveMode(input, evaluate, formatResultWithUnit, chalk);
   } else {
     // Interactive mode
     render(<Calculator initialContent={input} />);

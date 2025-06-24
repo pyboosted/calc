@@ -2,7 +2,7 @@ import { Box, useInput } from "ink";
 import type React from "react";
 import { useState } from "react";
 import type { HistoryEntry } from "../types";
-import { InputLine } from "./InputLine";
+import { InputLine } from "./input-line";
 
 interface InputProps {
   value: string;
@@ -11,10 +11,16 @@ interface InputProps {
   history: HistoryEntry[];
 }
 
-export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, history }) => {
+export const Input: React.FC<InputProps> = ({
+  value,
+  cursorPosition,
+  onChange,
+  history,
+}) => {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [tempValue, setTempValue] = useState<string>("");
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: thats totally fine
   useInput((input, key) => {
     if (key.return) {
       onChange(`${value}\n`, cursorPosition + 1);
@@ -24,7 +30,7 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, h
     if (key.upArrow) {
       if (historyIndex < history.length - 1) {
         const newIndex = historyIndex + 1;
-        const historyEntry = history[history.length - 1 - newIndex];
+        const historyEntry = history.at(1 + newIndex);
         if (historyEntry) {
           if (historyIndex === -1) {
             setTempValue(value);
@@ -43,7 +49,7 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, h
         if (newIndex === -1) {
           onChange(tempValue, tempValue.length);
         } else {
-          const historyEntry = history[history.length - 1 - newIndex];
+          const historyEntry = history.at(1 + newIndex);
           if (historyEntry) {
             onChange(historyEntry.input, historyEntry.input.length);
           }
@@ -68,7 +74,8 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, h
 
     if (key.backspace || key.delete) {
       if (cursorPosition > 0) {
-        const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
+        const newValue =
+          value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
         onChange(newValue, cursorPosition - 1);
       }
       return;
@@ -76,7 +83,8 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, h
 
     // Regular character input
     if (input && !key.ctrl && !key.meta) {
-      const newValue = value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
+      const newValue =
+        value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
       onChange(newValue, cursorPosition + input.length);
       setHistoryIndex(-1);
     }
@@ -89,7 +97,7 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, h
     <Box flexDirection="column">
       {lines.length === 0 || (lines.length === 1 && lines[0] === "") ? (
         <Box>
-          <InputLine text="" cursorPosition={0} />
+          <InputLine cursorPosition={0} text="" />
         </Box>
       ) : (
         lines.map((line, index) => {
@@ -99,15 +107,19 @@ export const Input: React.FC<InputProps> = ({ value, cursorPosition, onChange, h
 
           const isLastLine = index === lines.length - 1;
           const cursorOnThisLine =
-            isLastLine && cursorPosition >= lineStartPos && cursorPosition <= lineEndPos;
+            isLastLine &&
+            cursorPosition >= lineStartPos &&
+            cursorPosition <= lineEndPos;
 
           // Create a stable key based on line content and position
           const lineKey = `${index}-${line.length}-${line.slice(0, 10)}`;
           return (
             <Box key={lineKey}>
               <InputLine
+                cursorPosition={
+                  cursorOnThisLine ? cursorPosition - lineStartPos : undefined
+                }
                 text={line}
-                cursorPosition={cursorOnThisLine ? cursorPosition - lineStartPos : undefined}
               />
             </Box>
           );

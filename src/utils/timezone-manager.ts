@@ -133,7 +133,7 @@ export class TimezoneManager {
       const toTz = this.getTimezone(toTimezone);
 
       // Validate timezones
-      if (!this.isValidTimezone(fromTz) || !this.isValidTimezone(toTz)) {
+      if (!(this.isValidTimezone(fromTz) && this.isValidTimezone(toTz))) {
         // If either timezone is invalid, return the original date
         return date;
       }
@@ -158,7 +158,7 @@ export class TimezoneManager {
     day: number,
     hour: number,
     minute: number,
-    timezone: string,
+    timezone: string
   ): Date {
     try {
       const tz = this.getTimezone(timezone);

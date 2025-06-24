@@ -17,7 +17,7 @@ import {
 
 export class Parser {
   private tokens: Token[];
-  private position: number = 0;
+  private position = 0;
   private _current!: Token;
 
   private get current(): Token {
@@ -30,7 +30,11 @@ export class Parser {
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
-    this.current = this.tokens[0] || { type: TokenType.EOF, value: "", position: 0 };
+    this.current = this.tokens[0] || {
+      type: TokenType.EOF,
+      value: "",
+      position: 0,
+    };
   }
 
   private advance(): Token {
@@ -45,14 +49,16 @@ export class Parser {
     return this.current;
   }
 
-  private peek(offset: number = 1): Token | null {
+  private peek(offset = 1): Token | null {
     const pos = this.position + offset;
     return pos < this.tokens.length ? this.tokens[pos] || null : null;
   }
 
   private consume(type: TokenType, message?: string): Token {
     if (this.current.type !== type) {
-      throw new Error(message || `Expected ${type} but got ${this.current.type}`);
+      throw new Error(
+        message || `Expected ${type} but got ${this.current.type}`
+      );
     }
     const token = this.current;
     this.advance();
@@ -100,7 +106,9 @@ export class Parser {
 
   private isTimestampResult(node: ASTNode): boolean {
     // Helper to determine if a binary operation will result in a timestamp
-    if (node.type !== "binary") return false;
+    if (node.type !== "binary") {
+      return false;
+    }
     const binNode = node as BinaryOpNode;
 
     // Subtraction of two times/dates results in a duration, not a timestamp
@@ -141,7 +149,8 @@ export class Parser {
           node.type === "date" ||
           node.type === "variable" || // Any variable could contain a timestamp
           node.type === "dateOperation" ||
-          (node.type === "binary" && (node as BinaryOpNode).operator === "timezone_convert") ||
+          (node.type === "binary" &&
+            (node as BinaryOpNode).operator === "timezone_convert") ||
           // Also check if it's a timestamp result
           (node.type === "binary" && this.isTimestampResult(node)));
 
@@ -170,18 +179,19 @@ export class Parser {
             right: { type: "variable", name: targetTimezone } as VariableNode,
           } as BinaryOpNode;
         }
-      } else {
+      } else if (
+        nextToken.type === TokenType.UNIT ||
+        nextToken.type === TokenType.CURRENCY
+      ) {
         // For regular unit conversion of numeric results
-        if (nextToken.type === TokenType.UNIT || nextToken.type === TokenType.CURRENCY) {
-          const targetUnit = nextToken.value;
-          this.advance();
-          node = {
-            type: "binary",
-            operator: "convert",
-            left: node,
-            right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
-          } as BinaryOpNode;
-        }
+        const targetUnit = nextToken.value;
+        this.advance();
+        node = {
+          type: "binary",
+          operator: "convert",
+          left: node,
+          right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
+        } as BinaryOpNode;
       }
     }
 
@@ -192,26 +202,28 @@ export class Parser {
     const node = this.parseAdditive();
 
     // Handle "of" for percentage calculations (e.g., "20% of 100")
-    if (this.current.type === TokenType.KEYWORD && this.current.value === "of") {
-      // Check if left side is a percentage
-      if (node.type === "binary" && (node as BinaryOpNode).operator === "percent") {
-        this.advance(); // consume 'of'
-        const right = this.parseAdditive();
+    if (
+      this.current.type === TokenType.KEYWORD &&
+      this.current.value === "of" &&
+      node.type === "binary" &&
+      (node as BinaryOpNode).operator === "percent"
+    ) {
+      this.advance(); // consume 'of'
+      const right = this.parseAdditive();
 
-        // Convert "X% of Y" to "(X/100) * Y"
-        const percentValue = (node as BinaryOpNode).left;
-        return {
+      // Convert "X% of Y" to "(X/100) * Y"
+      const percentValue = (node as BinaryOpNode).left;
+      return {
+        type: "binary",
+        operator: "*",
+        left: {
           type: "binary",
-          operator: "*",
-          left: {
-            type: "binary",
-            operator: "/",
-            left: percentValue,
-            right: { type: "number", value: 100 } as NumberNode,
-          } as BinaryOpNode,
-          right,
-        } as BinaryOpNode;
-      }
+          operator: "/",
+          left: percentValue,
+          right: { type: "number", value: 100 } as NumberNode,
+        } as BinaryOpNode,
+        right,
+      } as BinaryOpNode;
     }
 
     return node;
@@ -220,14 +232,19 @@ export class Parser {
   private parseAdditive(): ASTNode {
     let left = this.parseMultiplicative();
 
-    while (this.current.type === TokenType.OPERATOR && ["+", "-"].includes(this.current.value)) {
+    while (
+      this.current.type === TokenType.OPERATOR &&
+      ["+", "-"].includes(this.current.value)
+    ) {
       const operator = this.current.value;
       this.advance();
       const right = this.parseMultiplicative();
 
       // Check if this is a date operation
-      const isDateNode = (node: ASTNode): node is DateNode => node.type === "date";
-      const isDateTimeNode = (node: ASTNode): node is DateTimeNode => node.type === "datetime";
+      const isDateNode = (node: ASTNode): node is DateNode =>
+        node.type === "date";
+      const isDateTimeNode = (node: ASTNode): node is DateTimeNode =>
+        node.type === "datetime";
       const hasDate = isDateNode(left) || isDateTimeNode(left);
 
       if (hasDate && right.type === "number" && (right as NumberNode).unit) {
@@ -265,16 +282,22 @@ export class Parser {
             date: left,
             operation: operator === "+" ? "add" : "subtract",
             value: right,
-            unit: unit,
+            unit,
           } as DateOperationNode;
           continue;
         }
       }
 
       // Check if right side is a percentage (e.g., 100 + 10% or 100 - 10%)
-      if (right.type === "binary" && (right as BinaryOpNode).operator === "percent") {
+      if (
+        right.type === "binary" &&
+        (right as BinaryOpNode).operator === "percent"
+      ) {
         // If left side is also a percentage, just add/subtract them as decimals
-        if (left.type === "binary" && (left as BinaryOpNode).operator === "percent") {
+        if (
+          left.type === "binary" &&
+          (left as BinaryOpNode).operator === "percent"
+        ) {
           left = {
             type: "binary",
             operator,
@@ -287,7 +310,7 @@ export class Parser {
           const percentCalculation = {
             type: "binary",
             operator: "*",
-            left: left,
+            left,
             right: {
               type: "binary",
               operator: "/",
@@ -331,11 +354,14 @@ export class Parser {
   private parseBinary(
     parseHigherPrecedence: () => ASTNode,
     operators: string[],
-    rightAssociative: boolean = false,
+    rightAssociative = false
   ): ASTNode {
     let left = parseHigherPrecedence();
 
-    while (this.current.type === TokenType.OPERATOR && operators.includes(this.current.value)) {
+    while (
+      this.current.type === TokenType.OPERATOR &&
+      operators.includes(this.current.value)
+    ) {
       const operator = this.current.value;
       this.advance();
 
@@ -350,14 +376,19 @@ export class Parser {
         right,
       } as BinaryOpNode;
 
-      if (rightAssociative) break;
+      if (rightAssociative) {
+        break;
+      }
     }
 
     return left;
   }
 
   private parseUnary(): ASTNode {
-    if (this.current.type === TokenType.OPERATOR && ["+", "-"].includes(this.current.value)) {
+    if (
+      this.current.type === TokenType.OPERATOR &&
+      ["+", "-"].includes(this.current.value)
+    ) {
       const operator = this.current.value;
       this.advance();
       return {
@@ -370,12 +401,16 @@ export class Parser {
     return this.parsePostfix();
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: It is complex by design
   private parsePostfix(): ASTNode {
     let node = this.parsePrimary();
 
     // Handle unit conversion and percentage
     while (true) {
-      if (this.current.type === TokenType.UNIT || this.current.type === TokenType.CURRENCY) {
+      if (
+        this.current.type === TokenType.UNIT ||
+        this.current.type === TokenType.CURRENCY
+      ) {
         const unit = this.current.value;
         this.advance();
 
@@ -472,10 +507,11 @@ export class Parser {
     return node;
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: It is complex by design
   private parsePrimary(): ASTNode {
     // Numbers
     if (this.current.type === TokenType.NUMBER) {
-      const value = parseFloat(this.current.value);
+      const value = Number.parseFloat(this.current.value);
       this.advance();
       return { type: "number", value } as NumberNode;
     }
@@ -503,7 +539,11 @@ export class Parser {
           const tokenAfterAt = this.current;
           if (tokenAfterAt.type === TokenType.EOF) {
             // Incomplete expression - treat as datetime without timezone
-            return { type: "datetime", dateValue: datePart, timeValue: timePart } as DateTimeNode;
+            return {
+              type: "datetime",
+              dateValue: datePart,
+              timeValue: timePart,
+            } as DateTimeNode;
           }
 
           // Accept any identifier-like token as a potential timezone
@@ -522,13 +562,16 @@ export class Parser {
               timeValue: timePart,
               timezone,
             } as DateTimeNode;
-          } else {
-            throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
           }
+          throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
         }
 
         // DateTime without timezone
-        return { type: "datetime", dateValue: datePart, timeValue: timePart } as DateTimeNode;
+        return {
+          type: "datetime",
+          dateValue: datePart,
+          timeValue: timePart,
+        } as DateTimeNode;
       }
 
       return { type: "date", value: dateValue } as DateNode;
@@ -560,9 +603,8 @@ export class Parser {
           const timezone = tokenAfterAt.value;
           this.advance();
           return { type: "time", value: timeValue, timezone } as TimeNode;
-        } else {
-          throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
         }
+        throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
       }
 
       // Time without timezone uses system timezone
@@ -590,7 +632,10 @@ export class Parser {
           const nextToken = this.current;
 
           // Expect a unit or currency
-          if (nextToken.type === TokenType.UNIT || nextToken.type === TokenType.CURRENCY) {
+          if (
+            nextToken.type === TokenType.UNIT ||
+            nextToken.type === TokenType.CURRENCY
+          ) {
             const targetUnit = nextToken.value;
             this.advance();
             return {
@@ -598,15 +643,14 @@ export class Parser {
               operation: aggregateType,
               targetUnit,
             } as AggregateNode;
-          } else {
-            // If not a unit, back up and treat as regular aggregate
-            this.position--;
-            this.current = this.tokens[this.position] || {
-              type: TokenType.EOF,
-              value: "",
-              position: this.position,
-            };
           }
+          // If not a unit, back up and treat as regular aggregate
+          this.position--;
+          this.current = this.tokens[this.position] || {
+            type: TokenType.EOF,
+            value: "",
+            position: this.position,
+          };
         }
 
         return { type: "aggregate", operation: aggregateType } as AggregateNode;
@@ -669,11 +713,10 @@ export class Parser {
 
       this.consume(TokenType.RPAREN, "Expected )");
       return { type: "function", name, args } as FunctionNode;
-    } else {
-      // Function without parentheses (single argument)
-      const arg = this.parseUnary();
-      return { type: "function", name, args: [arg] } as FunctionNode;
     }
+    // Function without parentheses (single argument)
+    const arg = this.parseUnary();
+    return { type: "function", name, args: [arg] } as FunctionNode;
   }
 
   private isPercentageContext(): boolean {
@@ -682,11 +725,21 @@ export class Parser {
     // - It's followed by an operator other than a number
     // - It's followed by "of", "in", etc.
     const next = this.peek();
-    if (!next || next.type === TokenType.EOF) return true;
-    if (next.type === TokenType.OPERATOR && next.value !== "%") return true;
-    if (next.type === TokenType.KEYWORD) return true;
-    if (next.type === TokenType.RPAREN) return true;
-    if (next.type === TokenType.COMMA) return true;
+    if (!next || next.type === TokenType.EOF) {
+      return true;
+    }
+    if (next.type === TokenType.OPERATOR && next.value !== "%") {
+      return true;
+    }
+    if (next.type === TokenType.KEYWORD) {
+      return true;
+    }
+    if (next.type === TokenType.RPAREN) {
+      return true;
+    }
+    if (next.type === TokenType.COMMA) {
+      return true;
+    }
     return false;
   }
 }

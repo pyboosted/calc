@@ -4,13 +4,16 @@ export const mathFunctions: Record<string, (...args: number[]) => number> = {
   cbrt: (x: number) => Math.cbrt(x),
   root: (x: number, n: number) => x ** (1 / n),
   abs: (x: number) => Math.abs(x),
-  log: (x: number, base?: number) => (base ? Math.log(x) / Math.log(base) : Math.log10(x)),
+  log: (x: number, base?: number) =>
+    base ? Math.log(x) / Math.log(base) : Math.log10(x),
   ln: (x: number) => Math.log(x),
   fact: factorial,
 
   // Rounding functions
   round: (x: number, decimals?: number) => {
-    if (decimals === undefined) return Math.round(x);
+    if (decimals === undefined) {
+      return Math.round(x);
+    }
     const factor = 10 ** decimals;
     return Math.round(x * factor) / factor;
   },
@@ -40,9 +43,15 @@ export const mathFunctions: Record<string, (...args: number[]) => number> = {
 };
 
 function factorial(n: number): number {
-  if (n < 0) throw new Error("Factorial of negative number");
-  if (n === 0 || n === 1) return 1;
-  if (n > 170) throw new Error("Factorial too large");
+  if (n < 0) {
+    throw new Error("Factorial of negative number");
+  }
+  if (n === 0 || n === 1) {
+    return 1;
+  }
+  if (n > 170) {
+    throw new Error("Factorial too large");
+  }
 
   let result = 1;
   for (let i = 2; i <= n; i++) {

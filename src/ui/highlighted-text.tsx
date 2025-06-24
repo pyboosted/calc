@@ -8,7 +8,9 @@ interface HighlightedTextProps {
 }
 
 export const HighlightedText: React.FC<HighlightedTextProps> = ({ text }) => {
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
 
   try {
     const tokenizer = new Tokenizer(text);
@@ -26,15 +28,17 @@ export const HighlightedText: React.FC<HighlightedTextProps> = ({ text }) => {
       }
 
       // Skip EOF token
-      if (token.type === TokenType.EOF) return;
+      if (token.type === TokenType.EOF) {
+        return;
+      }
 
       // Add the token with appropriate color
       const color = getTokenColor(token.type, token.value);
       const tokenKey = `token-${token.position}-${token.type}-${token.value}`;
       elements.push(
-        <Text key={tokenKey} color={color}>
+        <Text color={color} key={tokenKey}>
           {token.value}
-        </Text>,
+        </Text>
       );
 
       lastPosition = token.position + token.value.length;

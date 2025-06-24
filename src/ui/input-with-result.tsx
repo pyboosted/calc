@@ -2,9 +2,9 @@ import clipboardy from "clipboardy";
 import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { formatResultWithUnit } from "../evaluator/unitFormatter";
+import { formatResultWithUnit } from "../evaluator/unit-formatter";
 import type { CalculatedValue } from "../types";
-import { InputLine } from "./InputLine";
+import { InputLine } from "./input-line";
 
 interface InputWithResultProps {
   value: string;
@@ -33,7 +33,9 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   onBackspaceOnEmptyLine,
   isActive,
 }) => {
-  const [copyHighlight, setCopyHighlight] = useState<"result" | "full" | null>(null);
+  const [copyHighlight, setCopyHighlight] = useState<"result" | "full" | null>(
+    null
+  );
 
   useEffect(() => {
     if (copyHighlight) {
@@ -45,8 +47,11 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   }, [copyHighlight]);
 
   useInput(
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: thats totally fine
     (input, key) => {
-      if (!isActive || !onChange) return;
+      if (!(isActive && onChange)) {
+        return;
+      }
 
       if (key.return) {
         onNewLine?.();
@@ -82,7 +87,8 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
           // Backspace at beginning of line (empty or non-empty)
           onBackspaceOnEmptyLine?.();
         } else if (cursorPosition !== undefined && cursorPosition > 0) {
-          const newValue = value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
+          const newValue =
+            value.slice(0, cursorPosition - 1) + value.slice(cursorPosition);
           onChange(newValue, cursorPosition - 1);
         }
         return;
@@ -111,56 +117,74 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
 
       // Regular character input
       if (input && !key.ctrl && !key.meta && cursorPosition !== undefined) {
-        const newValue = value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
+        const newValue =
+          value.slice(0, cursorPosition) + input + value.slice(cursorPosition);
         onChange(newValue, cursorPosition + input.length);
       }
     },
-    { isActive },
+    { isActive }
   );
 
   // Format result
-  const resultText = error ? `Error: ${error}` : result ? formatResultWithUnit(result) : "";
+  let resultText = "";
+  if (error) {
+    resultText = `Error: ${error}`;
+  } else if (result) {
+    resultText = formatResultWithUnit(result);
+  }
 
   return (
-    <Box width="100%" justifyContent="space-between">
+    <Box justifyContent="space-between" width="100%">
       <Box flexGrow={1}>
-        {value === "" && !isActive ? (
-          // Render empty lines with a space to ensure they take up height
-          <Text> </Text>
-        ) : isComment && !isActive ? (
-          <Text
-            dimColor={copyHighlight !== "full"}
-            color={copyHighlight === "full" ? "black" : undefined}
-            backgroundColor={copyHighlight === "full" ? "yellow" : undefined}
-          >
-            {value}
-          </Text>
-        ) : copyHighlight === "full" ? (
-          <Text color="black" backgroundColor="yellow">
-            {value}
-          </Text>
-        ) : (
-          <InputLine
-            text={value}
-            cursorPosition={isActive ? cursorPosition : undefined}
-            dimColor={isComment}
-          />
-        )}
+        {(() => {
+          if (value === "" && !isActive) {
+            // Render empty lines with a space to ensure they take up height
+            return <Text> </Text>;
+          }
+          if (isComment && !isActive) {
+            return (
+              <Text
+                backgroundColor={
+                  copyHighlight === "full" ? "yellow" : undefined
+                }
+                color={copyHighlight === "full" ? "black" : undefined}
+                dimColor={copyHighlight !== "full"}
+              >
+                {value}
+              </Text>
+            );
+          }
+          if (copyHighlight === "full") {
+            return (
+              <Text backgroundColor="yellow" color="black">
+                {value}
+              </Text>
+            );
+          }
+          return (
+            <InputLine
+              cursorPosition={isActive ? cursorPosition : undefined}
+              dimColor={isComment}
+              text={value}
+            />
+          );
+        })()}
       </Box>
       {resultText && !isComment && (
         <Box marginLeft={copyHighlight === "full" ? 1 : 2}>
           <Text
-            color={
+            backgroundColor={
               copyHighlight === "result" || copyHighlight === "full"
-                ? "black"
-                : error
-                  ? "red"
-                  : "green"
+                ? "yellow"
+                : undefined
             }
             bold={!error}
-            backgroundColor={
-              copyHighlight === "result" || copyHighlight === "full" ? "yellow" : undefined
-            }
+            color={(() => {
+              if (copyHighlight === "result" || copyHighlight === "full") {
+                return "black";
+              }
+              return error ? "red" : "green";
+            })()}
           >
             {copyHighlight === "full" ? " = " : "= "}
             {resultText}

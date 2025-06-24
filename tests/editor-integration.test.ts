@@ -34,11 +34,16 @@ describe("Editor Integration", () => {
       proc.kill("SIGTERM");
 
       // Wait for it to die (with timeout)
-      await Promise.race([exitPromise, new Promise((resolve) => setTimeout(resolve, 1000))]);
+      await Promise.race([
+        exitPromise,
+        new Promise((resolve) => setTimeout(resolve, 1000)),
+      ]);
     } finally {
       try {
         unlinkSync(testFile);
-      } catch {}
+      } catch {
+        // Ignore error if file doesn't exist
+      }
     }
   });
 
@@ -81,11 +86,16 @@ describe("Editor Integration", () => {
       proc.kill("SIGTERM");
 
       // Wait for it to die (with timeout)
-      await Promise.race([exitPromise, new Promise((resolve) => setTimeout(resolve, 1000))]);
+      await Promise.race([
+        exitPromise,
+        new Promise((resolve) => setTimeout(resolve, 1000)),
+      ]);
     } finally {
       try {
         unlinkSync(testFile);
-      } catch {}
+      } catch {
+        // Ignore error if file doesn't exist
+      }
     }
   });
 });
