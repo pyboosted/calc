@@ -1,7 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import chalk from "chalk";
+import { render } from "ink";
+import { evaluate } from "./evaluator/evaluate";
+import { formatResultWithUnit } from "./evaluator/unit-formatter";
 import { showHelp } from "./help";
+import { Calculator } from "./ui/calculator";
+import { ConfigManager } from "./utils/config-manager";
+import { CurrencyManager } from "./utils/currency-manager";
 
 // Get the directory of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,31 +45,7 @@ function handleEarlyFlags(args: string[]) {
   }
 }
 
-async function loadDependencies() {
-  const chalk = (await import("chalk")).default;
-  const { render } = await import("ink");
-  const { evaluate } = await import("./evaluator/evaluate");
-  const { formatResultWithUnit } = await import("./evaluator/unit-formatter");
-  const { Calculator } = await import("./ui/calculator");
-  const { ConfigManager } = await import("./utils/config-manager");
-  const { CurrencyManager } = await import("./utils/currency-manager");
-
-  return {
-    chalk,
-    render,
-    evaluate,
-    formatResultWithUnit,
-    Calculator,
-    ConfigManager,
-    CurrencyManager,
-  };
-}
-
-async function initializeManagers(
-  ConfigManager: typeof import("./utils/config-manager").ConfigManager,
-  CurrencyManager: typeof import("./utils/currency-manager").CurrencyManager,
-  args: string[]
-) {
+async function initializeManagers(args: string[]) {
   // Initialize config manager
   const configManager = ConfigManager.getInstance();
   await configManager.initialize();
@@ -80,10 +63,7 @@ async function initializeManagers(
   await currencyManager.initialize();
 }
 
-function loadFileContent(
-  args: string[],
-  chalk: typeof import("chalk").default
-): string | undefined {
+function loadFileContent(args: string[]): string | undefined {
   const fileArg = args.find((arg) => arg.startsWith("--file=") || arg === "-f");
   if (!fileArg) {
     return;
@@ -104,12 +84,7 @@ function loadFileContent(
   }
 }
 
-function processNonInteractiveMode(
-  input: string,
-  evaluate: typeof import("./evaluator/evaluate").evaluate,
-  formatResultWithUnit: typeof import("./evaluator/unit-formatter").formatResultWithUnit,
-  chalk: typeof import("chalk").default
-) {
+function processNonInteractiveMode(input: string) {
   const lines = input.split("\n").filter((line) => line.trim());
   const variables = new Map();
   const previousResults: import("./types").CalculatedValue[] = [];
@@ -146,28 +121,17 @@ async function main() {
   // Handle early flags before loading dependencies
   handleEarlyFlags(args);
 
-  // Load dependencies
-  const {
-    chalk,
-    render,
-    evaluate,
-    formatResultWithUnit,
-    Calculator,
-    ConfigManager,
-    CurrencyManager,
-  } = await loadDependencies();
-
   // Initialize managers
-  await initializeManagers(ConfigManager, CurrencyManager, args);
+  await initializeManagers(args);
 
   // Load file content if specified
-  const fileContent = loadFileContent(args, chalk);
+  const fileContent = loadFileContent(args);
 
   // Determine mode and execute
   const input = fileContent || args.join(" ");
   if (input.trim()) {
     // Non-interactive mode
-    processNonInteractiveMode(input, evaluate, formatResultWithUnit, chalk);
+    processNonInteractiveMode(input);
   } else {
     // Interactive mode
     render(<Calculator initialContent={input} />);
@@ -176,9 +140,6 @@ async function main() {
 
 // Handle errors
 main().catch((error) => {
-  // Only load chalk if we need to show an error
-  import("chalk").then(({ default: chalk }) => {
-    console.error(chalk.red(`Error: ${error.message}`));
-    process.exit(1);
-  });
+  console.error(chalk.red(`Error: ${error.message}`));
+  process.exit(1);
 });
