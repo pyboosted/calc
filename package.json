@@ -45,7 +45,8 @@
     "typecheck": "tsc --noEmit",
     "format": "ultracite format",
     "lint": "ultracite lint",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.5",

@@ -1,28 +1,13 @@
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { Box, Text, useApp, useInput } from "ink";
 import type React from "react";
 import { useRef, useState } from "react";
+import { getVersion } from "../utils/version";
 import { CalculatorEngine } from "./calculator-engine";
 import { InputWithResult } from "./input-with-result";
-
-// Get package version
-const __dirname = dirname(fileURLToPath(import.meta.url));
-let version = "";
-const possiblePaths = [
-  join(__dirname, "..", "..", "package.json"),
-  join(__dirname, "..", "package.json"),
-];
-for (const path of possiblePaths) {
-  if (existsSync(path)) {
-    const pkg = JSON.parse(readFileSync(path, "utf-8"));
-    version = pkg.version;
-    break;
-  }
-}
 
 interface CalculatorProps {
   initialContent?: string;
@@ -37,12 +22,6 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
 
   const engine = engineRef.current;
   const lines = engine.getLines();
-  const _currentLine = lines[currentLineIndex] || {
-    content: "",
-    result: null,
-    error: null,
-    isComment: false,
-  };
 
   useInput((input, key) => {
     if (key.escape) {
@@ -178,7 +157,7 @@ export const Calculator: React.FC<CalculatorProps> = ({ initialContent }) => {
         <Text bold color="cyan">
           Boosted Calculator
         </Text>
-        {version && <Text color="gray"> v{version}</Text>}
+        <Text color="gray"> v{getVersion()}</Text>
       </Box>
 
       <Box flexDirection="column">

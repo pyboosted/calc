@@ -1,6 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import chalk from "chalk";
 import { render } from "ink";
 import { evaluate } from "./evaluator/evaluate";
@@ -9,38 +7,18 @@ import { showHelp } from "./help";
 import { Calculator } from "./ui/calculator";
 import { ConfigManager } from "./utils/config-manager";
 import { CurrencyManager } from "./utils/currency-manager";
-
-// Get the directory of the current module
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// Try multiple possible locations for package.json
-let packageJson: { version: string } | undefined;
-const possiblePaths = [
-  join(__dirname, "..", "..", "package.json"), // Development: src/cli.tsx -> calc/package.json
-  join(__dirname, "..", "package.json"), // Installed: dist/cli.js -> calc/package.json
-];
-
-for (const path of possiblePaths) {
-  if (existsSync(path)) {
-    try {
-      packageJson = JSON.parse(readFileSync(path, "utf-8"));
-      break;
-    } catch (_e) {
-      // Continue to next path
-    }
-  }
-}
+import { getVersion } from "./utils/version";
 
 function handleEarlyFlags(args: string[]) {
   // Handle --help flag FIRST (before any heavy imports)
   if (args.includes("--help") || args.includes("-h")) {
-    showHelp(packageJson?.version);
+    showHelp(getVersion());
     process.exit(0);
   }
 
   // Handle --version flag FIRST (before any heavy imports)
   if (args.includes("--version") || args.includes("-v")) {
-    console.log(packageJson?.version || "unknown");
+    console.log(getVersion());
     process.exit(0);
   }
 }
