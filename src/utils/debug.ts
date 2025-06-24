@@ -28,32 +28,64 @@ export function debugLog(category: string, message: string, data?: unknown) {
   }
 }
 
-export function debugKeypress(key: {
-  name?: string;
-  sequence?: string;
-  ctrl?: boolean;
-  meta?: boolean;
-  alt?: boolean;
-  shift?: boolean;
-  code?: string;
-  raw?: string;
-}) {
+export function debugKeypress(
+  input: string,
+  key: {
+    sequence?: string;
+    ctrl?: boolean;
+    meta?: boolean;
+    shift?: boolean;
+    upArrow?: boolean;
+    downArrow?: boolean;
+    leftArrow?: boolean;
+    rightArrow?: boolean;
+    pageUp?: boolean;
+    pageDown?: boolean;
+    return?: boolean;
+    escape?: boolean;
+    backspace?: boolean;
+    delete?: boolean;
+    tab?: boolean;
+  }
+) {
   if (!debugMode) {
     return;
   }
 
   const keyInfo = {
-    name: key.name,
+    input: input || "(empty)",
     sequence: key.sequence,
+    // Modifiers
     ctrl: key.ctrl,
     meta: key.meta,
-    alt: key.alt,
     shift: key.shift,
-    code: key.code,
-    raw: key.raw,
+    // Special keys
+    upArrow: key.upArrow,
+    downArrow: key.downArrow,
+    leftArrow: key.leftArrow,
+    rightArrow: key.rightArrow,
+    pageUp: key.pageUp,
+    pageDown: key.pageDown,
+    return: key.return,
+    escape: key.escape,
+    backspace: key.backspace,
+    delete: key.delete,
+    tab: key.tab,
   };
 
-  debugLog("KEYPRESS", `Key pressed: ${key.name || key.sequence}`, keyInfo);
+  // Filter out undefined values for cleaner output
+  const cleanKeyInfo = Object.entries(keyInfo).reduce(
+    (acc, [k, v]) => {
+      if (v !== undefined && v !== false) {
+        acc[k] = v;
+      }
+      return acc;
+    },
+    {} as Record<string, unknown>
+  );
+
+  const keyDisplay = key.sequence || input || "(unknown)";
+  debugLog("KEYPRESS", `Key pressed: ${keyDisplay}`, cleanKeyInfo);
 }
 
 export function debugToken(token: Token) {

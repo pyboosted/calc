@@ -1,9 +1,10 @@
 import clipboardy from "clipboardy";
-import { Box, type Key, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp, useInput } from "ink";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatResultWithUnit } from "../evaluator/unit-formatter";
 import { debugKeypress, setDebugMode } from "../utils/debug";
+import { HotkeyManager } from "../utils/hotkey-manager";
 import { getVersion } from "../utils/version";
 import { CalculatorStateManager } from "./calculator-state";
 import { InputWithResult } from "./input-with-result";
@@ -61,7 +62,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
     };
   }, []);
 
-  const handleCopyResult = () => {
+  const handleCopyResult = useCallback(() => {
     const manager = stateManagerRef.current;
     if (!manager) {
       return;
@@ -72,135 +73,171 @@ export const Calculator: React.FC<CalculatorProps> = ({
       clipboardy.writeSync(resultToCopy);
       manager.setCopyHighlight("result");
     }
-  };
+  }, []);
 
-  const handleSpecialKeys = (
-    key: Key,
-    input: string,
-    manager: CalculatorStateManager
-  ) => {
-    // Handle special terminal sequences for word navigation
-    // Option+Left: can be meta+b, ESC+b or specific sequences
-    if (
-      input === "\x1bb" ||
-      (key.escape && input === "b") ||
-      (key.meta && input === "b")
-    ) {
-      manager.handleMoveWordLeft();
-      return true;
-    }
-    // Option+Right: can be meta+f, ESC+f or specific sequences
-    if (
-      input === "\x1bf" ||
-      (key.escape && input === "f") ||
-      (key.meta && input === "f")
-    ) {
-      manager.handleMoveWordRight();
-      return true;
-    }
+  // Create hotkey manager with all keyboard shortcuts
+  const hotkeyManager = useMemo(() => {
+    const hk = new HotkeyManager();
+    const manager = () => stateManagerRef.current;
 
-    // Option+Backspace sequences (for word deletion)
-    if (input === "\x17" || input === "\x1b\x7f" || input === "\x1b\x08") {
-      manager.handleDeleteWord();
-      return true;
-    }
-
-    // Check for Cmd+Arrow keys (if your terminal sends meta for Cmd)
-    if (key.meta && key.leftArrow) {
-      manager.handleMoveToLineStart();
-      return true;
-    }
-    if (key.meta && key.rightArrow) {
-      manager.handleMoveToLineEnd();
-      return true;
-    }
-
-    // Meta+Backspace - check if it's Cmd+Backspace (delete to line start) or Option+Backspace (delete word)
-    if (key.meta && (key.backspace || key.delete)) {
-      // In most terminals, Cmd+Backspace would delete to line start
-      // but Option+Backspace would delete word.
-      // Since we can't distinguish, let's use delete word as it's more common
-      manager.handleDeleteWord();
-      return true;
-    }
-
-    return false;
-  };
-
-  const handleCtrlKeys = (input: string, manager: CalculatorStateManager) => {
-    switch (input) {
-      case "a": // Beginning of line
-        manager.handleMoveToLineStart();
+    // Exit shortcuts
+    hk.bind(
+      "Escape",
+      () => {
+        process.exit(0);
         return true;
-      case "e": // End of line
-        manager.handleMoveToLineEnd();
-        return true;
-      case "w": // Delete word backwards (also sent by Option+Backspace on some terminals)
-        manager.handleDeleteWord();
-        return true;
-      case "k": // Delete to end of line
-        manager.handleDeleteToLineEnd();
-        return true;
-      case "u": // Delete to beginning of line (also sent by Cmd+Backspace on some terminals)
-        manager.handleDeleteToLineStart();
-        return true;
-      default:
+      },
+      { description: "Exit calculator" }
+    );
+    hk.bind(
+      "Ctrl+C",
+      (key, input) => {
+        if (key.ctrl && input === "c") {
+          process.exit(0);
+          return true;
+        }
         return false;
-    }
-  };
+      },
+      { description: "Exit calculator" }
+    );
 
-  const handleNavigation = (key: Key, input: string) => {
-    const manager = stateManagerRef.current;
-    if (!manager) {
-      return false;
-    }
+    // Navigation
+    hk.bind(
+      "Enter",
+      () => {
+        manager()?.handleNewLine();
+        return true;
+      },
+      { description: "New line" }
+    );
+    hk.bind(
+      "Up",
+      () => {
+        manager()?.handleArrowUp();
+        return true;
+      },
+      { description: "Navigate up" }
+    );
+    hk.bind(
+      "Down",
+      () => {
+        manager()?.handleArrowDown();
+        return true;
+      },
+      { description: "Navigate down" }
+    );
+    hk.bind(
+      "Left",
+      () => {
+        manager()?.handleArrowLeft();
+        return true;
+      },
+      { description: "Move cursor left" }
+    );
+    hk.bind(
+      "Right",
+      () => {
+        manager()?.handleArrowRight();
+        return true;
+      },
+      { description: "Move cursor right" }
+    );
 
-    // Basic navigation
-    if (key.return) {
-      manager.handleNewLine();
-      return true;
-    }
-    if (key.upArrow) {
-      manager.handleArrowUp();
-      return true;
-    }
-    if (key.downArrow) {
-      manager.handleArrowDown();
-      return true;
-    }
-    if (key.leftArrow) {
-      manager.handleArrowLeft();
-      return true;
-    }
-    if (key.rightArrow) {
-      manager.handleArrowRight();
-      return true;
-    }
+    // Word navigation
+    hk.bind(
+      "Alt+Left,Meta+Left,Option+Left,\\\\x1bb,Esc b,Meta+B",
+      () => {
+        manager()?.handleMoveWordLeft();
+        return true;
+      },
+      { description: "Move word left" }
+    );
+    hk.bind(
+      "Alt+Right,Meta+Right,Option+Right,\\\\x1bf,Esc f,Meta+F",
+      () => {
+        manager()?.handleMoveWordRight();
+        return true;
+      },
+      { description: "Move word right" }
+    );
 
-    // Ctrl key combinations
-    if (key.ctrl && !key.meta) {
-      return handleCtrlKeys(input, manager);
-    }
+    // Line start/end
+    hk.bind(
+      "Ctrl+Left,Home,\\\\x1b[H,\\\\x1b[1~,Ctrl+A",
+      () => {
+        manager()?.handleMoveToLineStart();
+        return true;
+      },
+      { description: "Move to line start" }
+    );
+    hk.bind(
+      "Ctrl+Right,End,\\\\x1b[F,\\\\x1b[4~,Ctrl+E",
+      () => {
+        manager()?.handleMoveToLineEnd();
+        return true;
+      },
+      { description: "Move to line end" }
+    );
 
-    // Special sequences (Option keys, etc)
-    if (handleSpecialKeys(key, input, manager)) {
-      return true;
-    }
+    // Deletion
+    hk.bind(
+      "Backspace,Delete",
+      () => {
+        const m = manager();
+        if (m) {
+          m.handleBackspace();
+          return true;
+        }
+        return false;
+      },
+      { description: "Delete character" }
+    );
 
-    // Regular backspace (not with modifiers)
-    if (
-      (key.backspace || key.delete) &&
-      !key.meta &&
-      input !== "\x17" &&
-      input !== "\x1b\x7f" &&
-      input !== "\x1b\x08"
-    ) {
-      manager.handleBackspace();
-      return true;
-    }
+    hk.bind(
+      "Alt+Backspace,Meta+Backspace,Option+Backspace,\\\\x17,\\\\x1b\\\\x7f,\\\\x1b\\\\x08,Ctrl+W",
+      () => {
+        manager()?.handleDeleteWord();
+        return true;
+      },
+      { description: "Delete word" }
+    );
+    hk.bind(
+      "Ctrl+K",
+      () => {
+        manager()?.handleDeleteToLineEnd();
+        return true;
+      },
+      { description: "Delete to line end" }
+    );
+    hk.bind(
+      "Ctrl+U",
+      () => {
+        manager()?.handleDeleteToLineStart();
+        return true;
+      },
+      { description: "Delete to line start" }
+    );
 
-    return false;
-  };
+    // Commands
+    hk.bind(
+      "Ctrl+L",
+      () => {
+        manager()?.clearAll();
+        return true;
+      },
+      { description: "Clear all" }
+    );
+    hk.bind(
+      "Ctrl+Y",
+      () => {
+        handleCopyResult();
+        return true;
+      },
+      { description: "Copy result" }
+    );
+
+    return hk;
+  }, [handleCopyResult]);
 
   // Handle all input through the state manager
   useInput((input, key) => {
@@ -211,29 +248,16 @@ export const Calculator: React.FC<CalculatorProps> = ({
 
     // Log keypress in debug mode
     if (debugMode) {
-      debugKeypress({ ...key, raw: input });
+      debugKeypress(input, key);
     }
 
-    // Exit handling
-    if (key.escape || (key.ctrl && input === "c")) {
-      process.exit(0);
+    // Let hotkey manager handle it first
+    if (hotkeyManager.handle(key, input)) {
+      return;
     }
 
-    // Ctrl commands
-    if (key.ctrl) {
-      if (input === "l") {
-        manager.clearAll();
-        return;
-      }
-      if (input === "y" && !key.shift) {
-        handleCopyResult();
-        return;
-      }
-    }
-
-    // Navigation and editing
-    if (!handleNavigation(key, input) && input && !key.ctrl && !key.meta) {
-      // Regular character input
+    // Regular character input (if not handled by hotkeys)
+    if (input && !key.ctrl && !key.meta) {
       manager.handleCharacterInput(input);
     }
   });
