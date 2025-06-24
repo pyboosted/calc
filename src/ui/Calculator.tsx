@@ -85,7 +85,6 @@ export const Calculator: React.FC<CalculatorProps> = ({
       "Escape",
       () => {
         process.exit(0);
-        return true;
       },
       { description: "Exit calculator" }
     );
@@ -94,7 +93,6 @@ export const Calculator: React.FC<CalculatorProps> = ({
       (key, input) => {
         if (key.ctrl && input === "c") {
           process.exit(0);
-          return true;
         }
         return false;
       },
@@ -145,6 +143,41 @@ export const Calculator: React.FC<CalculatorProps> = ({
         return true;
       },
       { description: "Move to line end" }
+    );
+
+    hk.bind(
+      "Alt+Shift+Up,Meta+Shift+Up,Option+Shift+Up",
+      () => {
+        manager()?.handleCopyLineUp();
+        return true;
+      },
+      { description: "Copy line up" }
+    );
+    hk.bind(
+      "Alt+Shift+Down,Meta+Shift+Down,Option+Shift+Down",
+      () => {
+        manager()?.handleCopyLineDown();
+        return true;
+      },
+      { description: "Copy line down" }
+    );
+
+    // Line manipulation
+    hk.bind(
+      "Alt+Up,Meta+Up,Option+Up",
+      () => {
+        manager()?.handleSwapLineUp();
+        return true;
+      },
+      { description: "Swap line up" }
+    );
+    hk.bind(
+      "Alt+Down,Meta+Down,Option+Down",
+      () => {
+        manager()?.handleSwapLineDown();
+        return true;
+      },
+      { description: "Swap line down" }
     );
 
     // Plain arrow keys - bind these AFTER modified versions

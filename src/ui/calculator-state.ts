@@ -2,7 +2,8 @@ import { EventEmitter } from "node:events";
 import { CalculatorEngine } from "./calculator-engine";
 
 // Regular expressions for word navigation
-const WORD_BOUNDARY_REGEX = /[^a-zA-Z0-9_]/;
+// Support Unicode letters (including Cyrillic, Greek, etc.) plus numbers and underscore
+const WORD_BOUNDARY_REGEX = /[^\p{L}\p{N}_]/u;
 const WHITESPACE_REGEX = /\s/;
 
 export interface CalculatorState {
@@ -484,6 +485,95 @@ export class CalculatorStateManager extends EventEmitter {
       }
       this.emit("stateChanged");
     }
+  }
+
+  // Swap current line with line above (Option+Up)
+  handleSwapLineUp() {
+    if (this.currentLineIndex === 0) {
+      return; // Can't swap first line up
+    }
+
+    const lines = this.engine.getLines();
+    const currentLine = lines[this.currentLineIndex];
+    const prevLine = lines[this.currentLineIndex - 1];
+
+    if (!(currentLine && prevLine)) {
+      return;
+    }
+
+    // Save content before swapping
+    const currentContent = currentLine.content;
+    const prevContent = prevLine.content;
+
+    // Swap the content
+    this.engine.updateLine(this.currentLineIndex - 1, currentContent);
+    this.engine.updateLine(this.currentLineIndex, prevContent);
+
+    // Move cursor to the swapped line
+    this.currentLineIndex--;
+    this.emit("stateChanged");
+  }
+
+  // Swap current line with line below (Option+Down)
+  handleSwapLineDown() {
+    const lines = this.engine.getLines();
+    if (this.currentLineIndex >= lines.length - 1) {
+      return; // Can't swap last line down
+    }
+
+    const currentLine = lines[this.currentLineIndex];
+    const nextLine = lines[this.currentLineIndex + 1];
+
+    if (!(currentLine && nextLine)) {
+      return;
+    }
+
+    // Save content before swapping
+    const currentContent = currentLine.content;
+    const nextContent = nextLine.content;
+
+    // Swap the content
+    this.engine.updateLine(this.currentLineIndex, nextContent);
+    this.engine.updateLine(this.currentLineIndex + 1, currentContent);
+
+    // Move cursor to the swapped line
+    this.currentLineIndex++;
+    this.emit("stateChanged");
+  }
+
+  // Copy current line above (Option+Shift+Up)
+  handleCopyLineUp() {
+    const lines = this.engine.getLines();
+    const currentLine = lines[this.currentLineIndex];
+
+    if (!currentLine) {
+      return;
+    }
+
+    // Insert a copy of current line above
+    this.engine.insertLine(this.currentLineIndex);
+    this.engine.updateLine(this.currentLineIndex, currentLine.content);
+
+    // Cursor stays at the same relative position in the original line (now moved down)
+    this.currentLineIndex++;
+    this.emit("stateChanged");
+  }
+
+  // Copy current line below (Option+Shift+Down)
+  handleCopyLineDown() {
+    const lines = this.engine.getLines();
+    const currentLine = lines[this.currentLineIndex];
+
+    if (!currentLine) {
+      return;
+    }
+
+    // Insert a copy of current line below
+    this.engine.insertLine(this.currentLineIndex + 1);
+    this.engine.updateLine(this.currentLineIndex + 1, currentLine.content);
+
+    // Cursor stays at the same position in the original line
+    this.emit("stateChanged");
   }
 
   clearAll() {
