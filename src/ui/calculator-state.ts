@@ -322,6 +322,51 @@ export class CalculatorStateManager extends EventEmitter {
     this.emit("stateChanged");
   }
 
+  handleDelete() {
+    const lines = this.engine.getLines();
+    const line = lines[this.currentLineIndex];
+    if (!line) {
+      return;
+    }
+
+    if (this.cursorPosition >= line.content.length) {
+      // At end of line, merge with next line
+      this.handleDeleteAtLineEnd();
+    } else {
+      // Delete character forward
+      const newValue =
+        line.content.slice(0, this.cursorPosition) +
+        line.content.slice(this.cursorPosition + 1);
+
+      this.engine.updateLine(this.currentLineIndex, newValue);
+      this.emit("stateChanged");
+    }
+  }
+
+  handleDeleteAtLineEnd() {
+    const lines = this.engine.getLines();
+
+    // Check if there's a next line to merge
+    if (this.currentLineIndex >= lines.length - 1) {
+      return;
+    }
+
+    const currentLine = lines[this.currentLineIndex];
+    const nextLine = lines[this.currentLineIndex + 1];
+
+    if (!(currentLine && nextLine)) {
+      return;
+    }
+
+    // Merge next line content to current line
+    const mergedContent = currentLine.content + nextLine.content;
+
+    this.engine.updateLine(this.currentLineIndex, mergedContent);
+    this.engine.deleteLine(this.currentLineIndex + 1);
+
+    this.emit("stateChanged");
+  }
+
   handleArrowUp() {
     if (this.currentLineIndex > 0) {
       this.currentLineIndex--;

@@ -110,6 +110,44 @@ export const Calculator: React.FC<CalculatorProps> = ({
       },
       { description: "New line" }
     );
+
+    // Word navigation - bind these BEFORE plain arrow keys
+    hk.bind(
+      "Alt+Left,Meta+Left,Option+Left,\\\\x1bb,Esc b,Meta+B",
+      () => {
+        manager()?.handleMoveWordLeft();
+        return true;
+      },
+      { description: "Move word left" }
+    );
+    hk.bind(
+      "Alt+Right,Meta+Right,Option+Right,\\\\x1bf,Esc f,Meta+F",
+      () => {
+        manager()?.handleMoveWordRight();
+        return true;
+      },
+      { description: "Move word right" }
+    );
+
+    // Line start/end - also before plain arrow keys
+    hk.bind(
+      "Ctrl+Left,Home,\\\\x1b[H,\\\\x1b[1~,Ctrl+A",
+      () => {
+        manager()?.handleMoveToLineStart();
+        return true;
+      },
+      { description: "Move to line start" }
+    );
+    hk.bind(
+      "Ctrl+Right,End,\\\\x1b[F,\\\\x1b[4~,Ctrl+E",
+      () => {
+        manager()?.handleMoveToLineEnd();
+        return true;
+      },
+      { description: "Move to line end" }
+    );
+
+    // Plain arrow keys - bind these AFTER modified versions
     hk.bind(
       "Up",
       () => {
@@ -143,45 +181,9 @@ export const Calculator: React.FC<CalculatorProps> = ({
       { description: "Move cursor right" }
     );
 
-    // Word navigation
-    hk.bind(
-      "Alt+Left,Meta+Left,Option+Left,\\\\x1bb,Esc b,Meta+B",
-      () => {
-        manager()?.handleMoveWordLeft();
-        return true;
-      },
-      { description: "Move word left" }
-    );
-    hk.bind(
-      "Alt+Right,Meta+Right,Option+Right,\\\\x1bf,Esc f,Meta+F",
-      () => {
-        manager()?.handleMoveWordRight();
-        return true;
-      },
-      { description: "Move word right" }
-    );
-
-    // Line start/end
-    hk.bind(
-      "Ctrl+Left,Home,\\\\x1b[H,\\\\x1b[1~,Ctrl+A",
-      () => {
-        manager()?.handleMoveToLineStart();
-        return true;
-      },
-      { description: "Move to line start" }
-    );
-    hk.bind(
-      "Ctrl+Right,End,\\\\x1b[F,\\\\x1b[4~,Ctrl+E",
-      () => {
-        manager()?.handleMoveToLineEnd();
-        return true;
-      },
-      { description: "Move to line end" }
-    );
-
     // Deletion
     hk.bind(
-      "Backspace,Delete",
+      "Backspace",
       () => {
         const m = manager();
         if (m) {
@@ -190,7 +192,20 @@ export const Calculator: React.FC<CalculatorProps> = ({
         }
         return false;
       },
-      { description: "Delete character" }
+      { description: "Delete character backward" }
+    );
+
+    hk.bind(
+      "Delete",
+      () => {
+        const m = manager();
+        if (m) {
+          m.handleDelete();
+          return true;
+        }
+        return false;
+      },
+      { description: "Delete character forward" }
     );
 
     hk.bind(
