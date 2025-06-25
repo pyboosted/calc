@@ -19,6 +19,7 @@ interface InputLineProps {
   selection?: TextSelection | null;
   lineIndex?: number;
   copyHighlight?: "result" | "full" | "selection" | null;
+  inactiveCursor?: boolean;
 }
 
 // Component for empty line with cursor
@@ -172,6 +173,7 @@ export const InputLine: React.FC<InputLineProps> = ({
   selection,
   lineIndex,
   copyHighlight,
+  inactiveCursor,
 }) => {
   // Get selection range for this line
   const selectionRange = getLineSelectionRange(selection, lineIndex);
@@ -192,6 +194,13 @@ export const InputLine: React.FC<InputLineProps> = ({
       );
     }
     // Normal cursor (no selection)
+    if (inactiveCursor) {
+      return (
+        <Text backgroundColor="gray" color="black">
+          {" "}
+        </Text>
+      );
+    }
     return <Text inverse> </Text>;
   }
 
@@ -220,6 +229,7 @@ export const InputLine: React.FC<InputLineProps> = ({
     lineIndex,
     isAtSelectionEdge: (charPos) =>
       isAtSelectionEdge(charPos, selection ?? null, lineIndex),
+    inactiveCursor,
   });
 
   // Render all parts in a single Text component

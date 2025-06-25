@@ -1,20 +1,20 @@
 # Monthly Budget Calculation
 
 # Income
-salary = 5000
-freelance = 1500
+salary = 5000 rub
+freelance = 1500 rub
 total_income = salary + freelance
 
 # Fixed Expenses
-rent = 1200
-utilities = 150
-insurance = 200
+rent = 1200 rub
+utilities = 150 rub
+insurance = 200 rub
 total_fixed = rent + utilities + insurance
 
 # Variable Expenses
-groceries = 400
-transport = 200
-entertainment = 300
+groceries = 400 rub
+transport = 200 rub
+entertainment = 300 rub
 total_variable = groceries + transport + entertainment
 
 # Summary

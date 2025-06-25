@@ -6,9 +6,8 @@ ${chalk.bold.cyan("Boosted Calculator")} v${version || "-unknown"} - A powerful 
 
 ${chalk.bold.yellow("USAGE:")}
   ${chalk.green("calc")}                        Start interactive calculator
-  ${chalk.green("calc")} ${chalk.cyan("<expression>")}           Evaluate expression and exit
-  ${chalk.green("calc")} ${chalk.cyan("--file=<path>")}          Load calculations from file
-  ${chalk.green("calc")} ${chalk.cyan("-f <path>")}              Load calculations from file (alternative)
+  ${chalk.green("calc")} ${chalk.cyan("<file>")}                 Open file in interactive mode
+  ${chalk.green("calc")} ${chalk.cyan("-e <expression>")}        Evaluate expression and exit
   ${chalk.green("calc")} ${chalk.cyan("--update")}               Update currency exchange rates
   ${chalk.green("calc")} ${chalk.cyan("--debug")}                Enable debug mode (verbose logging)
   ${chalk.green("calc")} ${chalk.cyan("--version")}              Show version number
@@ -17,12 +16,14 @@ ${chalk.bold.yellow("USAGE:")}
   ${chalk.green("calc")} ${chalk.cyan("-h")}                     Show this help message (alternative)
 
 ${chalk.bold.yellow("EXAMPLES:")}
-  ${chalk.green("calc")} ${chalk.cyan('"2 + 2"')}                Basic arithmetic
-  ${chalk.green("calc")} ${chalk.cyan('"sqrt(16)"')}             Mathematical functions
-  ${chalk.green("calc")} ${chalk.cyan('"100 USD in EUR"')}       Currency conversion
-  ${chalk.green("calc")} ${chalk.cyan('"5 feet in meters"')}     Unit conversion
-  ${chalk.green("calc")} ${chalk.cyan('"today + 5 days"')}       Date arithmetic
-  ${chalk.green("calc")} ${chalk.cyan('"20% of 150"')}           Percentage calculations
+  ${chalk.green("calc")} ${chalk.cyan("-e '2 + 2'")}                Basic arithmetic
+  ${chalk.green("calc")} ${chalk.cyan("-e 'sqrt(16)'")}             Mathematical functions
+  ${chalk.green("calc")} ${chalk.cyan("-e '100 USD in EUR'")}       Currency conversion
+  ${chalk.green("calc")} ${chalk.cyan("-e '5 feet in meters'")}     Unit conversion
+  ${chalk.green("calc")} ${chalk.cyan("-e 'today + 5 days'")}       Date arithmetic
+  ${chalk.green("calc")} ${chalk.cyan("-e '20% of 150'")}           Percentage calculations
+  ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
+  ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
 ${chalk.bold.yellow("INTERACTIVE MODE:")}
   When running without arguments, the calculator starts in interactive mode.
@@ -31,6 +32,7 @@ ${chalk.bold.yellow("KEYBOARD SHORTCUTS:")}
   ${chalk.magenta("Ctrl+C, ESC")}                 Exit calculator
   ${chalk.magenta("Ctrl+L")}                      Clear all calculations
   ${chalk.magenta("Ctrl+Y")}                      Copy result to clipboard
+  ${chalk.magenta("Ctrl+S")}                      Save file
   ${chalk.magenta("Enter")}                       New line
 
 ${chalk.bold.yellow("FEATURES:")}

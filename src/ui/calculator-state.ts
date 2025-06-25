@@ -1,11 +1,9 @@
 import { EventEmitter } from "node:events";
+import { existsSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import clipboardy from "clipboardy";
+import type { KeyEvent } from "../utils/key-event";
 import { CalculatorEngine } from "./calculator-engine";
-
-// Regular expressions for word navigation
-// Support Unicode letters (including Cyrillic, Greek, etc.) plus numbers and underscore
-const WORD_BOUNDARY_REGEX = /[^\p{L}\p{N}_]/u;
-const WHITESPACE_REGEX = /\s/;
+import { TextEditor } from "./text-editor";
 
 export interface TextSelection {
   from: { line: number; char: number };
@@ -18,616 +16,273 @@ export interface CalculatorState {
   cursorPosition: number;
   copyHighlight: "result" | "full" | "selection" | null;
   selection: TextSelection | null;
+  filename: string | null;
+  isModified: boolean;
+  isFilenamePrompt: boolean;
+  isRenamingFile: boolean;
+  promptInput: string;
+  promptCursorPosition: number;
+  promptSelection: TextSelection | null;
 }
 
 export class CalculatorStateManager extends EventEmitter {
   private engine: CalculatorEngine;
-  private currentLineIndex = 0;
-  private cursorPosition = 0;
+  private editor: TextEditor;
   private copyHighlight: "result" | "full" | "selection" | null = null;
   private highlightTimer: NodeJS.Timeout | null = null;
-  private selection: TextSelection | null = null;
+  private filename: string | null = null;
+  private isModified = false;
+  private isFilenamePrompt = false;
+  private filenameEditor: TextEditor = new TextEditor({ multiline: false });
+  private initialContent: string;
+  private isNewFile = false;
+  private isRenamingFile = false;
 
-  constructor(initialContent?: string, debugMode = false) {
+  constructor(
+    initialContent?: string,
+    debugMode = false,
+    filename?: string,
+    isNewFile = false
+  ) {
     super();
-    this.engine = new CalculatorEngine(initialContent, debugMode);
+    this.filename = filename || null;
+    this.initialContent = initialContent || "";
+
+    // If it's a new file that doesn't exist yet, mark it as modified
+    this.isNewFile = isNewFile;
+    if (isNewFile) {
+      this.isModified = true;
+    }
+
+    // Initialize editor first
+    this.editor = new TextEditor({
+      multiline: true,
+      initialContent: initialContent || "",
+    });
+    this.setupEditorSubscriptions(this.editor);
+
+    // Initialize filename editor
+    this.setupEditorSubscriptions(this.filenameEditor);
+
+    // Initialize engine without content
+    this.engine = new CalculatorEngine(undefined, debugMode);
+
+    // Now sync content from editor to engine
+    if (initialContent) {
+      this.syncEditorToEngine(true); // silent during construction
+    }
+  }
+
+  // Setup editor event subscriptions
+  private setupEditorSubscriptions(editor: TextEditor): void {
+    editor.removeAllListeners(); // Clean up any existing
+
+    editor.on("change", () => {
+      if (editor === this.editor) {
+        this.syncEditorToEngine();
+        this.updateModifiedStatus();
+      }
+      this.emit("stateChanged");
+    });
+
+    // Add custom hotkeys based on editor type
+    if (editor === this.filenameEditor) {
+      editor.hotkeys.bind("Return", () => {
+        this.handleFilenamePromptEnter();
+        return true;
+      });
+      // Escape is now handled at app level in Calculator.tsx
+    }
+  }
+
+  // Sync TextEditor content with CalculatorEngine
+  private syncEditorToEngine(silent = false): void {
+    const lines = this.editor.getLines();
+    const engineLines = this.engine.getLines();
+
+    // Update existing lines
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line !== undefined) {
+        if (i < engineLines.length) {
+          this.engine.updateLine(i, line);
+        } else {
+          this.engine.insertLine(i);
+          this.engine.updateLine(i, line);
+        }
+      }
+    }
+
+    // Remove extra lines from engine
+    while (engineLines.length > lines.length) {
+      this.engine.deleteLine(engineLines.length - 1);
+    }
+
+    // Don't emit during construction
+    if (!silent) {
+      this.emit("stateChanged");
+    }
   }
 
   getState(): CalculatorState {
+    const editorState = this.editor.getState();
+    const cursorPos = editorState.cursorPosition;
+
     return {
       lines: this.engine.getLines(),
-      currentLineIndex: this.currentLineIndex,
-      cursorPosition: this.cursorPosition,
+      currentLineIndex: cursorPos.line,
+      cursorPosition: cursorPos.char,
       copyHighlight: this.copyHighlight,
-      selection: this.selection,
+      selection: editorState.selection,
+      filename: this.filename,
+      isModified: this.isModified,
+      isFilenamePrompt: this.isFilenamePrompt,
+      isRenamingFile: this.isRenamingFile,
+      promptInput: this.filenameEditor.getContent(),
+      promptCursorPosition: this.filenameEditor.getCursorPosition().char,
+      promptSelection: this.filenameEditor.getSelection(),
     };
   }
 
   // Input handling methods
   handleCharacterInput(char: string) {
-    // If we have a selection, delete it first
-    if (this.selection) {
-      this.deleteSelectedText();
-    }
-
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line) {
+    // Don't allow input during filename prompt
+    if (this.isFilenamePrompt) {
       return;
     }
 
-    const newValue =
-      line.content.slice(0, this.cursorPosition) +
-      char +
-      line.content.slice(this.cursorPosition);
-
-    this.engine.updateLine(this.currentLineIndex, newValue);
-    this.cursorPosition += char.length;
-    this.emit("stateChanged");
+    this.editor.insertChar(char);
   }
 
   handleBackspace() {
-    // If we have a selection, delete it instead
-    if (this.selection) {
-      this.deleteSelectedText();
-      return;
-    }
-
-    if (this.cursorPosition === 0) {
-      this.handleBackspaceAtLineStart();
-    } else {
-      const lines = this.engine.getLines();
-      const line = lines[this.currentLineIndex];
-      if (!line) {
-        return;
-      }
-
-      const newValue =
-        line.content.slice(0, this.cursorPosition - 1) +
-        line.content.slice(this.cursorPosition);
-
-      this.engine.updateLine(this.currentLineIndex, newValue);
-      this.cursorPosition--;
-      this.emit("stateChanged");
-    }
+    this.editor.deleteChar();
   }
 
-  handleBackspaceAtLineStart() {
-    if (this.currentLineIndex === 0) {
-      return;
-    }
-
-    const lines = this.engine.getLines();
-    const currentLine = lines[this.currentLineIndex];
-    const prevLine = lines[this.currentLineIndex - 1];
-
-    if (!(currentLine && prevLine)) {
-      return;
-    }
-
-    const mergedContent = prevLine.content + currentLine.content;
-    this.cursorPosition = prevLine.content.length;
-
-    this.engine.updateLine(this.currentLineIndex - 1, mergedContent);
-    this.engine.deleteLine(this.currentLineIndex);
-    this.currentLineIndex--;
-
-    this.emit("stateChanged");
+  handleDelete() {
+    this.editor.deleteCharForward();
   }
 
   handleNewLine() {
-    // Clear any selection when pressing Enter
-    this.selection = null;
-
-    const lines = this.engine.getLines();
-    const currentLine = lines[this.currentLineIndex];
-    if (!currentLine) {
-      return;
-    }
-
-    const beforeCursor = currentLine.content.slice(0, this.cursorPosition);
-    const afterCursor = currentLine.content.slice(this.cursorPosition);
-
-    this.engine.updateLine(this.currentLineIndex, beforeCursor);
-    this.engine.insertLine(this.currentLineIndex + 1);
-    this.engine.updateLine(this.currentLineIndex + 1, afterCursor);
-
-    this.currentLineIndex++;
-    this.cursorPosition = 0;
-
-    // Ensure currentLineIndex is valid
-    const newLines = this.engine.getLines();
-    if (this.currentLineIndex >= newLines.length) {
-      this.currentLineIndex = newLines.length - 1;
-    }
-
-    this.emit("stateChanged");
+    this.editor.insertNewLine();
   }
 
   handleArrowLeft() {
-    if (this.cursorPosition > 0) {
-      this.cursorPosition--;
-      this.emit("stateChanged");
-    } else if (this.currentLineIndex > 0) {
-      // At beginning of line, move to end of previous line
-      this.currentLineIndex--;
-      const lines = this.engine.getLines();
-      const prevLine = lines[this.currentLineIndex];
-      if (prevLine) {
-        this.cursorPosition = prevLine.content.length;
-      }
-      this.emit("stateChanged");
-    }
+    this.editor.moveCursorLeft(false);
+    this.emit("stateChanged");
   }
 
   handleArrowRight() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line) {
-      return;
-    }
-
-    if (this.cursorPosition < line.content.length) {
-      this.cursorPosition++;
-      this.emit("stateChanged");
-    } else if (this.currentLineIndex < lines.length - 1) {
-      // At end of line, move to beginning of next line
-      this.currentLineIndex++;
-      this.cursorPosition = 0;
-      this.emit("stateChanged");
-    }
+    this.editor.moveCursorRight(false);
+    this.emit("stateChanged");
   }
 
   // Move cursor to beginning of line (Cmd+Left)
   handleMoveToLineStart() {
-    this.cursorPosition = 0;
+    this.editor.moveCursorToLineStart();
     this.emit("stateChanged");
   }
 
   // Move cursor to end of line (Cmd+Right)
   handleMoveToLineEnd() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line) {
-      return;
-    }
-    this.cursorPosition = line.content.length;
+    this.editor.moveCursorToLineEnd();
     this.emit("stateChanged");
-  }
-
-  // Helper to check if a character is a word boundary
-  private isWordBoundary(char: string | undefined): boolean {
-    return char !== undefined && WORD_BOUNDARY_REGEX.test(char);
-  }
-
-  // Helper to check if a character is whitespace
-  private isWhitespace(char: string | undefined): boolean {
-    return char !== undefined && WHITESPACE_REGEX.test(char);
   }
 
   // Move cursor one word left (Option+Left)
   handleMoveWordLeft() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-
-    if (!line) {
-      return;
-    }
-
-    // If at beginning of line
-    if (this.cursorPosition === 0) {
-      if (this.currentLineIndex > 0) {
-        // Move to previous line
-        this.currentLineIndex--;
-        const prevLine = lines[this.currentLineIndex];
-        if (prevLine) {
-          // Move to the last word of previous line
-          const content = prevLine.content;
-          let newPos = content.length;
-
-          // Skip trailing whitespace
-          while (newPos > 0 && this.isWhitespace(content[newPos - 1])) {
-            newPos--;
-          }
-
-          // Find beginning of last word
-          while (newPos > 0 && !this.isWordBoundary(content[newPos - 1])) {
-            newPos--;
-          }
-
-          this.cursorPosition = newPos;
-        }
-        this.emit("stateChanged");
-      }
-      return;
-    }
-
-    const content = line.content;
-    let newPos = this.cursorPosition - 1;
-
-    // Skip any whitespace
-    while (newPos > 0 && this.isWhitespace(content[newPos])) {
-      newPos--;
-    }
-
-    // If we're at a word boundary, skip to the previous word
-    if (
-      newPos > 0 &&
-      this.isWordBoundary(content[newPos]) &&
-      !this.isWordBoundary(content[newPos - 1])
-    ) {
-      newPos--;
-    }
-
-    // Move to the beginning of the current word
-    while (newPos > 0 && !this.isWordBoundary(content[newPos - 1])) {
-      newPos--;
-    }
-
-    this.cursorPosition = newPos;
+    this.editor.moveCursorWordLeft();
     this.emit("stateChanged");
-  }
-
-  // Helper to find position after next word in content
-  private findNextWordPosition(content: string, startPos: number): number {
-    let newPos = startPos;
-
-    // Skip any whitespace we're currently in
-    while (newPos < content.length && this.isWhitespace(content[newPos])) {
-      newPos++;
-    }
-
-    // If we're at a non-whitespace word boundary (special char), move past just this one character
-    if (
-      newPos < content.length &&
-      this.isWordBoundary(content[newPos]) &&
-      !this.isWhitespace(content[newPos])
-    ) {
-      newPos++;
-    } else {
-      // We're in a word, skip to the end of it
-      while (newPos < content.length && !this.isWordBoundary(content[newPos])) {
-        newPos++;
-      }
-    }
-
-    return newPos;
   }
 
   // Move cursor one word right (Option+Right)
   handleMoveWordRight() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-
-    if (!line) {
-      return;
-    }
-
-    // If at end of line
-    if (this.cursorPosition >= line.content.length) {
-      if (this.currentLineIndex < lines.length - 1) {
-        // Move to next line
-        this.currentLineIndex++;
-        const nextLine = lines[this.currentLineIndex];
-        if (nextLine) {
-          this.cursorPosition = this.findNextWordPosition(nextLine.content, 0);
-        }
-        this.emit("stateChanged");
-      }
-      return;
-    }
-
-    this.cursorPosition = this.findNextWordPosition(
-      line.content,
-      this.cursorPosition
-    );
+    this.editor.moveCursorWordRight();
     this.emit("stateChanged");
   }
 
   // Delete to beginning of line (Cmd+Backspace)
   handleDeleteToLineStart() {
-    if (this.cursorPosition === 0) {
-      return;
-    }
-
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line) {
-      return;
-    }
-
-    const newValue = line.content.slice(this.cursorPosition);
-    this.engine.updateLine(this.currentLineIndex, newValue);
-    this.cursorPosition = 0;
-    this.emit("stateChanged");
-  }
-
-  // Helper to find position to delete last word from end of content
-  private findLastWordDeletePos(content: string): number {
-    let deleteFromPos = content.length;
-
-    // Skip trailing whitespace
-    while (deleteFromPos > 0 && this.isWhitespace(content[deleteFromPos - 1])) {
-      deleteFromPos--;
-    }
-
-    // Delete the last word
-    if (deleteFromPos > 0) {
-      if (
-        this.isWordBoundary(content[deleteFromPos - 1]) &&
-        !this.isWhitespace(content[deleteFromPos - 1])
-      ) {
-        // It's a special character, delete just that one
-        deleteFromPos--;
-      } else {
-        // It's a regular word, delete the whole word
-        while (
-          deleteFromPos > 0 &&
-          !this.isWordBoundary(content[deleteFromPos - 1])
-        ) {
-          deleteFromPos--;
-        }
-      }
-    }
-
-    return deleteFromPos;
-  }
-
-  // Helper to delete last word from previous line
-  private deleteWordFromPrevLine() {
-    const lines = this.engine.getLines();
-    if (this.currentLineIndex > 0) {
-      const prevLine = lines[this.currentLineIndex - 1];
-      const currentLine = lines[this.currentLineIndex];
-      if (prevLine && currentLine) {
-        const deleteFromPos = this.findLastWordDeletePos(prevLine.content);
-        const newPrevContent = prevLine.content.slice(0, deleteFromPos);
-
-        // Check if current line is empty (no content after cursor)
-        const remainingContent = currentLine.content.slice(this.cursorPosition);
-
-        if (remainingContent.trim() === "") {
-          // Current line is empty, delete it and move to previous line
-          this.engine.updateLine(this.currentLineIndex - 1, newPrevContent);
-          this.engine.deleteLine(this.currentLineIndex);
-          this.currentLineIndex--;
-          this.cursorPosition = deleteFromPos;
-        } else {
-          // Current line has content, merge it with previous line
-          const mergedContent = newPrevContent + remainingContent;
-          this.engine.updateLine(this.currentLineIndex - 1, mergedContent);
-          this.engine.deleteLine(this.currentLineIndex);
-          this.currentLineIndex--;
-          this.cursorPosition = deleteFromPos;
-        }
-
-        this.emit("stateChanged");
-      }
-    }
-  }
-
-  // Helper to find position to delete word from current position
-  private findWordDeletePos(content: string, fromPos: number): number {
-    let deleteToPos = fromPos;
-
-    // First, skip any trailing whitespace to the left of cursor
-    while (deleteToPos > 0 && this.isWhitespace(content[deleteToPos - 1])) {
-      deleteToPos--;
-    }
-
-    // If we've only deleted whitespace, check special case
-    if (deleteToPos < fromPos) {
-      // Special case: if there's only one whitespace, also delete the word before it
-      if (fromPos - deleteToPos === 1 && deleteToPos > 0) {
-        deleteToPos = this.deleteWordAtPosition(content, deleteToPos);
-      }
-    } else if (deleteToPos > 0) {
-      // No whitespace was found, delete the word/character to the left
-      deleteToPos = this.deleteWordAtPosition(content, deleteToPos);
-    }
-
-    return deleteToPos;
-  }
-
-  // Helper to delete word at specific position
-  private deleteWordAtPosition(content: string, pos: number): number {
-    if (
-      this.isWordBoundary(content[pos - 1]) &&
-      !this.isWhitespace(content[pos - 1])
-    ) {
-      // It's a special character, delete just that one
-      return pos - 1;
-    }
-    // It's a regular word, delete the whole word
-    let newPos = pos;
-    while (newPos > 0 && !this.isWordBoundary(content[newPos - 1])) {
-      newPos--;
-    }
-    return newPos;
+    this.editor.deleteToLineStart();
   }
 
   // Delete word or whitespace (Option+Backspace)
   handleDeleteWord() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-
-    if (!line) {
-      return;
-    }
-
-    // If at beginning of line, delete last word from previous line
-    if (this.cursorPosition === 0) {
-      this.deleteWordFromPrevLine();
-      return;
-    }
-
-    // Delete word from current line
-    const deleteToPos = this.findWordDeletePos(
-      line.content,
-      this.cursorPosition
-    );
-    const newValue =
-      line.content.slice(0, deleteToPos) +
-      line.content.slice(this.cursorPosition);
-    this.engine.updateLine(this.currentLineIndex, newValue);
-    this.cursorPosition = deleteToPos;
-    this.emit("stateChanged");
+    this.editor.deleteWord();
   }
 
   // Delete to end of line (Ctrl+K)
   handleDeleteToLineEnd() {
-    const lines = this.engine.getLines();
-    const line = lines[this.currentLineIndex];
-    if (!line) {
-      return;
-    }
-
-    const newValue = line.content.slice(0, this.cursorPosition);
-    this.engine.updateLine(this.currentLineIndex, newValue);
-    this.emit("stateChanged");
+    this.editor.deleteToLineEnd();
   }
 
   handleArrowUp() {
-    if (this.currentLineIndex > 0) {
-      this.currentLineIndex--;
-      const lines = this.engine.getLines();
-      const newLine = lines[this.currentLineIndex];
-      if (newLine) {
-        // Keep cursor at same position, but cap at the line length (not length + 1)
-        // This prevents cursor from being at virtual position when moving up/down
-        this.cursorPosition = Math.min(
-          this.cursorPosition,
-          newLine.content.length
-        );
-      }
-      this.emit("stateChanged");
-    }
+    this.editor.moveCursorUp();
+    this.emit("stateChanged");
   }
 
   handleArrowDown() {
-    const lines = this.engine.getLines();
-    if (this.currentLineIndex < lines.length - 1) {
-      // Move to next line
-      this.currentLineIndex++;
-      const newLine = lines[this.currentLineIndex];
-      if (newLine) {
-        // Keep cursor at same position, but cap at the line length (not length + 1)
-        // This prevents cursor from being at virtual position when moving up/down
-        this.cursorPosition = Math.min(
-          this.cursorPosition,
-          newLine.content.length
-        );
-      }
-      this.emit("stateChanged");
-    } else if (this.cursorPosition === 0) {
-      // On last line at position 0 - move to end of line
-      const currentLine = lines[this.currentLineIndex];
-      if (currentLine) {
-        this.cursorPosition = currentLine.content.length;
-        this.emit("stateChanged");
-      }
-    }
+    this.editor.moveCursorDown();
+    this.emit("stateChanged");
   }
 
   // Swap current line with line above (Option+Up)
   handleSwapLineUp() {
-    if (this.currentLineIndex === 0) {
-      return; // Can't swap first line up
-    }
-
-    const lines = this.engine.getLines();
-    const currentLine = lines[this.currentLineIndex];
-    const prevLine = lines[this.currentLineIndex - 1];
-
-    if (!(currentLine && prevLine)) {
-      return;
-    }
-
-    // Save content before swapping
-    const currentContent = currentLine.content;
-    const prevContent = prevLine.content;
-
-    // Swap the content
-    this.engine.updateLine(this.currentLineIndex - 1, currentContent);
-    this.engine.updateLine(this.currentLineIndex, prevContent);
-
-    // Move cursor to the swapped line
-    this.currentLineIndex--;
-    this.emit("stateChanged");
+    this.editor.swapLineUp();
   }
 
   // Swap current line with line below (Option+Down)
   handleSwapLineDown() {
-    const lines = this.engine.getLines();
-    if (this.currentLineIndex >= lines.length - 1) {
-      return; // Can't swap last line down
-    }
-
-    const currentLine = lines[this.currentLineIndex];
-    const nextLine = lines[this.currentLineIndex + 1];
-
-    if (!(currentLine && nextLine)) {
-      return;
-    }
-
-    // Save content before swapping
-    const currentContent = currentLine.content;
-    const nextContent = nextLine.content;
-
-    // Swap the content
-    this.engine.updateLine(this.currentLineIndex, nextContent);
-    this.engine.updateLine(this.currentLineIndex + 1, currentContent);
-
-    // Move cursor to the swapped line
-    this.currentLineIndex++;
-    this.emit("stateChanged");
+    this.editor.swapLineDown();
   }
 
   // Copy current line above (Option+Shift+Up)
   handleCopyLineUp() {
-    const lines = this.engine.getLines();
-    const currentLine = lines[this.currentLineIndex];
+    const cursorPos = this.editor.getCursorPosition();
+    const lines = this.editor.getLines();
 
-    if (!currentLine) {
+    if (cursorPos.line >= lines.length) {
       return;
     }
 
-    // Insert a copy of current line above
-    this.engine.insertLine(this.currentLineIndex);
-    this.engine.updateLine(this.currentLineIndex, currentLine.content);
+    const currentContent = lines[cursorPos.line];
+    if (currentContent === undefined) {
+      return;
+    }
 
-    // Cursor stays at the same relative position in the original line (now moved down)
-    this.currentLineIndex++;
-    this.emit("stateChanged");
+    // Insert line using the new method
+    this.editor.insertLine(cursorPos.line, currentContent);
+    this.editor.setCursorPosition(cursorPos.line + 1, cursorPos.char);
   }
 
   // Copy current line below (Option+Shift+Down)
   handleCopyLineDown() {
-    const lines = this.engine.getLines();
-    const currentLine = lines[this.currentLineIndex];
+    const cursorPos = this.editor.getCursorPosition();
+    const lines = this.editor.getLines();
 
-    if (!currentLine) {
+    if (cursorPos.line >= lines.length) {
       return;
     }
 
-    // Insert a copy of current line below
-    this.engine.insertLine(this.currentLineIndex + 1);
-    this.engine.updateLine(this.currentLineIndex + 1, currentLine.content);
+    const currentContent = lines[cursorPos.line];
+    if (currentContent === undefined) {
+      return;
+    }
 
-    // Cursor stays at the same position in the original line
-    this.emit("stateChanged");
+    // Insert line using the new method
+    this.editor.insertLine(cursorPos.line + 1, currentContent);
+    // Cursor stays on the original line
   }
 
   clearAll() {
     this.engine = new CalculatorEngine();
-    this.currentLineIndex = 0;
-    this.cursorPosition = 0;
-    this.emit("stateChanged");
+    this.editor.reset();
+    // No need to emit stateChanged - the editor will emit change event
   }
 
   getCurrentLine() {
     const lines = this.engine.getLines();
-    return lines[this.currentLineIndex];
+    const cursorPos = this.editor.getCursorPosition();
+    return lines[cursorPos.line];
   }
 
   setCopyHighlight(type: "result" | "full" | "selection") {
@@ -649,145 +304,111 @@ export class CalculatorStateManager extends EventEmitter {
 
   // Selection management methods
   startSelection() {
-    this.selection = {
-      from: { line: this.currentLineIndex, char: this.cursorPosition },
-      to: { line: this.currentLineIndex, char: this.cursorPosition },
-    };
+    this.editor.startSelection();
     this.emit("stateChanged");
   }
 
   updateSelection() {
-    if (this.selection) {
-      this.selection.to = {
-        line: this.currentLineIndex,
-        char: this.cursorPosition,
-      };
-      this.emit("stateChanged");
-    }
+    const cursorPos = this.editor.getCursorPosition();
+    this.editor.extendSelection(cursorPos);
+    this.emit("stateChanged");
   }
 
   clearSelection() {
-    this.selection = null;
+    this.editor.clearSelection();
     this.emit("stateChanged");
   }
 
   hasSelection(): boolean {
-    return this.selection !== null;
+    return this.editor.getSelection() !== null;
   }
 
   getSelectedText(): string {
-    if (!this.selection) {
-      return "";
-    }
-
-    const lines = this.engine.getLines();
-    const { from, to } = this.normalizeSelection(this.selection);
-
-    if (from.line === to.line) {
-      // Single line selection
-      const line = lines[from.line];
-      return line ? line.content.slice(from.char, to.char) : "";
-    }
-
-    // Multi-line selection
-    let result = "";
-    for (let lineIndex = from.line; lineIndex <= to.line; lineIndex++) {
-      const line = lines[lineIndex];
-      if (!line) {
-        continue;
-      }
-
-      if (lineIndex === from.line) {
-        // First line: from start position to end
-        result += line.content.slice(from.char);
-      } else if (lineIndex === to.line) {
-        // Last line: from start to end position
-        result += line.content.slice(0, to.char);
-      } else {
-        // Middle lines: entire content
-        result += line.content;
-      }
-
-      // Add newline except for the last line
-      if (lineIndex < to.line) {
-        result += "\n";
-      }
-    }
-
-    return result;
+    return this.editor.getSelectedText();
   }
 
   deleteSelectedText() {
-    if (!this.selection) {
-      return;
-    }
-
-    const lines = this.engine.getLines();
-    const { from, to } = this.normalizeSelection(this.selection);
-
-    if (from.line === to.line) {
-      // Single line deletion
-      const line = lines[from.line];
-      if (line) {
-        const newContent =
-          line.content.slice(0, from.char) + line.content.slice(to.char);
-        this.engine.updateLine(from.line, newContent);
-      }
-    } else {
-      // Multi-line deletion
-      const firstLine = lines[from.line];
-      const lastLine = lines[to.line];
-
-      if (firstLine && lastLine) {
-        // Merge first and last line parts
-        const newContent =
-          firstLine.content.slice(0, from.char) +
-          lastLine.content.slice(to.char);
-        this.engine.updateLine(from.line, newContent);
-
-        // Delete all lines in between (in reverse order to maintain indices)
-        for (let lineIndex = to.line; lineIndex > from.line; lineIndex--) {
-          this.engine.deleteLine(lineIndex);
-        }
-      }
-    }
-
-    // Move cursor to selection start
-    this.currentLineIndex = from.line;
-    this.cursorPosition = from.char;
-    this.clearSelection();
-    this.emit("stateChanged");
+    this.editor.deleteSelection();
   }
 
   expandSelectionToFullLines() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return;
     }
 
-    const lines = this.engine.getLines();
-    const { from, to } = this.normalizeSelection(this.selection);
+    // Create normalized selection
+    const { from, to } = selection;
+    const normalizedFrom = { ...from };
+    const normalizedTo = { ...to };
 
-    // Expand to include full lines
-    this.selection = {
-      from: { line: from.line, char: 0 },
-      to: {
-        line: to.line,
-        char: lines[to.line]?.content.length || 0,
-      },
-    };
+    if (from.line > to.line || (from.line === to.line && from.char > to.char)) {
+      // Swap if needed
+      normalizedFrom.line = to.line;
+      normalizedFrom.char = to.char;
+      normalizedTo.line = from.line;
+      normalizedTo.char = from.char;
+    }
+
+    // Expand to full lines
+    const lines = this.editor.getLines();
+    normalizedFrom.char = 0;
+    normalizedTo.char = lines[normalizedTo.line]?.length || 0;
+
+    // Update selection
+    this.editor.startSelection();
+    this.editor.extendSelection(normalizedTo);
 
     this.emit("stateChanged");
   }
 
-  private normalizeSelection(selection: TextSelection): TextSelection {
-    const { from, to } = selection;
+  // Selection navigation methods
+  handleArrowLeftWithSelection() {
+    this.editor.navigateWithSelection(() => this.editor.moveCursorLeft(true));
+    this.emit("stateChanged");
+  }
 
-    // Ensure from is before to
-    if (from.line > to.line || (from.line === to.line && from.char > to.char)) {
-      return { from: to, to: from };
-    }
+  handleArrowRightWithSelection() {
+    this.editor.navigateWithSelection(() => this.editor.moveCursorRight(true));
+    this.emit("stateChanged");
+  }
 
-    return { from, to };
+  handleArrowUpWithSelection() {
+    this.editor.navigateWithSelection(() => this.editor.moveCursorUp(true));
+    this.emit("stateChanged");
+  }
+
+  handleArrowDownWithSelection() {
+    this.editor.navigateWithSelection(() => this.editor.moveCursorDown(true));
+    this.emit("stateChanged");
+  }
+
+  handleMoveWordLeftWithSelection() {
+    this.editor.navigateWithSelection(() =>
+      this.editor.moveCursorWordLeft(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleMoveWordRightWithSelection() {
+    this.editor.navigateWithSelection(() =>
+      this.editor.moveCursorWordRight(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleMoveToLineStartWithSelection() {
+    this.editor.navigateWithSelection(() =>
+      this.editor.moveCursorToLineStart(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleMoveToLineEndWithSelection() {
+    this.editor.navigateWithSelection(() =>
+      this.editor.moveCursorToLineEnd(true)
+    );
+    this.emit("stateChanged");
   }
 
   // Handle navigation with optional selection extension
@@ -797,69 +418,45 @@ export class CalculatorStateManager extends EventEmitter {
     actionType?: string
   ) {
     if (extending) {
-      // Start selection if not already started
-      if (this.selection) {
-        // Selection already exists, just extend it
-        action();
-
-        // Update selection end position
-        if (this.selection) {
-          this.selection.to = {
-            line: this.currentLineIndex,
-            char: this.cursorPosition,
-          };
-
-          // Check if selection became empty (backtracked to start)
-          if (
-            this.selection.from.line === this.selection.to.line &&
-            this.selection.from.char === this.selection.to.char
-          ) {
-            // Exit selection mode
-            this.selection = null;
-          }
-        }
-      } else {
-        // Initialize new selection - simple approach
-        this.selection = {
-          from: { line: this.currentLineIndex, char: this.cursorPosition },
-          to: { line: this.currentLineIndex, char: this.cursorPosition },
-        };
-
-        // Perform the navigation
-        action();
-
-        // Update selection end position
-        if (this.selection) {
-          this.selection.to = {
-            line: this.currentLineIndex,
-            char: this.cursorPosition,
-          };
-        }
-      }
-      // Emit state change only once
-      this.emit("stateChanged");
+      // This is now handled by the specific selection methods above
+      // The action should be one of those methods
+      action();
     } else {
-      // Clear selection if exists
-      if (this.selection) {
+      const selection = this.editor.getSelection();
+      if (selection) {
         // For left/right arrows, move to selection edge
         if (actionType === "left") {
-          const { from } = this.normalizeSelection(this.selection);
-          this.currentLineIndex = from.line;
-          this.cursorPosition = from.char;
-          this.selection = null;
-          this.emit("stateChanged");
+          // Normalize selection
+          const { from, to } = selection;
+          if (
+            from.line > to.line ||
+            (from.line === to.line && from.char > to.char)
+          ) {
+            // Move to 'to' which is actually the start
+            this.editor.setCursorPosition(to.line, to.char);
+          } else {
+            // Move to 'from'
+            this.editor.setCursorPosition(from.line, from.char);
+          }
           return;
         }
         if (actionType === "right") {
-          const { to } = this.normalizeSelection(this.selection);
-          this.currentLineIndex = to.line;
-          this.cursorPosition = to.char;
-          this.selection = null;
-          this.emit("stateChanged");
+          // Normalize selection
+          const { from, to } = selection;
+          if (
+            from.line > to.line ||
+            (from.line === to.line && from.char > to.char)
+          ) {
+            // Move to 'from' which is actually the end
+            this.editor.setCursorPosition(from.line, from.char);
+          } else {
+            // Move to 'to'
+            this.editor.setCursorPosition(to.line, to.char);
+          }
           return;
         }
         // For other navigation, just clear selection
-        this.selection = null;
+        this.editor.clearSelection();
       }
       // Perform normal navigation
       action();
@@ -868,7 +465,8 @@ export class CalculatorStateManager extends EventEmitter {
 
   // Selection mode actions (when selection exists)
   handleSelectionCopy() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return false;
     }
 
@@ -884,14 +482,14 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleSelectionPaste() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return false;
     }
 
     try {
       const clipboardText = clipboardy.readSync();
-      this.deleteSelectedText();
-      this.handleCharacterInput(clipboardText);
+      this.editor.replaceSelection(clipboardText);
       return true;
     } catch {
       return false;
@@ -899,7 +497,8 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleSelectionCut() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return false;
     }
 
@@ -913,7 +512,8 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleSelectionDelete() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return false;
     }
 
@@ -922,7 +522,8 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleSelectionExpand() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return false;
     }
 
@@ -931,15 +532,380 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   handleSelectionEscape() {
-    if (!this.selection) {
+    const selection = this.editor.getSelection();
+    if (!selection) {
       return false;
     }
 
     // Move cursor to where user was actively selecting (selection.to)
-    this.currentLineIndex = this.selection.to.line;
-    this.cursorPosition = this.selection.to.char;
-    this.clearSelection();
-    this.emit("stateChanged");
+    this.editor.setCursorPosition(selection.to.line, selection.to.char);
     return true;
+  }
+
+  // File operations
+  private setModified(modified: boolean) {
+    if (this.isModified !== modified) {
+      this.isModified = modified;
+    }
+  }
+
+  private updateModifiedStatus() {
+    // For new files that don't exist yet, always mark as modified until saved
+    if (this.isNewFile) {
+      this.setModified(true);
+    } else {
+      // For existing files, check if content has changed
+      this.setModified(this.hasContentChanged());
+    }
+  }
+
+  getCurrentContent(): string {
+    return this.editor.getContent();
+  }
+
+  hasContentChanged(): boolean {
+    return this.getCurrentContent() !== this.initialContent;
+  }
+
+  handleRename() {
+    // Don't allow rename for new files that don't exist yet
+    if (this.isNewFile || !this.filename) {
+      return false;
+    }
+
+    this.startFilenamePrompt(true);
+    return true;
+  }
+
+  saveFile(): boolean {
+    if (!this.filename) {
+      // Need to prompt for filename
+      this.startFilenamePrompt();
+      return false;
+    }
+
+    try {
+      const content = this.getCurrentContent();
+      writeFileSync(this.filename, content, "utf-8");
+      this.initialContent = content;
+      this.isNewFile = false; // File now exists
+      this.setModified(false);
+      this.emit("stateChanged");
+      return true;
+    } catch (error) {
+      // In production, we might want to show an error message
+      console.error("Failed to save file:", error);
+      return false;
+    }
+  }
+
+  saveFileAs(newFilename: string): boolean {
+    try {
+      const content = this.getCurrentContent();
+      writeFileSync(newFilename, content, "utf-8");
+      this.filename = newFilename;
+      this.initialContent = content;
+      this.isNewFile = false; // File now exists
+      this.setModified(false);
+      this.emit("stateChanged");
+      return true;
+    } catch (error) {
+      console.error("Failed to save file:", error);
+      return false;
+    }
+  }
+
+  renameFile(newFilename: string): boolean {
+    if (!this.filename) {
+      return false;
+    }
+
+    // If keeping the same filename, just save the file
+    if (newFilename === this.filename) {
+      return this.saveFile();
+    }
+
+    try {
+      const content = this.getCurrentContent();
+
+      // If file is modified, save with new name
+      if (this.isModified) {
+        writeFileSync(newFilename, content, "utf-8");
+      } else {
+        // If not modified, rename the existing file
+        renameSync(this.filename, newFilename);
+      }
+
+      // If it was a new file that didn't exist, just update the filename
+      if (this.isNewFile) {
+        this.filename = newFilename;
+        this.emit("stateChanged");
+        return true;
+      }
+
+      // Delete the old file if we saved to a new name
+      if (this.isModified && existsSync(this.filename)) {
+        unlinkSync(this.filename);
+      }
+
+      this.filename = newFilename;
+      this.initialContent = content;
+      this.isNewFile = false; // File now exists
+      this.setModified(false);
+      this.emit("stateChanged");
+      return true;
+    } catch (error) {
+      console.error("Failed to rename file:", error);
+      return false;
+    }
+  }
+
+  startFilenamePrompt(isRename = false) {
+    this.isFilenamePrompt = true;
+    this.isRenamingFile = isRename;
+    this.filenameEditor.reset();
+
+    // For rename, pre-fill with current filename
+    if (isRename && this.filename) {
+      this.filenameEditor.setContent(this.filename, 0, this.filename.length);
+    }
+
+    this.filenameEditor.setFocused(true);
+    // No need to emit stateChanged - the editor will emit change event
+  }
+
+  handleFilenamePromptInput(char: string) {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+
+    this.filenameEditor.insertChar(char);
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptBackspace() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+
+    this.filenameEditor.deleteChar();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptDelete() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    // In our implementation, Delete acts like Backspace to match main editor
+    this.filenameEditor.deleteChar();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptEnter() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+
+    const filename = this.filenameEditor.getContent().trim();
+    if (filename) {
+      if (this.isRenamingFile) {
+        this.renameFile(filename);
+      } else {
+        this.saveFileAs(filename);
+      }
+    }
+
+    this.cancelFilenamePrompt();
+  }
+
+  cancelFilenamePrompt() {
+    this.isFilenamePrompt = false;
+    this.isRenamingFile = false;
+    this.filenameEditor.reset();
+    this.emit("stateChanged");
+  }
+
+  // Filename prompt navigation methods
+  handleFilenamePromptLeft() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.moveCursorLeft();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptRight() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.moveCursorRight();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptHome() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.moveCursorToLineStart();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptEnd() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.moveCursorToLineEnd();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptWordLeft() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.moveCursorWordLeft();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptWordRight() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.moveCursorWordRight();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptDeleteWord() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.deleteWord();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptDeleteToStart() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.deleteToLineStart();
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptDeleteToEnd() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.deleteToLineEnd();
+    this.emit("stateChanged");
+  }
+
+  getFilename(): string | null {
+    return this.filename;
+  }
+
+  getIsModified(): boolean {
+    return this.isModified;
+  }
+
+  getIsFilenamePrompt(): boolean {
+    return this.isFilenamePrompt;
+  }
+
+  getPromptInput(): string {
+    return this.filenameEditor.getContent();
+  }
+
+  getPromptCursorPosition(): number {
+    return this.filenameEditor.getCursorPosition().char;
+  }
+
+  getIsNewFile(): boolean {
+    return this.isNewFile;
+  }
+
+  // Handle key input for the active editor
+  handleKeyInput(key: KeyEvent, input: string): boolean {
+    if (this.isFilenamePrompt) {
+      return this.filenameEditor.handleKeyInput(key, input);
+    }
+    return this.editor.handleKeyInput(key, input);
+  }
+
+  // Filename prompt selection navigation methods
+  handleFilenamePromptLeftWithSelection() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.navigateWithSelection(() =>
+      this.filenameEditor.moveCursorLeft(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptRightWithSelection() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.navigateWithSelection(() =>
+      this.filenameEditor.moveCursorRight(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptWordLeftWithSelection() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.navigateWithSelection(() =>
+      this.filenameEditor.moveCursorWordLeft(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptWordRightWithSelection() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.navigateWithSelection(() =>
+      this.filenameEditor.moveCursorWordRight(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptHomeWithSelection() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.navigateWithSelection(() =>
+      this.filenameEditor.moveCursorToLineStart(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  handleFilenamePromptEndWithSelection() {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+    this.filenameEditor.navigateWithSelection(() =>
+      this.filenameEditor.moveCursorToLineEnd(true)
+    );
+    this.emit("stateChanged");
+  }
+
+  // Handle filename prompt navigation with selection
+  handleFilenamePromptNavigationKey(action: () => void, extending: boolean) {
+    if (!this.isFilenamePrompt) {
+      return;
+    }
+
+    if (extending) {
+      // This is now handled by the specific selection methods above
+      action();
+    } else {
+      // Clear selection and navigate
+      this.filenameEditor.clearSelection();
+      action();
+    }
+
+    this.emit("stateChanged");
   }
 }

@@ -164,6 +164,12 @@ export function renderCharPart(
     if (part.inverse) {
       props.inverse = true;
     }
+    // Handle inactive cursor - override inverse with dim background
+    if (part.color === "gray" && part.inverse) {
+      props.inverse = undefined;
+      props.backgroundColor = "gray";
+      props.color = "black";
+    }
     return props;
   })();
 

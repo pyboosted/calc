@@ -35,9 +35,13 @@ export function debugKeypress(
   input: string,
   key: {
     sequence?: string;
+    raw?: string;
+    name?: string;
+    code?: string;
     ctrl?: boolean;
     meta?: boolean;
     shift?: boolean;
+    option?: boolean;
     upArrow?: boolean;
     downArrow?: boolean;
     leftArrow?: boolean;
@@ -55,21 +59,31 @@ export function debugKeypress(
     return;
   }
 
+  // Helper to convert string to hex representation
+  const toHex = (str: string) => {
+    return str
+      .split("")
+      .map((c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`)
+      .join("");
+  };
+
   const keyInfo = {
     input: input || "(empty)",
+    inputHex: input ? toHex(input) : undefined,
+    inputLength: input ? input.length : 0,
     sequence: key.sequence,
-    // Add hex representation for non-printable sequences
-    sequenceHex:
-      key.sequence && !key.sequence.match(PRINTABLE_CHARS_REGEX)
-        ? key.sequence
-            .split("")
-            .map((c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`)
-            .join("")
-        : undefined,
+    // Add hex representation for sequences
+    sequenceHex: key.sequence ? toHex(key.sequence) : undefined,
+    sequenceLength: key.sequence ? key.sequence.length : 0,
+    raw: key.raw,
+    rawHex: key.raw ? toHex(key.raw) : undefined,
+    name: key.name,
+    code: key.code,
     // Modifiers
     ctrl: key.ctrl,
     meta: key.meta,
     shift: key.shift,
+    option: key.option,
     // Special keys
     upArrow: key.upArrow,
     downArrow: key.downArrow,
@@ -88,9 +102,13 @@ export function debugKeypress(
         if (
           ![
             "sequence",
+            "raw",
+            "name",
+            "code",
             "ctrl",
             "meta",
             "shift",
+            "option",
             "upArrow",
             "downArrow",
             "leftArrow",
@@ -115,7 +133,7 @@ export function debugKeypress(
   // Filter out undefined values for cleaner output
   const cleanKeyInfo = Object.entries(keyInfo).reduce(
     (acc, [k, v]) => {
-      if (v !== undefined && v !== false && v !== null && v !== "") {
+      if (v !== undefined && v !== false && v !== null && v !== "" && v !== 0) {
         acc[k] = v;
       }
       return acc;
@@ -123,7 +141,20 @@ export function debugKeypress(
     {} as Record<string, unknown>
   );
 
-  const keyDisplay = key.sequence || input || "(unknown)";
+  // Create a more informative key display
+  let keyDisplay = "(unknown)";
+  if (input) {
+    keyDisplay = input;
+    if (input.length > 1 || !input.match(PRINTABLE_CHARS_REGEX)) {
+      keyDisplay += ` (${toHex(input)})`;
+    }
+  } else if (key.sequence) {
+    keyDisplay = key.sequence;
+    if (key.sequence.length > 1 || !key.sequence.match(PRINTABLE_CHARS_REGEX)) {
+      keyDisplay += ` (${toHex(key.sequence)})`;
+    }
+  }
+
   debugLog("KEYPRESS", `Key pressed: ${keyDisplay}`, cleanKeyInfo);
 }
 

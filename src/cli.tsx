@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import chalk from "chalk";
 import { render } from "ink";
 import { evaluate } from "./evaluator/evaluate";
@@ -44,27 +44,6 @@ async function initializeManagers(args: string[]) {
 
   // Initialize currency data
   await currencyManager.initialize();
-}
-
-function loadFileContent(args: string[]): string | undefined {
-  const fileArg = args.find((arg) => arg.startsWith("--file=") || arg === "-f");
-  if (!fileArg) {
-    return;
-  }
-
-  const filePath =
-    fileArg === "-f" ? args[args.indexOf("-f") + 1] : fileArg.split("=")[1];
-  if (!filePath) {
-    console.error(chalk.red("Error: No file path provided"));
-    process.exit(1);
-  }
-
-  try {
-    return readFileSync(filePath, "utf-8");
-  } catch (error) {
-    console.error(chalk.red(`Error reading file: ${error}`));
-    process.exit(1);
-  }
 }
 
 function processNonInteractiveMode(input: string, debugMode: boolean) {
@@ -116,20 +95,89 @@ async function main() {
   // Initialize managers
   await initializeManagers(args);
 
-  // Load file content if specified
-  const fileContent = loadFileContent(args);
+  // Check for -e flag for expression evaluation
+  const expressionIndex = args.indexOf("-e");
+  if (expressionIndex !== -1) {
+    const expression = args[expressionIndex + 1];
+    if (!expression) {
+      console.error(chalk.red("Error: No expression provided after -e"));
+      process.exit(1);
+    }
+    processNonInteractiveMode(expression, debugMode);
+    return;
+  }
 
-  // Filter out --debug from args for input processing
-  const inputArgs = args.filter((arg) => arg !== "--debug");
+  // Separate flags from non-flag arguments
+  const flagArgs: string[] = [];
+  const nonFlagArgs: string[] = [];
 
-  // Determine mode and execute
-  const input = fileContent || inputArgs.join(" ");
-  if (input.trim()) {
-    // Non-interactive mode
-    processNonInteractiveMode(input, debugMode);
+  for (const arg of args) {
+    if (arg.startsWith("-")) {
+      flagArgs.push(arg);
+    } else {
+      nonFlagArgs.push(arg);
+    }
+  }
+
+  // Check if first non-flag argument is a file
+  let filename: string | undefined;
+  let fileContent: string | undefined;
+  let isNewFile = false;
+
+  if (nonFlagArgs.length > 0) {
+    // Error if there are multiple positional arguments
+    if (nonFlagArgs.length > 1) {
+      console.error(
+        chalk.red("Error: Too many arguments. Only one filename is allowed.")
+      );
+      console.error(chalk.gray("Usage: calc [filename]"));
+      console.error(chalk.gray('       calc -e "expression"'));
+      process.exit(1);
+    }
+
+    const potentialFile = nonFlagArgs[0];
+
+    // Single argument - check if it's a file
+    if (potentialFile && existsSync(potentialFile)) {
+      // It's an existing file - load it
+      filename = potentialFile;
+      try {
+        fileContent = readFileSync(potentialFile, "utf-8");
+      } catch (error) {
+        console.error(chalk.red(`Error reading file: ${error}`));
+        process.exit(1);
+      }
+    } else if (potentialFile?.includes(".")) {
+      // Looks like a filename but doesn't exist - create new file on save
+      filename = potentialFile;
+      fileContent = ""; // Start with empty content
+      isNewFile = true;
+      if (debugMode) {
+        console.log(
+          chalk.gray(`File "${potentialFile}" will be created on save`)
+        );
+      }
+    } else {
+      // Not a file, treat as expression for backwards compatibility
+      const input = nonFlagArgs.join(" ");
+      processNonInteractiveMode(input, debugMode);
+      return;
+    }
+  }
+
+  // If we loaded a file, use interactive mode with that content
+  if (filename && fileContent !== undefined) {
+    render(
+      <Calculator
+        debugMode={debugMode}
+        filename={filename}
+        initialContent={fileContent}
+        isNewFile={isNewFile}
+      />
+    );
   } else {
-    // Interactive mode
-    render(<Calculator debugMode={debugMode} initialContent={input} />);
+    // Interactive mode with empty content
+    render(<Calculator debugMode={debugMode} />);
   }
 }
 

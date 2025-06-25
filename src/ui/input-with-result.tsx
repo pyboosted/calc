@@ -15,6 +15,7 @@ interface InputWithResultProps {
   copyHighlight: "result" | "full" | "selection" | null;
   selection?: TextSelection | null;
   lineIndex?: number;
+  inactiveCursor?: boolean;
 }
 
 export const InputWithResult: React.FC<InputWithResultProps> = ({
@@ -27,6 +28,7 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   copyHighlight,
   selection,
   lineIndex,
+  inactiveCursor,
 }) => {
   // Format result
   let resultText = "";
@@ -79,6 +81,7 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
               copyHighlight={copyHighlight}
               cursorPosition={isActive ? cursorPosition : undefined}
               dimColor={isComment}
+              inactiveCursor={inactiveCursor}
               lineIndex={lineIndex}
               selection={selection}
               text={value}

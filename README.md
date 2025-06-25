@@ -82,18 +82,21 @@ npm install -g .
 # Run the calculator (interactive mode)
 calc
 
+# Open a file in interactive mode
+calc budget.calc
+calc calculations.txt
+
+# Create a new file (will be created on save)
+calc my-new-calculations.calc
+
 # Non-interactive mode - calculate and print result
-calc "2 + 2"
-calc "today + 5 days"
-calc "100 USD in EUR"
-calc "sqrt(16) * 2"
+calc -e "2 + 2"
+calc -e "today + 5 days"
+calc -e "100 USD in EUR"
+calc -e "sqrt(16) * 2"
 
 # Update currency exchange rates
 calc --update
-
-# Load calculations from a file
-calc --file=budget.calc
-calc -f calculations.txt
 
 # For development (from source)
 bun start    # Run calculator

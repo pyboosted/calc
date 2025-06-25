@@ -15,7 +15,8 @@ export function buildPartsForCursorInPart(
   selectionRange: { start: number; end: number } | null,
   selection: TextSelection | null,
   _lineIndex: number | undefined,
-  isAtSelectionEdge: (charPos: number) => boolean
+  isAtSelectionEdge: (charPos: number) => boolean,
+  inactiveCursor?: boolean
 ): CharPart[] {
   const parts: CharPart[] = [];
   const relPos = cursorPosition - charIndex;
@@ -52,7 +53,7 @@ export function buildPartsForCursorInPart(
   const isSelectionEnd = isAtSelectionEdge(charPos);
   parts.push({
     text: charAtCursor,
-    color: part.color,
+    color: inactiveCursor && !selection ? "gray" : part.color,
     selected: !!isSelected,
     selectionEnd: !!isSelectionEnd,
     selectionDirection: isSelectionEnd
@@ -94,7 +95,8 @@ export function buildPartsForEndOfLine(
   selectionRange: { start: number; end: number } | null,
   selection: TextSelection | null,
   showLineEndIndicator: boolean,
-  isAtSelectionEdge: (charPos: number) => boolean
+  isAtSelectionEdge: (charPos: number) => boolean,
+  inactiveCursor?: boolean
 ): CharPart[] {
   const parts: CharPart[] = [];
 
@@ -127,6 +129,7 @@ export function buildPartsForEndOfLine(
     parts.push({
       text: " ",
       inverse: !selection, // Only show cursor when no selection
+      color: inactiveCursor && !selection ? "gray" : undefined,
       selected: !!isSelected,
       selectionEnd: !!isSelectionEnd,
       selectionDirection: isSelectionEnd

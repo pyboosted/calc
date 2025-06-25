@@ -20,6 +20,7 @@ interface BuildCharacterPartsOptions {
   showLineEndIndicator: boolean;
   lineIndex: number | undefined;
   isAtSelectionEdge: (charPos: number) => boolean;
+  inactiveCursor?: boolean;
 }
 
 export function buildCharacterParts({
@@ -30,11 +31,16 @@ export function buildCharacterParts({
   showLineEndIndicator,
   lineIndex,
   isAtSelectionEdge,
+  inactiveCursor,
 }: BuildCharacterPartsOptions): CharPart[] {
   const parts: CharPart[] = [];
 
   if (text === "" && cursorPosition !== undefined) {
-    parts.push({ text: " ", inverse: true });
+    parts.push({
+      text: " ",
+      inverse: true,
+      color: inactiveCursor ? "gray" : undefined,
+    });
   } else {
     // Get highlighted parts for the entire text
     const highlightedParts = getHighlightedParts(text);
@@ -58,7 +64,8 @@ export function buildCharacterParts({
             selectionRange,
             selection,
             lineIndex,
-            isAtSelectionEdge
+            isAtSelectionEdge,
+            inactiveCursor
           )
         );
       } else if (
@@ -75,7 +82,8 @@ export function buildCharacterParts({
             selectionRange,
             selection,
             showLineEndIndicator,
-            isAtSelectionEdge
+            isAtSelectionEdge,
+            inactiveCursor
           )
         );
       } else {

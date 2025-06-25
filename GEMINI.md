@@ -1,6 +1,6 @@
-# CLAUDE.md
+# GEMINI.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Gemini when working with code in this repository.
 
 ## Project Overview
 
@@ -21,9 +21,9 @@ bun start
 # or globally after installation
 calc
 
-# Open a file in interactive mode (loads existing file or creates a new one on save)
+# Open a file in interactive mode
 calc budget.calc
-calc new-calculations.txt
+calc calculations.txt
 
 # Evaluate expression with -e flag
 calc -e "2 + 2"
@@ -111,16 +111,16 @@ bun test --name-pattern "percentage"
 The UI uses Ink (React for CLI) with a sophisticated state management system:
 
 1. **State Management**:
-   - **CalculatorStateManager** (`src/ui/calculator-state.ts`): The core UI state machine. An EventEmitter-based manager that handles the direct consequences of user input.
-     - Manages text content, cursor position, text selection, and copy/paste state.
-     - Handles all keyboard input and navigation logic (moving cursor, selecting text, etc.).
-     - Emits 'stateChanged' events to synchronize the React UI with the internal state.
-   - **CalculatorEngine** (`src/ui/calculator-engine.ts`): Manages the logical state of the calculator's lines and their evaluation.
-     - Maintains an array of `LineState` objects, each containing the input text, its calculated result, and any variable assignments.
-     - Handles the evaluation of individual lines and orchestrates re-evaluation of dependent lines when a variable changes.
-   - **HotkeyManager** (`src/ui/hotkey-manager.ts`): A layer responsible for processing raw keyboard events.
-     - Maps complex key combinations (e.g., Ctrl+C, Alt+Backspace) to specific methods on the `CalculatorStateManager`.
-     - Decouples the key event parsing from the state management logic.
+   - **CalculatorStateManager** (`src/ui/calculator-state.ts`): EventEmitter-based state manager
+     - Manages lines, cursor position, text selection, copy highlighting
+     - Handles all keyboard input and navigation logic
+     - Emits 'stateChanged' events for React synchronization
+   - **CalculatorEngine** (`src/ui/calculator-engine.ts`): Manages line data and evaluation
+     - Maintains LineState objects with results and variable assignments
+     - Handles line evaluation and re-evaluation on variable changes
+   - **HotkeyManager** (`src/ui/hotkey-manager.ts`): Keyboard event processing
+     - Maps keyboard inputs to state manager methods
+     - Supports advanced text editing operations
 
 2. **React Components**:
    - **Calculator** (`src/ui/Calculator.tsx`): Main component

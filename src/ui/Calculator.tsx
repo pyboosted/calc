@@ -1,22 +1,29 @@
 import clipboardy from "clipboardy";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp } from "ink";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatResultWithUnit } from "../evaluator/unit-formatter";
-import { debugKeypress, setDebugMode } from "../utils/debug";
+import { useRawInput } from "../hooks/use-raw-input";
+import { debugLog, isDebugMode, setDebugMode } from "../utils/debug";
 import { HotkeyManager } from "../utils/hotkey-manager";
+import { keyEventToString } from "../utils/key-event";
 import { getVersion } from "../utils/version";
 import { CalculatorStateManager } from "./calculator-state";
 import { InputWithResult } from "./input-with-result";
+import { StatusBar } from "./status-bar";
 
 interface CalculatorProps {
   initialContent?: string;
   debugMode?: boolean;
+  filename?: string;
+  isNewFile?: boolean;
 }
 
 export const Calculator: React.FC<CalculatorProps> = ({
   initialContent,
   debugMode = false,
+  filename,
+  isNewFile = false,
 }) => {
   useApp(); // Keep app context available
 
@@ -30,7 +37,9 @@ export const Calculator: React.FC<CalculatorProps> = ({
   if (!stateManagerRef.current) {
     stateManagerRef.current = new CalculatorStateManager(
       initialContent,
-      debugMode
+      debugMode,
+      filename,
+      isNewFile
     );
   }
 
@@ -42,6 +51,13 @@ export const Calculator: React.FC<CalculatorProps> = ({
         cursorPosition: 0,
         copyHighlight: null,
         selection: null,
+        filename: null,
+        isModified: false,
+        isFilenamePrompt: false,
+        promptInput: "",
+        promptCursorPosition: 0,
+        promptSelection: null,
+        isRenamingFile: false,
       }
     );
   });
@@ -76,128 +92,74 @@ export const Calculator: React.FC<CalculatorProps> = ({
     }
   }, []);
 
-  // Create hotkey manager with all keyboard shortcuts
+  // Create hotkey manager for app-specific commands only
   const hotkeyManager = useMemo(() => {
     const hk = new HotkeyManager();
     const manager = () => stateManagerRef.current;
 
-    // Exit shortcuts (but handle selection first)
+    // Exit shortcuts (but handle prompt and selection first)
     hk.bind(
-      "Escape",
+      "Escape,\\x1b",
       () => {
         const m = manager();
+        // Check if we're in filename prompt mode
+        if (m?.getIsFilenamePrompt()) {
+          m.cancelFilenamePrompt();
+          return true;
+        }
+        // Check if there's a selection to cancel
         if (m?.handleSelectionEscape()) {
           return true; // Selection was cancelled
         }
+        // Otherwise exit the app
         process.exit(0);
       },
-      { description: "Cancel selection or exit calculator" }
+      { description: "Cancel prompt/selection or exit calculator" }
     );
     hk.bind(
       "Ctrl+C",
-      (key, input) => {
-        if (key.ctrl && input === "c") {
-          process.exit(0);
-        }
-        return false;
+      () => {
+        process.exit(0);
       },
       { description: "Exit calculator" }
     );
 
-    // Navigation
+    // App-specific commands only - text editing is handled by TextEditor
+
+    // App-specific commands
     hk.bind(
-      "Enter",
+      "Ctrl+L",
       () => {
-        manager()?.handleNewLine();
+        manager()?.clearAll();
         return true;
       },
-      { description: "New line" }
+      { description: "Clear all" }
+    );
+    hk.bind(
+      "Ctrl+Y",
+      () => {
+        handleCopyResult();
+        return true;
+      },
+      { description: "Copy result" }
+    );
+    hk.bind(
+      "Ctrl+S",
+      () => {
+        manager()?.saveFile();
+        return true;
+      },
+      { description: "Save file" }
+    );
+    hk.bind(
+      "Ctrl+R",
+      () => {
+        return manager()?.handleRename() ?? false;
+      },
+      { description: "Rename file" }
     );
 
-    // Selection-aware word navigation with Shift - BIND FIRST
-    hk.bind(
-      "Shift+Alt+Left,Shift+Meta+Left,Shift+Option+Left",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveWordLeft(), true, "word-left");
-        return true;
-      },
-      { description: "Extend selection word left" }
-    );
-    hk.bind(
-      "Shift+Alt+Right,Shift+Meta+Right,Shift+Option+Right",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(
-          () => m.handleMoveWordRight(),
-          true,
-          "word-right"
-        );
-        return true;
-      },
-      { description: "Extend selection word right" }
-    );
-
-    // Selection-aware line start/end with Shift - BIND FIRST
-    hk.bind(
-      "Shift+Ctrl+Left,Shift+Home,Shift+Ctrl+A",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveToLineStart(), true);
-        return true;
-      },
-      { description: "Extend selection to line start" }
-    );
-    hk.bind(
-      "Shift+Ctrl+Right,Shift+End,Shift+Ctrl+E",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveToLineEnd(), true);
-        return true;
-      },
-      { description: "Extend selection to line end" }
-    );
-
-    // Word navigation - bind these AFTER Shift versions
-    hk.bind(
-      "Alt+Left,Meta+Left,Option+Left,\\\\x1bb,Esc b,Meta+B",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveWordLeft(), false);
-        return true;
-      },
-      { description: "Move word left" }
-    );
-    hk.bind(
-      "Alt+Right,Meta+Right,Option+Right,\\\\x1bf,Esc f,Meta+F",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveWordRight(), false);
-        return true;
-      },
-      { description: "Move word right" }
-    );
-
-    // Line start/end - bind after Shift versions
-    hk.bind(
-      "Ctrl+Left,Home,\\\\x1b[H,\\\\x1b[1~,Ctrl+A",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveToLineStart(), false);
-        return true;
-      },
-      { description: "Move to line start" }
-    );
-    hk.bind(
-      "Ctrl+Right,End,\\\\x1b[F,\\\\x1b[4~,Ctrl+E",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleMoveToLineEnd(), false);
-        return true;
-      },
-      { description: "Move to line end" }
-    );
-
+    // Line manipulation (not standard text editing)
     hk.bind(
       "Alt+Shift+Up,Meta+Shift+Up,Option+Shift+Up",
       () => {
@@ -223,167 +185,6 @@ export const Calculator: React.FC<CalculatorProps> = ({
         return true;
       },
       { description: "Copy line down" }
-    );
-
-    // Line manipulation
-    hk.bind(
-      "Alt+Up,Meta+Up,Option+Up",
-      () => {
-        const m = manager();
-        // Disable in selection mode
-        if (m?.hasSelection()) {
-          return false;
-        }
-        m?.handleSwapLineUp();
-        return true;
-      },
-      { description: "Swap line up" }
-    );
-    hk.bind(
-      "Alt+Down,Meta+Down,Option+Down",
-      () => {
-        const m = manager();
-        // Disable in selection mode
-        if (m?.hasSelection()) {
-          return false;
-        }
-        m?.handleSwapLineDown();
-        return true;
-      },
-      { description: "Swap line down" }
-    );
-
-    // Selection extensions with Shift+navigation keys
-    hk.bind(
-      "Shift+Left",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowLeft(), true, "left");
-        return true;
-      },
-      { description: "Extend selection left" }
-    );
-    hk.bind(
-      "Shift+Right",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowRight(), true, "right");
-        return true;
-      },
-      { description: "Extend selection right" }
-    );
-    hk.bind(
-      "Shift+Up",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowUp(), true);
-        return true;
-      },
-      { description: "Extend selection up" }
-    );
-    hk.bind(
-      "Shift+Down",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowDown(), true);
-        return true;
-      },
-      { description: "Extend selection down" }
-    );
-
-    // Plain arrow keys - bind these AFTER modified versions
-    hk.bind(
-      "Up",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowUp(), false);
-        return true;
-      },
-      { description: "Navigate up" }
-    );
-    hk.bind(
-      "Down",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowDown(), false);
-        return true;
-      },
-      { description: "Navigate down" }
-    );
-    hk.bind(
-      "Left",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowLeft(), false, "left");
-        return true;
-      },
-      { description: "Move cursor left" }
-    );
-    hk.bind(
-      "Right",
-      () => {
-        const m = manager();
-        m?.handleNavigationKey(() => m.handleArrowRight(), false, "right");
-        return true;
-      },
-      { description: "Move cursor right" }
-    );
-
-    // Deletion - bind modified keys BEFORE plain keys
-    hk.bind(
-      "Alt+Backspace,Meta+Backspace,Option+Backspace,Alt+Delete,Meta+Delete,Option+Delete,\\\\x17,\\\\x1b\\\\x7f,\\\\x1b\\\\x08,Ctrl+W",
-      () => {
-        manager()?.handleDeleteWord();
-        return true;
-      },
-      { description: "Delete word" }
-    );
-
-    hk.bind(
-      "Backspace,Delete",
-      () => {
-        const m = manager();
-        if (m) {
-          m.handleBackspace();
-          return true;
-        }
-        return false;
-      },
-      { description: "Delete character backward" }
-    );
-    hk.bind(
-      "Ctrl+K",
-      () => {
-        manager()?.handleDeleteToLineEnd();
-        return true;
-      },
-      { description: "Delete to line end" }
-    );
-    hk.bind(
-      "Ctrl+U",
-      () => {
-        manager()?.handleDeleteToLineStart();
-        return true;
-      },
-      { description: "Delete to line start" }
-    );
-
-    // Commands
-    hk.bind(
-      "Ctrl+L",
-      () => {
-        manager()?.clearAll();
-        return true;
-      },
-      { description: "Clear all" }
-    );
-    hk.bind(
-      "Ctrl+Y",
-      () => {
-        handleCopyResult();
-        return true;
-      },
-      { description: "Copy result" }
     );
 
     // Selection mode keybinds (only work when selection is active)
@@ -426,31 +227,37 @@ export const Calculator: React.FC<CalculatorProps> = ({
     return hk;
   }, [handleCopyResult]);
 
-  // Handle all input through the state manager
-  useInput((input, key) => {
+  // Handle all input through our raw input system
+  useRawInput((input, key) => {
     const manager = stateManagerRef.current;
     if (!manager) {
       return;
     }
 
     // Log keypress in debug mode
-    if (debugMode) {
-      debugKeypress(input, key);
+    if (isDebugMode()) {
+      debugLog("KEYEVENT", `Key: ${keyEventToString(key)}`, {
+        key: key.key,
+        input: input || "(empty)",
+        sequence: key.sequence,
+        sequenceHex: key.sequence
+          .split("")
+          .map((c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`)
+          .join(""),
+        ctrl: key.ctrl,
+        alt: key.alt,
+        shift: key.shift,
+        meta: key.meta,
+      });
     }
 
-    // Let hotkey manager handle it first
+    // Try app-specific hotkeys first
     if (hotkeyManager.handle(key, input)) {
       return;
     }
 
-    // Regular character input (if not handled by hotkeys and not in selection mode)
-    if (input && !key.ctrl && !key.meta) {
-      // Don't allow regular character input in selection mode
-      if (manager.hasSelection()) {
-        return; // Selection mode - only special keybinds work
-      }
-      manager.handleCharacterInput(input);
-    }
+    // Then let the TextEditor handle standard text editing
+    manager.handleKeyInput(key, input);
   });
 
   return (
@@ -499,10 +306,10 @@ export const Calculator: React.FC<CalculatorProps> = ({
                   : undefined
               }
               error={line.error}
+              inactiveCursor={state.isFilenamePrompt}
               isActive={index === state.currentLineIndex}
               isComment={line.isComment}
-              // biome-ignore lint/suspicious/noArrayIndexKey: Order of lines is stable in our calculator
-              key={`line-${index}`}
+              key={line.id || `line-${index}`}
               lineIndex={index}
               result={line.result}
               selection={state.selection}
@@ -510,6 +317,19 @@ export const Calculator: React.FC<CalculatorProps> = ({
             />
           );
         })}
+      </Box>
+
+      <Box marginTop={1}>
+        <StatusBar
+          filename={state.filename}
+          isFilenamePrompt={state.isFilenamePrompt}
+          isModified={state.isModified}
+          isNewFile={isNewFile}
+          isRenamingFile={state.isRenamingFile}
+          promptCursorPosition={state.promptCursorPosition}
+          promptInput={state.promptInput}
+          promptSelection={state.promptSelection}
+        />
       </Box>
     </Box>
   );

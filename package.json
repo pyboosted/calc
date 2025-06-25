@@ -1,6 +1,6 @@
 {
   "name": "boosted-calc",
-  "version": "1.1.29",
+  "version": "1.2.0",
   "description": "A powerful terminal-based calculator with unit conversions, currency support, and more",
   "keywords": [
     "calculator",
@@ -21,8 +21,6 @@
   "bugs": {
     "url": "https://github.com/pyboosted/calc/issues"
   },
-  "main": "dist/index.js",
-  "module": "dist/index.js",
   "type": "module",
   "bin": {
     "calc": "dist/cli.js"
