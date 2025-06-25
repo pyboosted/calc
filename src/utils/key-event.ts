@@ -1,5 +1,5 @@
 import { CSI_ARROW_SEQUENCES, isIncompleteCSISequence } from "./csi-sequences";
-import { ESCAPE_SEQUENCES } from "./key-types";
+import { ESCAPE_SEQUENCES } from "./hotkey-types";
 
 /**
  * Our own key event type that provides full control over keyboard input
