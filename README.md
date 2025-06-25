@@ -45,8 +45,8 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 
 ## Requirements
 
-- **Bun runtime** (required) - [Install Bun](https://bun.sh)
-- Node.js 18+ (for npm installation)
+- Node.js 18+ (runtime is fully Node.js compatible)
+- Bun (for development only) - [Install Bun](https://bun.sh)
 
 ## Installation
 
@@ -288,7 +288,7 @@ The calculator is built with a modular architecture:
 
 ## Development
 
-This project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+This project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package. The published npm package runs on Node.js without requiring Bun.
 
 ```bash
 # Install dependencies

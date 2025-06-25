@@ -1,3 +1,17 @@
+import {
+  dateKeywords,
+  isFunction,
+  isKeyword,
+  isMathConstant,
+  mathConstants,
+} from "../data/keywords";
+import {
+  operatorMap,
+  singleCharTokens,
+  wordOperators,
+} from "../data/operators";
+import { isTimezone, multiWordTimezoneStarts } from "../data/timezones";
+import { isUnit } from "../data/units";
 import { type Token, TokenType } from "../types";
 import { CurrencyManager } from "../utils/currency-manager";
 
@@ -7,26 +21,11 @@ const DIGIT_PATTERN = /[0-9]/;
 const UNICODE_LETTER_PATTERN = /\p{L}/u;
 const UNICODE_LETTER_OR_DIGIT_PATTERN = /[\p{L}\p{N}_]/u;
 const DATETIME_LOOKAHEAD_PATTERN = /^\d{1,2}[./]\d{1,2}[./]\d{4}[Tt]/;
-const UTC_OFFSET_PATTERN = /^utc[+-]\d{1,2}$/;
 const CURRENCY_CODE_PATTERN = /^[A-Za-z]{3}$/;
 
-// Date keywords
-export const DATE_KEYWORDS = [
-  "today",
-  "tomorrow",
-  "yesterday",
-  "now",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-
-// Mathematical constants
-export const MATH_CONSTANTS = ["pi", "e"] as const;
+// Re-export for backward compatibility
+export const DATE_KEYWORDS = dateKeywords;
+export const MATH_CONSTANTS = mathConstants;
 
 export class Tokenizer {
   private input: string;
@@ -362,16 +361,6 @@ export class Tokenizer {
 
     // Check if this could be a multi-word timezone (only for known timezone prefixes)
     const lowerValue = value.toLowerCase();
-    const multiWordTimezoneStarts = [
-      "new",
-      "los",
-      "hong",
-      "san",
-      "cape",
-      "sao",
-      "buenos",
-      "mexico",
-    ];
 
     if (multiWordTimezoneStarts.includes(lowerValue) && this.current === " ") {
       // Save current position in case this isn't a timezone
@@ -392,7 +381,7 @@ export class Tokenizer {
       const fullValue = value.trim();
 
       // Check if this forms a valid timezone
-      if (this.isTimezone(fullValue)) {
+      if (isTimezone(fullValue)) {
         value = fullValue;
       } else {
         // Restore position and value if not a timezone
@@ -409,31 +398,12 @@ export class Tokenizer {
     const finalLowerValue = value.toLowerCase();
 
     // Check if it might be a timezone (contains UTC, GMT, or known timezone names)
-    if (this.isTimezone(value)) {
+    if (isTimezone(value)) {
       return { type: TokenType.TIMEZONE, value, position: start };
     }
 
     // Keywords
-    if (
-      [
-        "in",
-        "to",
-        "as",
-        "of",
-        "what",
-        "is",
-        "prev",
-        "total",
-        "average",
-        ...DATE_KEYWORDS,
-        "from",
-        "ago",
-        "hence",
-        "start",
-        "end",
-        "beginning",
-      ].includes(finalLowerValue)
-    ) {
+    if (isKeyword(finalLowerValue)) {
       return {
         type: TokenType.KEYWORD,
         value: finalLowerValue,
@@ -442,33 +412,7 @@ export class Tokenizer {
     }
 
     // Functions
-    if (
-      [
-        "sqrt",
-        "cbrt",
-        "root",
-        "abs",
-        "log",
-        "ln",
-        "fact",
-        "round",
-        "ceil",
-        "floor",
-        "sin",
-        "cos",
-        "tan",
-        "arcsin",
-        "arccos",
-        "arctan",
-        "sinh",
-        "cosh",
-        "tanh",
-        "sum",
-        "average",
-        "avg",
-        "fromunix",
-      ].includes(finalLowerValue)
-    ) {
+    if (isFunction(finalLowerValue)) {
       return {
         type: TokenType.FUNCTION,
         value: finalLowerValue,
@@ -507,11 +451,7 @@ export class Tokenizer {
     }
 
     // Mathematical constants (check last so variables can override)
-    if (
-      MATH_CONSTANTS.includes(
-        finalLowerValue as (typeof MATH_CONSTANTS)[number]
-      )
-    ) {
+    if (isMathConstant(finalLowerValue)) {
       return {
         type: TokenType.CONSTANT,
         value: finalLowerValue,
@@ -523,159 +463,12 @@ export class Tokenizer {
   }
 
   private wordToOperator(word: string): string {
-    const mapping: Record<string, string> = {
-      plus: "+",
-      minus: "-",
-      times: "*",
-      multiplied: "*",
-      divided: "/",
-      mod: "%",
-      xor: "^",
-    };
-    return mapping[word] || word;
-  }
-
-  private isUnit(value: string): boolean {
-    const units = [
-      // Length
-      "meter",
-      "meters",
-      "m",
-      "centimeter",
-      "centimeters",
-      "cm",
-      "millimeter",
-      "millimeters",
-      "mm",
-      "kilometer",
-      "kilometers",
-      "km",
-      "inch",
-      "inches",
-      "in",
-      "foot",
-      "feet",
-      "ft",
-      "yard",
-      "yards",
-      "yd",
-      "mile",
-      "miles",
-      "mi",
-      // Weight
-      "gram",
-      "grams",
-      "g",
-      "kilogram",
-      "kilograms",
-      "kg",
-      "milligram",
-      "milligrams",
-      "mg",
-      "pound",
-      "pounds",
-      "lb",
-      "lbs",
-      "ounce",
-      "ounces",
-      "oz",
-      "stone",
-      "stones",
-      "st",
-      // Temperature
-      "celsius",
-      "c",
-      "fahrenheit",
-      "f",
-      "kelvin",
-      "k",
-      // Time
-      "second",
-      "seconds",
-      "s",
-      "sec",
-      "minute",
-      "minutes",
-      "min",
-      "m",
-      "hour",
-      "hours",
-      "h",
-      "hr",
-      "day",
-      "days",
-      "d",
-      "week",
-      "weeks",
-      "w",
-      "month",
-      "months",
-      "year",
-      "years",
-      "yr",
-      // Volume
-      "liter",
-      "liters",
-      "l",
-      "milliliter",
-      "milliliters",
-      "ml",
-      "gallon",
-      "gallons",
-      "gal",
-      "quart",
-      "quarts",
-      "qt",
-      "pint",
-      "pints",
-      "pt",
-      "cup",
-      "cups",
-      "tablespoon",
-      "tablespoons",
-      "tbsp",
-      "teaspoon",
-      "teaspoons",
-      "tsp",
-      // Area
-      "hectare",
-      "hectares",
-      "ha",
-      "acre",
-      "acres",
-      // Data
-      "byte",
-      "bytes",
-      "b",
-      "kilobyte",
-      "kilobytes",
-      "kb",
-      "megabyte",
-      "megabytes",
-      "mb",
-      "gigabyte",
-      "gigabytes",
-      "gb",
-      "terabyte",
-      "terabytes",
-      "tb",
-      "kibibyte",
-      "kibibytes",
-      "kib",
-      "mebibyte",
-      "mebibytes",
-      "mib",
-      "gibibyte",
-      "gibibytes",
-      "gib",
-    ];
-
-    return units.includes(value.toLowerCase());
+    return wordOperators[word] || word;
   }
 
   private isCurrency(value: string): boolean {
     // Check if this value is a known unit first to avoid conflicts
-    if (this.isUnit(value)) {
+    if (isUnit(value)) {
       return false;
     }
 
@@ -721,86 +514,9 @@ export class Tokenizer {
     }
   }
 
-  private isTimezone(value: string): boolean {
-    const lowerValue = value.toLowerCase();
-
-    // Check for UTC offsets
-    if (UTC_OFFSET_PATTERN.test(lowerValue)) {
-      return true;
-    }
-
-    // Check for common timezone names
-    const timezones = [
-      "utc",
-      "gmt",
-      "est",
-      "edt",
-      "cst",
-      "cdt",
-      "mst",
-      "mdt",
-      "pst",
-      "pdt",
-      "moscow",
-      "yerevan",
-      "london",
-      "paris",
-      "berlin",
-      "tokyo",
-      "sydney",
-      "new york",
-      "newyork",
-      "ny",
-      "nyc",
-      "la",
-      "los angeles",
-      "losangeles",
-      "chicago",
-      "denver",
-      "dubai",
-      "singapore",
-      "hong kong",
-      "hongkong",
-      "shanghai",
-      "beijing",
-      "mumbai",
-      "delhi",
-      "bangalore",
-      "kolkata",
-      "bangkok",
-      "seoul",
-      "istanbul",
-      "cairo",
-      "lagos",
-      "nairobi",
-      "johannesburg",
-      "cape town",
-      "capetown",
-      "sao paulo",
-      "saopaulo",
-      "buenos aires",
-      "buenosaires",
-      "mexico",
-      "mexico city",
-      "mexicocity",
-      "toronto",
-      "vancouver",
-      "montreal",
-      "bst",
-      "cet",
-      "cest",
-      "jst",
-      "ist",
-      "aest",
-      "aedt",
-    ];
-
-    return timezones.includes(lowerValue);
-  }
-
   private shouldTokenizeAsUnit(token: Token): boolean {
     // Check if this identifier should be treated as a unit based on context
-    if (token.type !== TokenType.VARIABLE || !this.isUnit(token.value)) {
+    if (token.type !== TokenType.VARIABLE || !isUnit(token.value)) {
       return false;
     }
 
@@ -859,201 +575,79 @@ export class Tokenizer {
         continue;
       }
 
-      // Operators and symbols
-      switch (this.current) {
-        case "+": {
-          const token = {
-            type: TokenType.OPERATOR,
-            value: "+",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
+      // Handle comments
+      if (this.current === "#") {
+        // Skip the rest of the line
+        while (this.position < this.input.length) {
           this.advance();
-          break;
         }
-        case "-": {
-          const token = {
-            type: TokenType.OPERATOR,
-            value: "-",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "*": {
-          const token = {
-            type: TokenType.OPERATOR,
-            value: "*",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "/": {
-          const token = {
-            type: TokenType.OPERATOR,
-            value: "/",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "^": {
-          const token = {
-            type: TokenType.OPERATOR,
-            value: "^",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "%": {
-          const token = {
-            type: TokenType.OPERATOR,
-            value: "%",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "(": {
-          const token = { type: TokenType.LPAREN, value: "(", position: start };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case ")": {
-          const token = { type: TokenType.RPAREN, value: ")", position: start };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case ",": {
-          const token = { type: TokenType.COMMA, value: ",", position: start };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "=": {
-          const token = { type: TokenType.EQUALS, value: "=", position: start };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "@": {
-          const token = {
-            type: TokenType.AT_SYMBOL,
-            value: "@",
-            position: start,
-          };
-          tokens.push(token);
-          this.lastToken = token;
-          this.advance();
-          break;
-        }
-        case "&": {
-          let token: Token;
-          if (this.peek() === "&") {
-            this.advance();
-            this.advance();
-            token = {
-              type: TokenType.OPERATOR,
-              value: "&",
-              position: start,
-            };
-          } else {
-            token = {
-              type: TokenType.OPERATOR,
-              value: "&",
-              position: start,
-            };
-            this.advance();
-          }
-          tokens.push(token);
-          this.lastToken = token;
-          break;
-        }
-        case "|": {
-          let token: Token;
-          if (this.peek() === "|") {
-            this.advance();
-            this.advance();
-            token = {
-              type: TokenType.OPERATOR,
-              value: "|",
-              position: start,
-            };
-          } else {
-            token = {
-              type: TokenType.OPERATOR,
-              value: "|",
-              position: start,
-            };
-            this.advance();
-          }
-          tokens.push(token);
-          this.lastToken = token;
-          break;
-        }
-        case "<": {
-          if (this.peek() === "<") {
-            this.advance();
-            this.advance();
-            const token = {
-              type: TokenType.OPERATOR,
-              value: "<<",
-              position: start,
-            };
-            tokens.push(token);
-            this.lastToken = token;
-          } else {
-            // Skip unknown character
-            this.advance();
-          }
-          break;
-        }
-        case ">": {
-          if (this.peek() === ">") {
-            this.advance();
-            this.advance();
-            const token = {
-              type: TokenType.OPERATOR,
-              value: ">>",
-              position: start,
-            };
-            tokens.push(token);
-            this.lastToken = token;
-          } else {
-            // Skip unknown character
-            this.advance();
-          }
-          break;
-        }
-        case "#":
-          // Comment - skip the rest of the line
-          while (this.position < this.input.length) {
-            this.advance();
-          }
-          break;
-        default:
-          // Skip unknown characters
-          this.advance();
+        continue;
       }
+
+      // Check for multi-character operators first
+      const twoChar = this.current + this.peek();
+      const twoCharConfig = operatorMap[twoChar];
+      if (twoCharConfig?.multiChar) {
+        const token = {
+          type: twoCharConfig.tokenType,
+          value: twoCharConfig.value,
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
+        continue;
+      }
+
+      // Check for single character operators with optional second char
+      const singleCharConfig = operatorMap[this.current];
+      if (singleCharConfig) {
+        let token: Token;
+
+        if (
+          singleCharConfig.consumeNext &&
+          this.peek() === singleCharConfig.consumeNext
+        ) {
+          // Consume both characters but use single char value
+          this.advance();
+          this.advance();
+          token = {
+            type: singleCharConfig.tokenType,
+            value: singleCharConfig.value,
+            position: start,
+          };
+        } else {
+          // Single character operator
+          this.advance();
+          token = {
+            type: singleCharConfig.tokenType,
+            value: singleCharConfig.value,
+            position: start,
+          };
+        }
+
+        tokens.push(token);
+        this.lastToken = token;
+        continue;
+      }
+
+      // Check for other single character tokens
+      const singleTokenType = singleCharTokens[this.current];
+      if (singleTokenType) {
+        const token = {
+          type: singleTokenType,
+          value: this.current,
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        continue;
+      }
+
+      // Skip unknown characters
+      this.advance();
     }
 
     tokens.push({ type: TokenType.EOF, value: "", position: this.position });
