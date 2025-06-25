@@ -227,17 +227,27 @@ export class CalculatorEngine {
       // Track variables assigned in this line
       const assignedInThisLine = new Map<string, CalculatedValue>();
 
-      // Copy back any new variables
+      // Copy back any new or updated variables
       lineVariables.forEach((value, key) => {
-        if (key !== "prev" && !cumulativeVariables.has(key)) {
-          cumulativeVariables.set(key, value);
-          assignedInThisLine.set(key, value);
+        if (key !== "prev") {
+          const oldValue = cumulativeVariables.get(key);
+          const hasChanged =
+            !oldValue ||
+            oldValue.value !== value.value ||
+            oldValue.unit !== value.unit;
+
+          if (hasChanged) {
+            cumulativeVariables.set(key, value);
+            assignedInThisLine.set(key, value);
+          }
         }
       });
 
       // Store assigned variables with the line
       if (assignedInThisLine.size > 0) {
         line.assignedVariables = assignedInThisLine;
+      } else {
+        line.assignedVariables = undefined;
       }
     } catch (error) {
       // Both modes now treat invalid expressions as comments for consistent rendering
