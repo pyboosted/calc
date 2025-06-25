@@ -14,6 +14,8 @@ export function getTokenColor(type: TokenType, value?: string): string {
       return "magenta";
     case TokenType.VARIABLE:
       return "#d19a66"; // Orange
+    case TokenType.CONSTANT:
+      return "cyan"; // Same as date keywords
     case TokenType.KEYWORD:
       // Date keywords get special color
       if (value && (DATE_KEYWORDS as readonly string[]).includes(value)) {

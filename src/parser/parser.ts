@@ -3,6 +3,7 @@ import {
   type ASTNode,
   type AssignmentNode,
   type BinaryOpNode,
+  type ConstantNode,
   type DateNode,
   type DateOperationNode,
   type DateTimeNode,
@@ -516,10 +517,22 @@ export class Parser {
       return { type: "number", value } as NumberNode;
     }
 
-    // Variables
-    if (this.current.type === TokenType.VARIABLE) {
+    // Variables and Constants
+    // Both VARIABLE and CONSTANT tokens are checked here
+    // The evaluator will check variables first, then constants
+    if (
+      this.current.type === TokenType.VARIABLE ||
+      this.current.type === TokenType.CONSTANT
+    ) {
       const name = this.current.value;
+      const isConstantToken = this.current.type === TokenType.CONSTANT;
       this.advance();
+
+      // First try as variable, then as constant
+      // This is handled in the evaluator
+      if (isConstantToken) {
+        return { type: "constant", name } as ConstantNode;
+      }
       return { type: "variable", name } as VariableNode;
     }
 

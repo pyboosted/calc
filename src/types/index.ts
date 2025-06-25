@@ -27,6 +27,7 @@ export const TokenType = {
   VARIABLE: "VARIABLE",
   KEYWORD: "KEYWORD",
   CURRENCY: "CURRENCY",
+  CONSTANT: "CONSTANT",
   DATE_LITERAL: "DATE_LITERAL",
   TIME_LITERAL: "TIME_LITERAL",
   TIMEZONE: "TIMEZONE",
@@ -76,6 +77,11 @@ export interface VariableNode {
   name: string;
 }
 
+export interface ConstantNode {
+  type: "constant";
+  name: string;
+}
+
 export interface AssignmentNode {
   type: "assignment";
   variable: string;
@@ -121,6 +127,7 @@ export type ASTNode =
   | UnaryOpNode
   | FunctionNode
   | VariableNode
+  | ConstantNode
   | AssignmentNode
   | AggregateNode
   | DateNode

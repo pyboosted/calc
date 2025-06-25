@@ -6,6 +6,7 @@ import type {
   AssignmentNode,
   BinaryOpNode,
   CalculatedValue,
+  ConstantNode,
   DateNode,
   DateOperationNode,
   DateTimeNode,
@@ -28,6 +29,12 @@ import { convertUnits } from "./unit-converter";
 
 // Regex patterns
 const DATE_PATTERN = /(\d{1,2})[./](\d{1,2})[./](\d{4})/;
+
+// Mathematical constants
+const MATH_CONSTANTS_VALUES: Record<string, number> = {
+  pi: Math.PI,
+  e: Math.E,
+};
 
 function isTimePeriodUnit(unit: string | undefined): boolean {
   if (!unit) {
@@ -801,6 +808,24 @@ function determineResultUnit(
   return commonUnit;
 }
 
+function evaluateConstantNode(
+  node: ConstantNode,
+  variables: Map<string, CalculatedValue>
+): CalculatedValue {
+  // Check if there's a variable with the same name first
+  const varValue = variables.get(node.name);
+  if (varValue !== undefined) {
+    return varValue;
+  }
+
+  // Otherwise, use the constant value
+  const value = MATH_CONSTANTS_VALUES[node.name];
+  if (value === undefined) {
+    throw new Error(`Unknown constant: ${node.name}`);
+  }
+  return { value };
+}
+
 function evaluateNode(
   node: ASTNode,
   variables: Map<string, CalculatedValue>,
@@ -812,6 +837,9 @@ function evaluateNode(
 
     case "variable":
       return evaluateVariableNode(node, variables);
+
+    case "constant":
+      return evaluateConstantNode(node, variables);
 
     case "assignment":
       return evaluateAssignmentNode(node, variables, context);

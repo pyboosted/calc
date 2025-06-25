@@ -25,6 +25,9 @@ export const DATE_KEYWORDS = [
   "sunday",
 ] as const;
 
+// Mathematical constants
+export const MATH_CONSTANTS = ["pi", "e"] as const;
+
 export class Tokenizer {
   private input: string;
   private position = 0;
@@ -402,7 +405,7 @@ export class Tokenizer {
     // Trim any trailing spaces
     value = value.trim();
 
-    // Check if it's a keyword, function, unit, timezone, or variable
+    // Check if it's a keyword, function, constant, unit, timezone, or variable
     const finalLowerValue = value.toLowerCase();
 
     // Check if it might be a timezone (contains UTC, GMT, or known timezone names)
@@ -499,6 +502,19 @@ export class Tokenizer {
       return {
         type: TokenType.OPERATOR,
         value: this.wordToOperator(finalLowerValue),
+        position: start,
+      };
+    }
+
+    // Mathematical constants (check last so variables can override)
+    if (
+      MATH_CONSTANTS.includes(
+        finalLowerValue as (typeof MATH_CONSTANTS)[number]
+      )
+    ) {
+      return {
+        type: TokenType.CONSTANT,
+        value: finalLowerValue,
         position: start,
       };
     }
