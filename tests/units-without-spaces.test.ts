@@ -2,75 +2,47 @@ import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 
 describe("Units Without Spaces", () => {
-  test("currency codes attached to numbers", () => {
-    const result1 = evaluate("10usd", new Map());
-    expect(result1.value).toBe(10);
-    expect(result1.unit).toBe("USD");
-
-    const result2 = evaluate("10eur", new Map());
-    expect(result2.value).toBe(10);
-    expect(result2.unit).toBe("EUR");
-
-    const result3 = evaluate("25.50gbp", new Map());
-    expect(result3.value).toBe(25.5);
-    expect(result3.unit).toBe("GBP");
+  test.each([
+    // Currency codes
+    ["10usd", 10, "USD"],
+    ["10eur", 10, "EUR"],
+    ["25.50gbp", 25.5, "GBP"],
+    // Unit abbreviations
+    ["5kg", 5, "kg"],
+    ["10m", 10, "m"],
+    ["3.5l", 3.5, "l"],
+    // Full unit names
+    ["10meters", 10, "meters"],
+    ["5kilograms", 5, "kilograms"],
+    // Units starting with 'e'
+    ["10eur", 10, "EUR"],
+  ])("parses %s correctly", (expression, expectedValue, expectedUnit) => {
+    const result = evaluate(expression, new Map());
+    expect(result.value).toBe(expectedValue);
+    expect(result.unit).toBe(expectedUnit);
   });
 
-  test("unit abbreviations attached to numbers", () => {
-    const result1 = evaluate("5kg", new Map());
-    expect(result1.value).toBe(5);
-    expect(result1.unit).toBe("kg");
-
-    const result2 = evaluate("10m", new Map());
-    expect(result2.value).toBe(10);
-    expect(result2.unit).toBe("m");
-
-    const result3 = evaluate("3.5l", new Map());
-    expect(result3.value).toBe(3.5);
-    expect(result3.unit).toBe("l");
+  test.each([
+    ["1d+1h", 1.041_666_666_666_666_7, "d"],
+    ["2kg+500g", 2.5, "kg"],
+    ["5m+20cm", 5.2, "m"],
+  ])("compound expression: %s", (expression, expectedValue, expectedUnit) => {
+    const result = evaluate(expression, new Map());
+    expect(result.value).toBeCloseTo(expectedValue);
+    expect(result.unit).toBe(expectedUnit);
   });
 
-  test("full unit names attached to numbers", () => {
-    const result1 = evaluate("10meters", new Map());
-    expect(result1.value).toBe(10);
-    expect(result1.unit).toBe("meters");
-
-    const result2 = evaluate("5kilograms", new Map());
-    expect(result2.value).toBe(5);
-    expect(result2.unit).toBe("kilograms");
-  });
-
-  test("compound expressions without spaces", () => {
-    const result1 = evaluate("1d+1h", new Map());
-    expect(result1.value).toBeCloseTo(1.041_666_666_666_666_7);
-    expect(result1.unit).toBe("d");
-
-    const result2 = evaluate("2kg+500g", new Map());
-    expect(result2.value).toBe(2.5);
-    expect(result2.unit).toBe("kg");
-
-    const result3 = evaluate("5m+20cm", new Map());
-    expect(result3.value).toBe(5.2);
-    expect(result3.unit).toBe("m");
-  });
-
-  test("scientific notation not confused with units", () => {
-    const result1 = evaluate("1e5", new Map());
-    expect(result1.value).toBe(100_000);
-    expect(result1.unit).toBeUndefined();
-
-    const result2 = evaluate("1.5e10", new Map());
-    expect(result2.value).toBe(15_000_000_000);
-    expect(result2.unit).toBeUndefined();
-
-    const result3 = evaluate("2e-3", new Map());
-    expect(result3.value).toBe(0.002);
-    expect(result3.unit).toBeUndefined();
-  });
-
-  test("units starting with 'e' work correctly", () => {
-    const result = evaluate("10eur", new Map());
-    expect(result.value).toBe(10);
-    expect(result.unit).toBe("EUR");
+  test.each([
+    ["1e5", 100_000, undefined],
+    ["1.5e10", 15_000_000_000, undefined],
+    ["2e-3", 0.002, undefined],
+  ])("scientific notation: %s", (expression, expectedValue, expectedUnit) => {
+    const result = evaluate(expression, new Map());
+    expect(result.value).toBe(expectedValue);
+    if (expectedUnit !== undefined) {
+      expect(result.unit).toBe(expectedUnit);
+    } else {
+      expect(result.unit).toBeUndefined();
+    }
   });
 });

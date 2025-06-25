@@ -30,54 +30,47 @@ describe("Mathematical Constants", () => {
     expect(e1.value).toBe(e2.value);
   });
 
-  test("Constants in expressions", () => {
-    const result1 = evaluate("2 * pi", variables);
-    expect(result1.value).toBeCloseTo(2 * Math.PI, 10);
-
-    const result2 = evaluate("pi + e", variables);
-    expect(result2.value).toBeCloseTo(Math.PI + Math.E, 10);
-
-    const result3 = evaluate("pi^2", variables);
-    expect(result3.value).toBeCloseTo(Math.PI ** 2, 10);
+  test.each([
+    ["2 * pi", 2 * Math.PI],
+    ["pi + e", Math.PI + Math.E],
+    ["pi^2", Math.PI ** 2],
+  ])("Constants in expressions: %s", (expression, expected) => {
+    const result = evaluate(expression, variables);
+    expect(result.value).toBeCloseTo(expected, 10);
   });
 
-  test("Constants with functions", () => {
-    const result1 = evaluate("sin(pi)", variables);
-    expect(result1.value).toBeCloseTo(0, 10);
-
-    const result2 = evaluate("cos(pi)", variables);
-    expect(result2.value).toBeCloseTo(-1, 10);
-
-    const result3 = evaluate("ln(e)", variables);
-    expect(result3.value).toBeCloseTo(1, 10);
+  test.each([
+    ["sin(pi)", 0],
+    ["cos(pi)", -1],
+    ["ln(e)", 1],
+  ])("Constants with functions: %s", (expression, expected) => {
+    const result = evaluate(expression, variables);
+    expect(result.value).toBeCloseTo(expected, 10);
   });
 
-  test("Scientific notation still works", () => {
-    const result1 = evaluate("1e10", variables);
-    expect(result1.value).toBe(1e10);
-
-    const result2 = evaluate("2.5E-5", variables);
-    expect(result2.value).toBe(2.5e-5);
-
-    const result3 = evaluate("1.6e+10", variables);
-    expect(result3.value).toBe(1.6e10);
+  test.each([
+    ["1e10", 1e10],
+    ["2.5E-5", 2.5e-5],
+    ["1.6e+10", 1.6e10],
+  ])("Scientific notation: %s", (expression, expected) => {
+    const result = evaluate(expression, variables);
+    expect(result.value).toBe(expected);
   });
 
-  test("Scientific notation with E doesn't conflict with constant", () => {
-    // These should be parsed as scientific notation, not E constant
-    const result1 = evaluate("1e2", variables);
-    expect(result1.value).toBe(100);
-
-    const result2 = evaluate("5E3", variables);
-    expect(result2.value).toBe(5000);
-
-    // E by itself should be the constant
-    const result3 = evaluate("E", variables);
-    expect(result3.value).toBeCloseTo(Math.E, 10);
-
-    // E in expression
-    const result4 = evaluate("E * 2", variables);
-    expect(result4.value).toBeCloseTo(Math.E * 2, 10);
+  describe("Scientific notation with E doesn't conflict with constant", () => {
+    test.each([
+      ["1e2", 100, false],
+      ["5E3", 5000, false],
+      ["E", Math.E, true],
+      ["E * 2", Math.E * 2, true],
+    ])("%s", (expression, expected, useCloseTo) => {
+      const result = evaluate(expression, variables);
+      if (useCloseTo) {
+        expect(result.value).toBeCloseTo(expected, 10);
+      } else {
+        expect(result.value).toBe(expected);
+      }
+    });
   });
 
   test("Constants are available when no variable with same name exists", () => {
@@ -107,8 +100,10 @@ describe("Mathematical Constants", () => {
     expect(result.value).toBeCloseTo(expected, 10);
   });
 
-  test("Constants cannot be assigned", () => {
-    expect(() => evaluate("pi = 3", variables)).toThrow();
-    expect(() => evaluate("e = 2", variables)).toThrow();
-  });
+  test.each(["pi = 3", "e = 2"])(
+    "Constants cannot be assigned: %s",
+    (expression) => {
+      expect(() => evaluate(expression, variables)).toThrow();
+    }
+  );
 });

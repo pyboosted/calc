@@ -8,108 +8,124 @@ import { parseKeyEvent } from "../src/utils/key-event";
 
 describe("CSI Sequences", () => {
   describe("parseCSIModifier", () => {
-    test("parses modifier codes correctly", () => {
-      // 2 = Shift
-      expect(parseCSIModifier(2)).toEqual({
-        shift: true,
-        alt: false,
-        ctrl: false,
-        meta: false,
-      });
-
-      // 3 = Alt
-      expect(parseCSIModifier(3)).toEqual({
-        shift: false,
-        alt: true,
-        ctrl: false,
-        meta: false,
-      });
-
-      // 5 = Ctrl
-      expect(parseCSIModifier(5)).toEqual({
-        shift: false,
-        alt: false,
-        ctrl: true,
-        meta: false,
-      });
-
-      // 9 = Meta
-      expect(parseCSIModifier(9)).toEqual({
-        shift: false,
-        alt: false,
-        ctrl: false,
-        meta: true,
-      });
-
-      // 10 = Shift+Meta
-      expect(parseCSIModifier(10)).toEqual({
-        shift: true,
-        alt: false,
-        ctrl: false,
-        meta: true,
-      });
-
-      // 7 = Alt+Ctrl
-      expect(parseCSIModifier(7)).toEqual({
-        shift: false,
-        alt: true,
-        ctrl: true,
-        meta: false,
-      });
+    test.each([
+      [2, { shift: true, alt: false, ctrl: false, meta: false }], // Shift
+      [3, { shift: false, alt: true, ctrl: false, meta: false }], // Alt
+      [5, { shift: false, alt: false, ctrl: true, meta: false }], // Ctrl
+      [9, { shift: false, alt: false, ctrl: false, meta: true }], // Meta
+      [10, { shift: true, alt: false, ctrl: false, meta: true }], // Shift+Meta
+      [7, { shift: false, alt: true, ctrl: true, meta: false }], // Alt+Ctrl
+    ])("modifier code %i", (modifierCode, expected) => {
+      expect(parseCSIModifier(modifierCode)).toEqual(expected);
     });
   });
 
   describe("isIncompleteCSISequence", () => {
-    test("detects incomplete CSI sequences", () => {
-      expect(isIncompleteCSISequence("\x1b[1;10")).toBe(true);
-      expect(isIncompleteCSISequence("\x1b[1;2")).toBe(true);
-      expect(isIncompleteCSISequence("\x1b[1;")).toBe(false); // ends with semicolon
-      expect(isIncompleteCSISequence("\x1b[1;10D")).toBe(false); // complete
-      expect(isIncompleteCSISequence("\x1b[A")).toBe(false); // simple arrow
-      expect(isIncompleteCSISequence("abc")).toBe(false); // not CSI
-      expect(isIncompleteCSISequence("\x1b")).toBe(false); // lone ESC
-      expect(isIncompleteCSISequence("\x1b[")).toBe(true); // incomplete CSI start
-      expect(isIncompleteCSISequence("\x1b[1")).toBe(true); // incomplete CSI
+    test.each([
+      ["\x1b[1;10", true], // incomplete modifier sequence
+      ["\x1b[1;2", true], // incomplete modifier sequence
+      ["\x1b[1;", false], // ends with semicolon
+      ["\x1b[1;10D", false], // complete sequence
+      ["\x1b[A", false], // simple arrow
+      ["abc", false], // not CSI
+      ["\x1b", false], // lone ESC
+      ["\x1b[", true], // incomplete CSI start
+      ["\x1b[1", true], // incomplete CSI
+    ])("sequence %p", (sequence, expected) => {
+      expect(isIncompleteCSISequence(sequence)).toBe(expected);
     });
   });
 
   describe("CSI_ARROW_SEQUENCES", () => {
-    test("has correct sequences for modified arrows", () => {
-      // Shift+Left
-      expect(CSI_ARROW_SEQUENCES["\x1b[1;2D"]).toEqual({
-        key: "left",
-        modifiers: { shift: true, alt: false, ctrl: false, meta: false },
-      });
-
-      // Cmd+Shift+Left
-      expect(CSI_ARROW_SEQUENCES["\x1b[1;10D"]).toEqual({
-        key: "left",
-        modifiers: { shift: true, alt: false, ctrl: false, meta: true },
-      });
-
-      // Ctrl+Alt+Right
-      expect(CSI_ARROW_SEQUENCES["\x1b[1;7C"]).toEqual({
-        key: "right",
-        modifiers: { shift: false, alt: true, ctrl: true, meta: false },
-      });
+    test.each([
+      [
+        "\x1b[1;2D",
+        "Shift+Left",
+        {
+          key: "left",
+          modifiers: { shift: true, alt: false, ctrl: false, meta: false },
+        },
+      ],
+      [
+        "\x1b[1;10D",
+        "Cmd+Shift+Left",
+        {
+          key: "left",
+          modifiers: { shift: true, alt: false, ctrl: false, meta: true },
+        },
+      ],
+      [
+        "\x1b[1;7C",
+        "Ctrl+Alt+Right",
+        {
+          key: "right",
+          modifiers: { shift: false, alt: true, ctrl: true, meta: false },
+        },
+      ],
+    ])("sequence %s (%s)", (sequence, _description, expected) => {
+      expect(CSI_ARROW_SEQUENCES[sequence]).toEqual(expected);
     });
   });
 
   describe("parseKeyEvent with CSI sequences", () => {
-    test("parses complete CSI sequences", () => {
-      const event = parseKeyEvent("", { sequence: "\x1b[1;10D" });
-      expect(event).not.toBeNull();
-      expect(event?.key).toBe("left");
-      expect(event?.shift).toBe(true);
-      expect(event?.meta).toBe(true);
-      expect(event?.alt).toBe(false);
-      expect(event?.ctrl).toBe(false);
-    });
+    test.each([
+      [
+        "complete CSI sequence",
+        { input: "", sequence: "\x1b[1;10D" },
+        {
+          isNull: false,
+          key: "left",
+          shift: true,
+          meta: true,
+          alt: false,
+          ctrl: false,
+        },
+      ],
+      [
+        "incomplete CSI sequence",
+        { input: "", sequence: "\x1b[1;10" },
+        { isNull: true },
+      ],
+    ])(
+      "%s",
+      (
+        _description,
+        params,
+        expected: {
+          isNull: boolean;
+          key?: string;
+          shift?: boolean;
+          meta?: boolean;
+          alt?: boolean;
+          ctrl?: boolean;
+        }
+      ) => {
+        const event = parseKeyEvent(params.input, {
+          sequence: params.sequence,
+        });
 
-    test("returns null for incomplete CSI sequences", () => {
-      const event = parseKeyEvent("", { sequence: "\x1b[1;10" });
-      expect(event).toBeNull();
-    });
+        if (expected.isNull) {
+          expect(event).toBeNull();
+        } else {
+          expect(event).not.toBeNull();
+          if (event && expected.key !== undefined) {
+            expect(event.key).toBe(expected.key);
+          }
+          if (event && expected.shift !== undefined) {
+            expect(event.shift).toBe(expected.shift);
+          }
+          if (event && expected.meta !== undefined) {
+            expect(event.meta).toBe(expected.meta);
+          }
+          if (event && expected.alt !== undefined) {
+            expect(event.alt).toBe(expected.alt);
+          }
+          if (event && expected.ctrl !== undefined) {
+            expect(event.ctrl).toBe(expected.ctrl);
+          }
+        }
+      }
+    );
 
     test("handles split CSI sequences when combined", () => {
       // First part - incomplete

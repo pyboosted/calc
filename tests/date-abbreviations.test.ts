@@ -2,115 +2,70 @@ import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 
 describe("Date Arithmetic with Abbreviations", () => {
-  test("supports hour abbreviations", () => {
-    const vars = new Map();
-    const now = new Date();
+  describe.each([
+    [
+      "hour",
+      [
+        ["testDate + 2h", 2, 1000 * 60 * 60],
+        ["testDate + 3hr", 3, 1000 * 60 * 60],
+      ],
+    ],
+    [
+      "minute",
+      [
+        ["testDate + 30min", 30, 1000 * 60],
+        ["testDate + 15m", 15, 1000 * 60],
+      ],
+    ],
+    [
+      "second",
+      [
+        ["testDate + 30s", 30, 1000],
+        ["testDate + 45sec", 45, 1000],
+      ],
+    ],
+  ])("%s abbreviations", (_unit, cases) => {
+    test.each(cases as [string, number, number][])(
+      "%s",
+      (expression, expectedValue, divisor) => {
+        const vars = new Map();
+        const now = new Date();
+        vars.set("testDate", {
+          value: now.getTime(),
+          unit: "timestamp",
+          date: now,
+        });
 
-    // Test 'h' abbreviation
-    vars.set("testDate", {
-      value: now.getTime(),
-      unit: "timestamp",
-      date: now,
-    });
-    const result1 = evaluate("testDate + 2h", vars);
-    expect(result1.unit).toBe("timestamp");
-    expect(result1.date).toBeDefined();
-    if (!result1.date) {
-      throw new Error("Date should be defined");
-    }
-    const hourDiff1 =
-      (result1.date.getTime() - now.getTime()) / (1000 * 60 * 60);
-    expect(hourDiff1).toBeCloseTo(2, 1);
-
-    // Test 'hr' abbreviation
-    const result2 = evaluate("testDate + 3hr", vars);
-    if (!result2.date) {
-      throw new Error("Date should be defined");
-    }
-    const hourDiff2 =
-      (result2.date.getTime() - now.getTime()) / (1000 * 60 * 60);
-    expect(hourDiff2).toBeCloseTo(3, 1);
+        const result = evaluate(expression, vars);
+        expect(result.unit).toBe("timestamp");
+        expect(result.date).toBeDefined();
+        if (!result.date) {
+          throw new Error("Date should be defined");
+        }
+        const diff = (result.date.getTime() - now.getTime()) / divisor;
+        expect(diff).toBeCloseTo(expectedValue, 1);
+      }
+    );
   });
 
-  test("supports minute abbreviations", () => {
-    const vars = new Map();
-    const now = new Date();
-    vars.set("testDate", {
-      value: now.getTime(),
-      unit: "timestamp",
-      date: now,
-    });
+  test.each([
+    ["today + 1d", "today", 1, "day"],
+    ["today + 2w", "today", 14, "week"],
+  ])(
+    "%s (%s abbreviation)",
+    (expression, baseExpression, expectedDays, _abbr) => {
+      const vars = new Map();
+      const base = evaluate(baseExpression, vars);
+      const result = evaluate(expression, vars);
 
-    // Test 'min' abbreviation
-    const result1 = evaluate("testDate + 30min", vars);
-    if (!result1.date) {
-      throw new Error("Date should be defined");
+      if (!(result.date && base.date)) {
+        throw new Error("Dates should be defined");
+      }
+      const dayDiff =
+        (result.date.getTime() - base.date.getTime()) / (1000 * 60 * 60 * 24);
+      expect(dayDiff).toBeCloseTo(expectedDays, 1);
     }
-    const minDiff1 = (result1.date.getTime() - now.getTime()) / (1000 * 60);
-    expect(minDiff1).toBeCloseTo(30, 1);
-
-    // Test 'm' abbreviation (should be minutes in date context)
-    const result2 = evaluate("testDate + 15m", vars);
-    if (!result2.date) {
-      throw new Error("Date should be defined");
-    }
-    const minDiff2 = (result2.date.getTime() - now.getTime()) / (1000 * 60);
-    expect(minDiff2).toBeCloseTo(15, 1);
-  });
-
-  test("supports day abbreviations", () => {
-    const vars = new Map();
-    const today = evaluate("today", vars);
-
-    // Test 'd' abbreviation
-    const result = evaluate("today + 1d", vars);
-    if (!(result.date && today.date)) {
-      throw new Error("Dates should be defined");
-    }
-    const dayDiff =
-      (result.date.getTime() - today.date.getTime()) / (1000 * 60 * 60 * 24);
-    expect(dayDiff).toBeCloseTo(1, 1);
-  });
-
-  test("supports week abbreviation", () => {
-    const vars = new Map();
-    const today = evaluate("today", vars);
-
-    // Test 'w' abbreviation
-    const result = evaluate("today + 2w", vars);
-    if (!(result.date && today.date)) {
-      throw new Error("Dates should be defined");
-    }
-    const dayDiff =
-      (result.date.getTime() - today.date.getTime()) / (1000 * 60 * 60 * 24);
-    expect(dayDiff).toBeCloseTo(14, 1);
-  });
-
-  test("supports second abbreviations", () => {
-    const vars = new Map();
-    const now = new Date();
-    vars.set("testDate", {
-      value: now.getTime(),
-      unit: "timestamp",
-      date: now,
-    });
-
-    // Test 's' abbreviation
-    const result1 = evaluate("testDate + 30s", vars);
-    if (!result1.date) {
-      throw new Error("Date should be defined");
-    }
-    const secDiff1 = (result1.date.getTime() - now.getTime()) / 1000;
-    expect(secDiff1).toBeCloseTo(30, 1);
-
-    // Test 'sec' abbreviation
-    const result2 = evaluate("testDate + 45sec", vars);
-    if (!result2.date) {
-      throw new Error("Date should be defined");
-    }
-    const secDiff2 = (result2.date.getTime() - now.getTime()) / 1000;
-    expect(secDiff2).toBeCloseTo(45, 1);
-  });
+  );
 
   test("context determines m as minutes vs meters", () => {
     const vars = new Map();
@@ -135,15 +90,15 @@ describe("Date Arithmetic with Abbreviations", () => {
     expect(unitResult.unit).toBe("m");
   });
 
-  test("now works with all abbreviations", () => {
+  test.each([
+    "now + 1h",
+    "now + 30min",
+    "now + 5m",
+    "now + 10s",
+    "now - 1d",
+    "now + 1w",
+  ])("parses %s without errors", (expression) => {
     const vars = new Map();
-
-    // Just verify these parse without errors
-    expect(() => evaluate("now + 1h", vars)).not.toThrow();
-    expect(() => evaluate("now + 30min", vars)).not.toThrow();
-    expect(() => evaluate("now + 5m", vars)).not.toThrow();
-    expect(() => evaluate("now + 10s", vars)).not.toThrow();
-    expect(() => evaluate("now - 1d", vars)).not.toThrow();
-    expect(() => evaluate("now + 1w", vars)).not.toThrow();
+    expect(() => evaluate(expression, vars)).not.toThrow();
   });
 });
