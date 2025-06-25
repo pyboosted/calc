@@ -41,7 +41,7 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit",
-    "format": "ultracite format",
+    "format": "ultracite format --unsafe",
     "lint": "ultracite lint",
     "prepublishOnly": "bun run build",
     "prepare": "husky"
@@ -52,7 +52,7 @@
     "@types/react": "^19.1.8",
     "husky": "^9.1.7",
     "tsup": "^8.5.0",
-    "ultracite": "^5.0.12"
+    "ultracite": "^5.0.20"
   },
   "peerDependencies": {
     "typescript": "^5"
