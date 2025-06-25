@@ -20,10 +20,9 @@ describe("Filename Prompt", () => {
     expect(state.getIsFilenamePrompt()).toBe(true);
 
     // Type some text
-    state.handleFilenamePromptInput("t");
-    state.handleFilenamePromptInput("e");
-    state.handleFilenamePromptInput("s");
-    state.handleFilenamePromptInput("t");
+    for (const char of "test".split("")) {
+      state.handleFilenamePromptInput(char);
+    }
     expect(state.getPromptInput()).toBe("test");
 
     // ESC should be handled by Calculator component, not here
@@ -40,14 +39,9 @@ describe("Filename Prompt", () => {
     state.startFilenamePrompt();
 
     // Type filename
-    state.handleFilenamePromptInput("t");
-    state.handleFilenamePromptInput("e");
-    state.handleFilenamePromptInput("s");
-    state.handleFilenamePromptInput("t");
-    state.handleFilenamePromptInput(".");
-    state.handleFilenamePromptInput("t");
-    state.handleFilenamePromptInput("x");
-    state.handleFilenamePromptInput("t");
+    for (const char of "test.txt".split("")) {
+      state.handleFilenamePromptInput(char);
+    }
 
     // Press Enter
     state.handleFilenamePromptEnter();
