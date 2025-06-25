@@ -1,5 +1,15 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
+import { writeFileSync } from "node:fs";
 import { CalculatorStateManager } from "../src/ui/calculator-state";
+
+// Mock fs module
+mock.module("fs", () => ({
+  writeFileSync: mock(() => {
+    // Intentionally empty - mocking file write
+  }),
+  readFileSync: mock(() => ""),
+  existsSync: mock(() => false),
+}));
 
 describe("Filename Prompt", () => {
   test("ESC cancels filename prompt", () => {
@@ -45,5 +55,8 @@ describe("Filename Prompt", () => {
     // Should exit filename prompt mode
     expect(state.getIsFilenamePrompt()).toBe(false);
     expect(state.getFilename()).toBe("test.txt");
+
+    // Verify writeFileSync was called but file wasn't actually created
+    expect(writeFileSync).toHaveBeenCalled();
   });
 });
