@@ -64,6 +64,12 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Time arithmetic: `12:15@moscow - 10:00@moscow in minutes`
   - Date differences: `25/07/2025 - today in days`, `(01.01.2025 - 25.12.2024) in hours`
   - Supports: days, weeks, months, years, hours, minutes, seconds, milliseconds
+- **Environment and arguments** (v1.3.6):
+  - `env()` function: Read environment variables with `env("VAR_NAME")`
+  - `arg()` function: Read input data (priority: stdin → --arg → null)
+  - Type conversions: `env("PORT") as number`, `arg() as object`
+  - CLI flags: `--arg "value"` for passing arguments
+  - Output mode: `-o/--output` flag for pipeline-friendly file execution
 
 ## Requirements
 
@@ -116,6 +122,16 @@ calc -e "2 + 2"
 calc -e "today + 5 days"
 calc -e "100 USD in EUR"
 calc -e "sqrt(16) * 2"
+
+# Using environment variables and arguments
+calc -e "env(\"USER\")"
+calc -e "arg()" --arg "Hello, World!"
+echo "42" | calc -e "arg() * 2"
+PORT=3000 calc -e "(env(\"PORT\") as number) + 1"
+
+# Pipeline mode - execute file and output only last result
+calc calculations.calc -o > result.txt
+echo '{"items": [10, 20, 30]}' | calc sum-items.calc -o
 
 # Update currency exchange rates
 calc --update
@@ -483,6 +499,49 @@ avg([10, 20, 30])                      # 20
 30
 sum                                    # 60 (aggregate)
 average                                # 20 (aggregate)
+
+# Environment variables (v1.3.6)
+# Read environment variables
+env("HOME")                            # "/Users/username"
+env("PATH")                            # System PATH
+env("MISSING_VAR")                     # null
+
+# Type conversion with env
+port = env("PORT") as number           # Convert to number
+port + 1000                            # 4000 (if PORT=3000)
+debug = env("DEBUG") as boolean        # Convert to boolean
+
+# Command-line arguments (v1.3.6)
+# Read from stdin or --arg flag
+arg()                                  # Reads stdin data or --arg value
+
+# Type conversion with arg
+data = arg() as object                 # Parse JSON object
+items = arg() as array                 # Parse JSON array
+value = arg() as number                # Convert to number
+
+# Practical examples:
+# 1. Process JSON data from stdin
+# echo '{"price": 100, "tax": 0.08}' | calc -e "data = arg() as object" -e "data.price * (1 + data.tax)"
+
+# 2. Use environment for configuration
+# NODE_ENV=production calc -e "env(\"NODE_ENV\") == \"production\" ? \"prod\" : \"dev\""
+
+# 3. Pipeline with output mode
+# calc price-calc.calc -o | calc -e "arg() * 0.9"  # Apply 10% discount
+
+# Compound assignment (v1.3.5)
+x = 10
+x += 5                                 # 15
+x -= 3                                 # 12
+x *= 2                                 # 24
+x /= 4                                 # 6
+
+# Works with all types
+text = "file"
+text += ".txt"                         # "file.txt"
+arr = [1, 2]
+arr += [3, 4]                          # [1, 2, 3, 4]
 ```
 
 ## Architecture

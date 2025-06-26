@@ -14,6 +14,8 @@ ${chalk.bold.yellow("USAGE:")}
   ${chalk.green("calc")} ${chalk.cyan("-v")}                     Show version number (alternative)
   ${chalk.green("calc")} ${chalk.cyan("--help")}                 Show this help message
   ${chalk.green("calc")} ${chalk.cyan("-h")}                     Show this help message (alternative)
+  ${chalk.green("calc")} ${chalk.cyan("--arg <value>")}          Pass argument to arg() function
+  ${chalk.green("calc")} ${chalk.cyan("<file> -o")}              Execute file, output only last result
 
 ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan("-e '2 + 2'")}                Basic arithmetic
@@ -31,6 +33,9 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan('-e "{a: 1, b: 2}"')}         Object literal
   ${chalk.green("calc")} ${chalk.cyan('-e "sum([1, 2, 3])"')}       Array functions
   ${chalk.green("calc")} ${chalk.cyan('-e "x = 5; x += 3"')}        Compound assignment
+  ${chalk.green("calc")} ${chalk.cyan('-e "env(\\"HOME\\")"')}        Read environment variable
+  ${chalk.green("calc")} ${chalk.cyan('-e "arg()"')} ${chalk.cyan('--arg "42"')}     Pass command-line argument
+  ${chalk.green("echo 100 | calc")} ${chalk.cyan('-e "arg() * 2"')}  Read from stdin
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
@@ -59,6 +64,8 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Unit conversions: ${chalk.cyan("length, weight, time, data, etc.")}
   ${chalk.gray("•")} Live currency conversion ${chalk.cyan("(300+ currencies)")}
   ${chalk.gray("•")} Date/time operations with timezone support
+  ${chalk.gray("•")} Environment variables: ${chalk.cyan('env("VAR_NAME")')}
+  ${chalk.gray("•")} Command-line arguments: ${chalk.cyan("arg()")} with stdin or ${chalk.cyan("--arg")}
   ${chalk.gray("•")} Comments with ${chalk.cyan("#")} symbol
 
 ${chalk.bold.yellow("DEBUG MODE:")}

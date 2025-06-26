@@ -42,7 +42,9 @@ export class CalculatorStateManager extends EventEmitter {
     initialContent?: string,
     debugMode = false,
     filename?: string,
-    isNewFile = false
+    isNewFile = false,
+    stdinData?: string,
+    cliArg?: string
   ) {
     super();
     this.filename = filename || null;
@@ -65,7 +67,7 @@ export class CalculatorStateManager extends EventEmitter {
     this.setupEditorSubscriptions(this.filenameEditor);
 
     // Initialize engine without content
-    this.engine = new CalculatorEngine(undefined, debugMode);
+    this.engine = new CalculatorEngine(undefined, debugMode, stdinData, cliArg);
 
     // Now sync content from editor to engine
     if (initialContent) {

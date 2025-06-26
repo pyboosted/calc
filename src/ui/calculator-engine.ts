@@ -16,13 +16,22 @@ export class CalculatorEngine {
   private variables = new Map<string, CalculatedValue>();
   private nextId = 1;
   private debugMode: boolean;
+  private stdinData?: string;
+  private cliArg?: string;
 
   private generateId(): string {
     return `line-${this.nextId++}`;
   }
 
-  constructor(initialContent?: string, debugMode = false) {
+  constructor(
+    initialContent?: string,
+    debugMode = false,
+    stdinData?: string,
+    cliArg?: string
+  ) {
     this.debugMode = debugMode;
+    this.stdinData = stdinData;
+    this.cliArg = cliArg;
     if (initialContent) {
       const contentLines = initialContent.split("\n");
       this.lines = contentLines.map((content) => ({
@@ -249,6 +258,8 @@ export class CalculatorEngine {
       const result = evaluate(line.content, lineVariables, {
         previousResults,
         debugMode: this.debugMode,
+        stdinData: this.stdinData,
+        cliArg: this.cliArg,
       });
       line.result = result;
       line.error = null;

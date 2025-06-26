@@ -76,6 +76,9 @@ export const functions = [
   "keys",
   "values",
   "has",
+  // Environment and argument functions
+  "env",
+  "arg",
 ];
 
 // Mathematical constants

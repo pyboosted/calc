@@ -337,6 +337,8 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/parser.test.ts`: AST generation and operator precedence
 - `tests/unit-conversion.test.ts`: Unit conversion accuracy
 - `tests/boolean-operations.test.ts`: Boolean logic, comparisons, and ternary operator
+- `tests/env-arg-functions.test.ts`: Environment variable and argument functions
+- `tests/cli-env-arg.test.ts`: CLI integration tests for stdin, --arg, and -o flags
 
 ## Important Notes
 
@@ -368,3 +370,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - The `sum`, `avg`, and `average` functions can work as both aggregate keywords and array functions
 - Type casting supports parsing JSON strings to arrays/objects with `as array` and `as object`
 - Property access works with both dot notation and bracket notation for arrays and objects
+- Environment variables can be read with `env("VAR_NAME")` function (v1.3.6)
+- Command-line arguments with `arg()` function: reads stdin → --arg → null (v1.3.6)
+- Type conversions work with env/arg: `env("PORT") as number`, `arg() as object`
+- Output mode `-o/--output` flag executes files and outputs only the last result for pipelines

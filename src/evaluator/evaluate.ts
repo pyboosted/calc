@@ -40,6 +40,7 @@ import {
   evaluateArrayFunction,
   evaluateObjectFunction,
 } from "./array-object-functions";
+import { evaluateArgFunction, evaluateEnvFunction } from "./env-arg-functions";
 import { mathFunctions } from "./math-functions";
 import { convertUnits } from "./unit-converter";
 
@@ -86,6 +87,8 @@ function isTimePeriodUnit(unit: string | undefined): boolean {
 export interface EvaluationContext {
   previousResults?: CalculatedValue[];
   debugMode?: boolean;
+  stdinData?: string;
+  cliArg?: string;
 }
 
 export function evaluate(
@@ -568,6 +571,23 @@ function evaluateFunctionNode(
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
 ): CalculatedValue {
+  // Handle env() function
+  if (node.name === "env") {
+    const args = node.args.map((arg) => evaluateNode(arg, variables, context));
+    return evaluateEnvFunction(args);
+  }
+
+  // Handle arg() function
+  if (node.name === "arg") {
+    if (node.args.length !== 0) {
+      throw new Error("arg() takes no arguments");
+    }
+    return evaluateArgFunction({
+      stdinData: context?.stdinData,
+      cliArg: context?.cliArg,
+    });
+  }
+
   const args = node.args.map((arg) => evaluateNode(arg, variables, context));
 
   // Handle string functions

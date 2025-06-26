@@ -1,15 +1,5 @@
-import { describe, expect, mock, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { describe, expect, spyOn, test } from "bun:test";
 import { CalculatorStateManager } from "../src/ui/calculator-state";
-
-// Mock fs module
-mock.module("fs", () => ({
-  writeFileSync: mock(() => {
-    // Intentionally empty - mocking file write
-  }),
-  readFileSync: mock(() => ""),
-  existsSync: mock(() => false),
-}));
 
 describe("Filename Prompt", () => {
   test("ESC cancels filename prompt", () => {
@@ -34,6 +24,9 @@ describe("Filename Prompt", () => {
 
   test("Enter saves file with entered filename", () => {
     const state = new CalculatorStateManager();
+    
+    // Spy on the saveFileAs method
+    const saveFileAsSpy = spyOn(state, "saveFileAs").mockReturnValue(true);
 
     // Start filename prompt
     state.startFilenamePrompt();
@@ -48,9 +41,11 @@ describe("Filename Prompt", () => {
 
     // Should exit filename prompt mode
     expect(state.getIsFilenamePrompt()).toBe(false);
-    expect(state.getFilename()).toBe("test.txt");
-
-    // Verify writeFileSync was called but file wasn't actually created
-    expect(writeFileSync).toHaveBeenCalled();
+    
+    // Verify saveFileAs was called with the correct filename
+    expect(saveFileAsSpy).toHaveBeenCalledWith("test.txt");
+    
+    // Clean up
+    saveFileAsSpy.mockRestore();
   });
 });

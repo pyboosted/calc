@@ -17,6 +17,8 @@ interface CalculatorProps {
   debugMode?: boolean;
   filename?: string;
   isNewFile?: boolean;
+  stdinData?: string;
+  cliArg?: string;
 }
 
 export const Calculator: React.FC<CalculatorProps> = ({
@@ -24,6 +26,8 @@ export const Calculator: React.FC<CalculatorProps> = ({
   debugMode = false,
   filename,
   isNewFile = false,
+  stdinData,
+  cliArg,
 }) => {
   useApp(); // Keep app context available
 
@@ -39,7 +43,9 @@ export const Calculator: React.FC<CalculatorProps> = ({
       initialContent,
       debugMode,
       filename,
-      isNewFile
+      isNewFile,
+      stdinData,
+      cliArg
     );
   }
 
