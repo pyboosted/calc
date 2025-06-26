@@ -24,7 +24,7 @@ describe("Filename Prompt", () => {
 
   test("Enter saves file with entered filename", () => {
     const state = new CalculatorStateManager();
-    
+
     // Spy on the saveFileAs method
     const saveFileAsSpy = spyOn(state, "saveFileAs").mockReturnValue(true);
 
@@ -41,10 +41,10 @@ describe("Filename Prompt", () => {
 
     // Should exit filename prompt mode
     expect(state.getIsFilenamePrompt()).toBe(false);
-    
+
     // Verify saveFileAs was called with the correct filename
     expect(saveFileAsSpy).toHaveBeenCalledWith("test.txt");
-    
+
     // Clean up
     saveFileAsSpy.mockRestore();
   });

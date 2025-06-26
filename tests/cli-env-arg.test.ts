@@ -6,7 +6,7 @@ import { join } from "node:path";
 const CLI_PATH = join(__dirname, "..", "src", "cli.tsx");
 
 interface ExecOptions {
-  encoding: string;
+  encoding: BufferEncoding;
   env: Record<string, string | undefined>;
   cwd: string;
   input?: string;

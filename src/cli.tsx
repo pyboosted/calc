@@ -68,7 +68,7 @@ function separateArgs(args: string[]): {
     const arg = args[i];
     if (arg?.startsWith("-")) {
       flagArgs.push(arg);
-    } else {
+    } else if (arg) {
       nonFlagArgs.push(arg);
     }
   }

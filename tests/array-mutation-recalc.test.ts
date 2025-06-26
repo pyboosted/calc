@@ -11,8 +11,11 @@ describe("Array Mutation During Recalculation", () => {
     // Initial evaluation - array should have 1 element
     let lines = engine.getLines();
     expect(lines[2]?.result?.type).toBe("array");
-    expect(lines[2]?.result?.value).toHaveLength(1);
-    expect(lines[2]?.result?.value[0].value).toBe(1);
+    const result1 = lines[2]?.result;
+    if (result1?.type === "array") {
+      expect(result1.value).toHaveLength(1);
+      expect(result1.value[0]?.value).toBe(1);
+    }
 
     // Trigger recalculation by updating the first line
     engine.updateLine(0, "arr = []  # trigger recalc");
@@ -21,8 +24,11 @@ describe("Array Mutation During Recalculation", () => {
     // If the bug exists, it would have 2 elements
     lines = engine.getLines();
     expect(lines[2]?.result?.type).toBe("array");
-    expect(lines[2]?.result?.value).toHaveLength(1);
-    expect(lines[2]?.result?.value[0].value).toBe(1);
+    const result2 = lines[2]?.result;
+    if (result2?.type === "array") {
+      expect(result2.value).toHaveLength(1);
+      expect(result2.value[0]?.value).toBe(1);
+    }
 
     // Trigger another recalculation
     engine.updateLine(0, "arr = []  # trigger recalc 2");
@@ -30,8 +36,11 @@ describe("Array Mutation During Recalculation", () => {
     // Should still have only 1 element, not 3
     lines = engine.getLines();
     expect(lines[2]?.result?.type).toBe("array");
-    expect(lines[2]?.result?.value).toHaveLength(1);
-    expect(lines[2]?.result?.value[0].value).toBe(1);
+    const result4 = lines[2]?.result;
+    if (result4?.type === "array") {
+      expect(result4.value).toHaveLength(1);
+      expect(result4.value[0]?.value).toBe(1);
+    }
   });
 
   test("multiple push operations should work correctly after recalculation", () => {

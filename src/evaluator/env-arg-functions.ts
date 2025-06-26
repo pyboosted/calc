@@ -10,11 +10,12 @@ export function evaluateEnvFunction(args: CalculatedValue[]): CalculatedValue {
   }
 
   const nameArg = args[0];
-  if (nameArg.type !== "string") {
+  if (!nameArg || nameArg.type !== "string") {
     throw new Error("env() argument must be a string");
   }
 
-  const value = process.env[nameArg.value];
+  const envVarName = nameArg.value as string;
+  const value = process.env[envVarName];
 
   return value !== undefined
     ? { type: "string", value }

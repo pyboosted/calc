@@ -139,8 +139,8 @@ describe("arg() function", () => {
     expect(result.type).toBe("array");
     if (result.type === "array") {
       expect(result.value).toHaveLength(4);
-      expect(result.value[0].value).toBe(1);
-      expect(result.value[3].value).toBe("hello");
+      expect(result.value[0]?.value).toBe(1);
+      expect(result.value[3]?.value).toBe("hello");
     }
   });
 
@@ -222,7 +222,7 @@ describe("arg() function", () => {
         expect(scores?.type).toBe("array");
         if (scores?.type === "array") {
           expect(scores.value).toHaveLength(3);
-          expect(scores.value[1].value).toBe(20);
+          expect(scores.value[1]?.value).toBe(20);
         }
       }
     }
