@@ -28,6 +28,10 @@ export const singleCharTokens: Record<string, TokenType> = {
   ",": TokenType.COMMA,
   "=": TokenType.EQUALS,
   "@": TokenType.AT_SYMBOL,
+  "{": TokenType.LBRACE,
+  "}": TokenType.RBRACE,
+  "[": TokenType.LBRACKET,
+  "]": TokenType.RBRACKET,
 };
 
 // Word operators mapping to symbols

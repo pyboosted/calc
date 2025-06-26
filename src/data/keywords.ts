@@ -65,6 +65,17 @@ export const functions = [
   "substr",
   "charat",
   "trim",
+  // Array functions
+  "push",
+  "pop",
+  "first",
+  "last",
+  "length",
+  "slice",
+  // Object functions
+  "keys",
+  "values",
+  "has",
 ];
 
 // Mathematical constants

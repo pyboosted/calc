@@ -27,6 +27,9 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan('-e "5 > 3"')}                Comparison operators
   ${chalk.green("calc")} ${chalk.cyan('-e "true and false"')}       Logical operators
   ${chalk.green("calc")} ${chalk.cyan('-e "x > 5 ? 10 : 20"')}      Ternary operator
+  ${chalk.green("calc")} ${chalk.cyan('-e "[1, 2, 3]"')}            Array literal
+  ${chalk.green("calc")} ${chalk.cyan('-e "{a: 1, b: 2}"')}         Object literal
+  ${chalk.green("calc")} ${chalk.cyan('-e "sum([1, 2, 3])"')}       Array functions
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
@@ -49,7 +52,8 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} String support: ${chalk.cyan("literals, interpolation, operations")}
   ${chalk.gray("•")} Boolean operations: ${chalk.cyan("true/false, comparisons, logical ops")}
   ${chalk.gray("•")} Ternary operator: ${chalk.cyan("condition ? true : false")}
-  ${chalk.gray("•")} Type casting: ${chalk.cyan("as string, as number, as boolean")}
+  ${chalk.gray("•")} Arrays and objects: ${chalk.cyan("literals, functions, property access")}
+  ${chalk.gray("•")} Type casting: ${chalk.cyan("as string, as number, as boolean, as array, as object")}
   ${chalk.gray("•")} Unit conversions: ${chalk.cyan("length, weight, time, data, etc.")}
   ${chalk.gray("•")} Live currency conversion ${chalk.cyan("(300+ currencies)")}
   ${chalk.gray("•")} Date/time operations with timezone support

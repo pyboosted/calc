@@ -38,12 +38,55 @@ export function formatResultWithUnit(result: CalculatedValue): string {
     case "null":
       return "null";
 
+    case "array":
+      return formatArray(result.value);
+
+    case "object":
+      return formatObject(result.value);
+
     default: {
       // This should never happen with our exhaustive type checking
       const _exhaustiveCheck: never = result;
       return _exhaustiveCheck;
     }
   }
+}
+
+function formatArray(arr: CalculatedValue[]): string {
+  if (arr.length === 0) {
+    return "[]";
+  }
+
+  const MAX_ITEMS = 10;
+  const items = arr.slice(0, MAX_ITEMS);
+  const formatted = items.map((item) => formatResultWithUnit(item)).join(", ");
+
+  if (arr.length > MAX_ITEMS) {
+    return `[${formatted}, ... (${arr.length - MAX_ITEMS} more)]`;
+  }
+
+  return `[${formatted}]`;
+}
+
+function formatObject(obj: Map<string, CalculatedValue>): string {
+  if (obj.size === 0) {
+    return "{}";
+  }
+
+  const MAX_ITEMS = 10;
+  const entries: string[] = [];
+  let count = 0;
+
+  for (const [key, value] of obj) {
+    if (count >= MAX_ITEMS) {
+      entries.push(`... (${obj.size - MAX_ITEMS} more)`);
+      break;
+    }
+    entries.push(`${key}: ${formatResultWithUnit(value)}`);
+    count++;
+  }
+
+  return `{${entries.join(", ")}}`;
 }
 
 function isTimeUnit(unit: string): boolean {

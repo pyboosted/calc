@@ -46,6 +46,15 @@ export function getTokenColor(type: TokenType, value?: string): string {
     case TokenType.QUESTION:
     case TokenType.COLON:
       return "blue"; // Ternary operator
+    case TokenType.LBRACE:
+    case TokenType.RBRACE:
+    case TokenType.LBRACKET:
+    case TokenType.RBRACKET:
+      return "yellow"; // Array/object delimiters
+    case TokenType.DOT:
+      return "white"; // Property access
+    case TokenType.COMMA:
+      return "white"; // Separator
     default:
       return "white";
   }

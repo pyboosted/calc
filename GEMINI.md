@@ -4,7 +4,7 @@ This file provides guidance to Gemini when working with code in this repository.
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, string manipulation (v1.3.0), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -90,11 +90,12 @@ bun test --name-pattern "percentage"
 ### Expression Processing Pipeline
 
 1. **Tokenizer** (`src/parser/tokenizer.ts`): Converts raw input into tokens
-   - Handles numbers, operators, units, functions, variables, keywords, strings, booleans
+   - Handles numbers, operators, units, functions, variables, keywords, strings, booleans, arrays, objects
    - String literals: backticks with interpolation, single/double quotes without
    - Recognizes multi-character operators and currency symbols
    - Recognizes comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)
    - Tokenizes boolean/null keywords and logical operators (`and`, `or`, `not`)
+   - Tokenizes array literals (`[`, `]`) and object literals (`{`, `}`)
    - Maintains position information for each token
    - Processes escape sequences in strings
 
@@ -106,6 +107,8 @@ bun test --name-pattern "percentage"
    - Parses string literals with interpolation expressions
    - Handles type casting syntax (`expression as type`)
    - Parses boolean literals (`true`, `false`, `null`)
+   - Parses array literals (`[1, 2, 3]`) and object literals (`{a: 1, b: 2}`)
+   - Supports property access (dot notation and bracket notation)
    - Implements comparison and logical operators with proper precedence
    - Supports ternary conditional operator (`? :`)
 
@@ -113,9 +116,11 @@ bun test --name-pattern "percentage"
    - Maintains variable state across evaluations
    - Handles unit conversions through `convertUnits`
    - Integrates with date/time operations via `date-manager`
-   - Returns discriminated union `CalculatedValue` objects (number, string, date, boolean, or null)
+   - Returns discriminated union `CalculatedValue` objects (number, string, date, boolean, null, array, or object)
    - Evaluates string interpolations and operations
-   - Implements type casting between strings, numbers, and booleans
+   - Implements type casting between strings, numbers, booleans, arrays, and objects
+   - Evaluates array operations (push, pop, slice, etc.) and object operations (keys, values, has)
+   - Handles property access for both arrays (index) and objects (key)
    - Evaluates comparison operations with automatic unit conversion
    - Implements short-circuit evaluation for logical operators
    - Uses JavaScript-like truthiness rules for conditional expressions
@@ -150,7 +155,7 @@ The UI uses Ink (React for CLI) with a sophisticated state management system:
      - Uses tokenizer for syntax highlighting
      - Supports Unicode and special character rendering
 
-### Type System (v1.3.0, updated v1.3.1)
+### Type System (v1.3.0, updated v1.3.1, extended v1.3.2)
 
 **CalculatedValue** is now a discriminated union:
 ```typescript
@@ -159,7 +164,9 @@ type CalculatedValue =
   | { type: 'string'; value: string }
   | { type: 'date'; value: Date; timezone?: string }
   | { type: 'boolean'; value: boolean }
-  | { type: 'null'; value: null };
+  | { type: 'null'; value: null }
+  | { type: 'array'; elements: CalculatedValue[] }
+  | { type: 'object'; properties: Map<string, CalculatedValue> };
 ```
 
 This allows the calculator to handle multiple data types while maintaining type safety.
@@ -225,6 +232,53 @@ This allows the calculator to handle multiple data types while maintaining type 
    - Multiplicative (`*`, `/`, `%`)
    - Unary (`-`, `+`, `not`)
    - Exponentiation (`^`)
+
+### Arrays and Objects (v1.3.2)
+
+1. **Array Literals**:
+   - `[1, 2, 3]`: Create arrays with square brackets
+   - Empty arrays: `[]`
+   - Mixed types: `[1, "hello", true]`
+   - Nested arrays: `[[1, 2], [3, 4]]`
+
+2. **Object Literals**:
+   - `{a: 1, b: 2}`: Create objects with curly braces
+   - Empty objects: `{}`
+   - String keys: `{"name": "John", "age": 30}`
+   - Mixed value types: `{x: 1, y: "hello", z: true}`
+   - Nested objects: `{person: {name: "John", age: 30}}`
+
+3. **Array Functions**:
+   - `push(arr, value)`: Add element to end, returns new array
+   - `pop(arr)`: Remove last element, returns new array
+   - `first(arr)`: Get first element
+   - `last(arr)`: Get last element
+   - `slice(arr, start, end?)`: Extract portion of array
+   - `length(arr)`: Get array length
+   - `sum(arr)`: Sum of numeric elements
+   - `avg(arr)` or `average(arr)`: Average of numeric elements
+
+4. **Object Functions**:
+   - `keys(obj)`: Get array of object keys
+   - `values(obj)`: Get array of object values
+   - `has(obj, key)`: Check if object has key
+
+5. **Property Access**:
+   - Dot notation: `obj.property`, `arr.0`
+   - Bracket notation: `obj["property"]`, `arr[0]`
+   - Dynamic access: `obj[variable]`, `arr[index]`
+   - Nested access: `obj.person.name`, `arr[0][1]`
+
+6. **Type Casting**:
+   - `as array`: Parse JSON array from string
+   - `as object`: Parse JSON object from string
+   - Arrays/objects to string: Converts to JSON representation
+
+7. **Integration with Aggregates**:
+   - `sum` and `avg`/`average` work as both:
+     - Aggregate keywords (operate on previous results)
+     - Functions (operate on array arguments)
+   - Context-aware tokenization determines usage
 
 ### Key Systems
 
@@ -307,3 +361,8 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Comparison operators automatically handle unit conversions for numbers with units
 - The ternary operator (`? :`) supports nested expressions and evaluates conditions for truthiness
 - `null` is a distinct type from `false` or `0`, following JavaScript semantics
+- Arrays and objects are first-class types with full support for literals, functions, and property access (v1.3.2)
+- Array functions like `push` and `pop` return new arrays (immutable operations)
+- The `sum`, `avg`, and `average` functions can work as both aggregate keywords and array functions
+- Type casting supports parsing JSON strings to arrays/objects with `as array` and `as object`
+- Property access works with both dot notation and bracket notation for arrays and objects

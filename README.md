@@ -30,6 +30,19 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Type casting: `as string`, `as number`
   - String functions: `len`, `substr`, `charat`, `trim`, `format`
   - Escape sequences: `\n`, `\t`, `\\`, `\``
+- **Boolean operations** (v1.3.1):
+  - Boolean literals: `true`, `false`, `null`
+  - Comparison operators: `==`, `!=`, `<`, `>`, `<=`, `>=`
+  - Logical operators: `and`, `or`, `not`
+  - Ternary operator: `condition ? true : false`
+  - Type casting: `as boolean`
+- **Arrays and Objects** (v1.3.2):
+  - Array literals: `[1, 2, 3]`, nested arrays, mixed types
+  - Object literals: `{a: 1, b: 2}`, nested objects, string keys
+  - Array functions: `push`, `pop`, `first`, `last`, `slice`, `length`, `sum`, `avg`/`average`
+  - Object functions: `keys`, `values`, `has`
+  - Property access: dot notation (`obj.property`), bracket notation (`arr[0]`)
+  - Type casting: `as array`, `as object` (parses JSON strings)
 - **Syntax highlighting**: Numbers, operators, units, functions, variables, and strings are color-coded
 - **History navigation**: Use up/down arrows to navigate through previous calculations
 - **Multi-line support**: Press Enter to add new lines to expressions
@@ -394,6 +407,80 @@ discount = is_adult and not is_senior ? 10 : 0
 ` `
 `World`
 total                                  # "Hello World"
+
+# Arrays and Objects (v1.3.2)
+# Array literals
+[1, 2, 3]                              # Array of numbers
+["a", "b", "c"]                        # Array of strings
+[1, "hello", true]                     # Mixed types
+[]                                     # Empty array
+[[1, 2], [3, 4]]                       # Nested arrays
+
+# Object literals
+{x: 10, y: 20}                         # Object with properties
+{"name": "John", "age": 30}            # String keys
+{a: 1, b: "hello", c: true}            # Mixed value types
+{}                                     # Empty object
+{person: {name: "John", age: 30}}      # Nested objects
+
+# Array functions
+arr = [1, 2, 3]
+push(arr, 4)                           # [1, 2, 3, 4]
+pop(arr)                               # [1, 2]
+first(arr)                             # 1
+last(arr)                              # 3
+slice(arr, 1, 2)                       # [2]
+length(arr)                            # 3
+sum([1, 2, 3, 4])                      # 10
+avg([10, 20, 30])                      # 20
+
+# Object functions
+obj = {a: 1, b: 2, c: 3}
+keys(obj)                              # ["a", "b", "c"]
+values(obj)                            # [1, 2, 3]
+has(obj, "b")                          # true
+has(obj, "x")                          # false
+
+# Property access
+arr = [10, 20, 30]
+arr[0]                                 # 10 (bracket notation)
+arr.1                                  # 20 (dot notation)
+obj = {name: "John", age: 30}
+obj.name                               # "John"
+obj["age"]                             # 30
+
+# Dynamic property access
+key = "name"
+obj[key]                               # "John"
+index = 2
+arr[index]                             # 30
+
+# Nested access
+data = {users: [{name: "John"}, {name: "Jane"}]}
+data.users[0].name                     # "John"
+data["users"][1]["name"]               # "Jane"
+
+# Type casting with JSON
+json_arr = `[1, 2, 3]`
+parsed = json_arr as array             # [1, 2, 3]
+json_obj = `{"x": 10, "y": 20}`
+parsed_obj = json_obj as object        # {x: 10, y: 20}
+
+# Arrays/objects to string
+[1, 2, 3] as string                    # "[1,2,3]"
+{a: 1, b: 2} as string                 # "{\"a\":1,\"b\":2}"
+
+# sum and avg as functions vs aggregates
+# As functions:
+sum([1, 2, 3, 4])                      # 10
+avg([10, 20, 30])                      # 20
+
+# As aggregate keywords:
+10
+20
+30
+sum                                    # 60 (aggregate)
+average                                # 20 (aggregate)
 ```
 
 ## Architecture

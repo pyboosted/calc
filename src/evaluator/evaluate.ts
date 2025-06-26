@@ -2,6 +2,7 @@ import { Parser } from "../parser/parser";
 import { Tokenizer } from "../parser/tokenizer";
 import type {
   AggregateNode,
+  ArrayNode,
   ASTNode,
   AssignmentNode,
   BinaryOpNode,
@@ -13,9 +14,13 @@ import type {
   DateOperationNode,
   DateTimeNode,
   FunctionNode,
+  IndexAccessNode,
   LogicalNode,
   NullNode,
   NumberNode,
+  ObjectNode,
+  PropertyAccessNode,
+  PropertyAssignmentNode,
   StringNode,
   TernaryNode,
   TimeNode,
@@ -31,6 +36,10 @@ import {
   debugToken,
 } from "../utils/debug";
 import { TimezoneManager } from "../utils/timezone-manager";
+import {
+  evaluateArrayFunction,
+  evaluateObjectFunction,
+} from "./array-object-functions";
 import { mathFunctions } from "./math-functions";
 import { convertUnits } from "./unit-converter";
 
@@ -131,6 +140,15 @@ function formatValue(value: CalculatedValue): string {
       return value.value ? "true" : "false";
     case "null":
       return "null";
+    case "array":
+      return `[${value.value.map(formatValue).join(", ")}]`;
+    case "object": {
+      const entries: string[] = [];
+      for (const [key, val] of value.value) {
+        entries.push(`${key}: ${formatValue(val)}`);
+      }
+      return `{${entries.join(", ")}}`;
+    }
     default:
       // This should never happen with our exhaustive type checking
       throw new Error("Unknown value type");
@@ -218,6 +236,10 @@ function isTruthy(value: CalculatedValue): boolean {
       return false;
     case "date":
       return true; // Dates are always truthy
+    case "array":
+      return value.value.length > 0;
+    case "object":
+      return value.value.size > 0;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;
@@ -226,6 +248,7 @@ function isTruthy(value: CalculatedValue): boolean {
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Type casting requires handling multiple source and target type combinations
 function evaluateTypeCastNode(
   node: TypeCastNode,
   variables: Map<string, CalculatedValue>,
@@ -233,7 +256,11 @@ function evaluateTypeCastNode(
 ): CalculatedValue {
   const value = evaluateNode(node.expression, variables, context);
 
-  if (node.targetType === "string") {
+  if (node.targetType === "string" || node.targetType === "json") {
+    if (value.type === "array" || value.type === "object") {
+      // Convert to JSON string
+      return { type: "string", value: JSON.stringify(valueToJSON(value)) };
+    }
     return { type: "string", value: formatValue(value) };
   }
 
@@ -258,7 +285,149 @@ function evaluateTypeCastNode(
     return { type: "boolean", value: isTruthy(value) };
   }
 
+  if (node.targetType === "array") {
+    if (value.type === "array") {
+      return value;
+    }
+    if (value.type === "string") {
+      // Try to parse JSON
+      try {
+        const parsed = JSON.parse(value.value);
+        if (Array.isArray(parsed)) {
+          return jsonToCalculatedValue(parsed);
+        }
+        throw new Error("Parsed value is not an array");
+      } catch {
+        throw new Error("Cannot convert string to array: invalid JSON");
+      }
+    }
+    if (value.type === "object") {
+      // Convert object to array by extracting numeric keys in order
+      const entries: CalculatedValue[] = [];
+      const numericKeys: number[] = [];
+
+      for (const key of value.value.keys()) {
+        const num = Number.parseInt(key, 10);
+        if (!Number.isNaN(num) && num.toString() === key) {
+          numericKeys.push(num);
+        }
+      }
+
+      numericKeys.sort((a, b) => a - b);
+
+      for (const key of numericKeys) {
+        const val = value.value.get(key.toString());
+        if (val) {
+          entries.push(val);
+        }
+      }
+
+      return { type: "array", value: entries };
+    }
+    throw new Error(`Cannot convert ${value.type} to array`);
+  }
+
+  if (node.targetType === "object") {
+    if (value.type === "object") {
+      return value;
+    }
+    if (value.type === "string") {
+      // Try to parse JSON
+      try {
+        const parsed = JSON.parse(value.value);
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          !Array.isArray(parsed)
+        ) {
+          return jsonToCalculatedValue(parsed);
+        }
+        throw new Error("Parsed value is not an object");
+      } catch {
+        throw new Error("Cannot convert string to object: invalid JSON");
+      }
+    }
+    if (value.type === "array") {
+      // Convert array to object with numeric keys and length property
+      const obj = new Map<string, CalculatedValue>();
+
+      value.value.forEach((element, index) => {
+        obj.set(index.toString(), element);
+      });
+
+      obj.set("length", { type: "number", value: value.value.length });
+
+      return { type: "object", value: obj };
+    }
+    throw new Error(`Cannot convert ${value.type} to object`);
+  }
+
   throw new Error(`Unknown target type: ${node.targetType}`);
+}
+
+// Helper function to convert CalculatedValue to JSON-compatible format
+type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+
+function valueToJSON(value: CalculatedValue): JSONValue {
+  switch (value.type) {
+    case "number":
+      return value.value;
+    case "string":
+      return value.value;
+    case "boolean":
+      return value.value;
+    case "null":
+      return null;
+    case "date":
+      return value.value.toISOString();
+    case "array":
+      return value.value.map(valueToJSON);
+    case "object": {
+      const obj: Record<string, JSONValue> = {};
+      for (const [key, val] of value.value) {
+        obj[key] = valueToJSON(val);
+      }
+      return obj;
+    }
+    default: {
+      const _exhaustiveCheck: never = value;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
+// Helper function to convert JSON to CalculatedValue
+function jsonToCalculatedValue(json: JSONValue): CalculatedValue {
+  if (json === null) {
+    return { type: "null", value: null };
+  }
+  if (typeof json === "boolean") {
+    return { type: "boolean", value: json };
+  }
+  if (typeof json === "number") {
+    return { type: "number", value: json };
+  }
+  if (typeof json === "string") {
+    return { type: "string", value: json };
+  }
+  if (Array.isArray(json)) {
+    const elements = json.map(jsonToCalculatedValue);
+    return { type: "array", value: elements };
+  }
+  if (typeof json === "object") {
+    const properties = new Map<string, CalculatedValue>();
+    for (const [key, value] of Object.entries(json)) {
+      properties.set(key, jsonToCalculatedValue(value));
+    }
+    return { type: "object", value: properties };
+  }
+  throw new Error(`Cannot convert JSON value: ${typeof json}`);
 }
 
 function evaluateUnaryNode(
@@ -404,6 +573,33 @@ function evaluateFunctionNode(
   // Handle string functions
   if (["format", "len", "substr", "charat", "trim"].includes(node.name)) {
     return evaluateStringFunction(node.name, args);
+  }
+
+  // Handle array functions (length is handled in both array and string functions)
+  if (
+    [
+      "push",
+      "pop",
+      "first",
+      "last",
+      "length",
+      "sum",
+      "avg",
+      "average",
+      "slice",
+    ].includes(node.name)
+  ) {
+    return evaluateArrayFunction(node.name, args);
+  }
+
+  // Handle object functions
+  if (["keys", "values", "has"].includes(node.name)) {
+    return evaluateObjectFunction(node.name, args);
+  }
+
+  // Handle length function (works on arrays, strings, and objects)
+  if (node.name === "length") {
+    return evaluateArrayFunction(node.name, args);
   }
 
   const func = mathFunctions[node.name];
@@ -1291,6 +1487,33 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
       return left.value.getTime() === (right as typeof left).value.getTime();
     case "null":
       return true;
+    case "array": {
+      const rightArray = right as typeof left;
+      if (left.value.length !== rightArray.value.length) {
+        return false;
+      }
+      for (let i = 0; i < left.value.length; i++) {
+        const leftItem = left.value[i];
+        const rightItem = rightArray.value[i];
+        if (!(leftItem && rightItem && isEqual(leftItem, rightItem))) {
+          return false;
+        }
+      }
+      return true;
+    }
+    case "object": {
+      const rightObject = right as typeof left;
+      if (left.value.size !== rightObject.value.size) {
+        return false;
+      }
+      for (const [key, value] of left.value) {
+        const rightValue = rightObject.value.get(key);
+        if (!(rightValue && isEqual(value, rightValue))) {
+          return false;
+        }
+      }
+      return true;
+    }
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -1334,8 +1557,18 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
       return left.value < (right as typeof left).value;
     case "date":
       return left.value.getTime() < (right as typeof left).value.getTime();
-    default:
-      throw new Error(`Cannot compare ${left.type} values`);
+    case "boolean":
+      // In JavaScript, false < true (false is 0, true is 1)
+      return !left.value && (right as typeof left).value;
+    case "null":
+    case "array":
+    case "object":
+      throw new Error(`Cannot compare ${left.type} values with < operator`);
+    default: {
+      // Exhaustive check
+      const _exhaustiveCheck: never = left;
+      return _exhaustiveCheck;
+    }
   }
 }
 
@@ -1391,6 +1624,139 @@ function evaluateTernaryNode(
     return evaluateNode(node.trueExpr, variables, context);
   }
   return evaluateNode(node.falseExpr, variables, context);
+}
+
+function evaluateArrayNode(
+  node: ArrayNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const elements = node.elements.map((element) =>
+    evaluateNode(element, variables, context)
+  );
+  return { type: "array", value: elements };
+}
+
+function evaluateObjectNode(
+  node: ObjectNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const properties = new Map<string, CalculatedValue>();
+
+  for (const [key, valueNode] of node.properties) {
+    const value = evaluateNode(valueNode, variables, context);
+    properties.set(key, value);
+  }
+
+  return { type: "object", value: properties };
+}
+
+function evaluatePropertyAccessNode(
+  node: PropertyAccessNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const object = evaluateNode(node.object, variables, context);
+
+  if (!node.computed) {
+    // Dot notation: obj.prop
+    if (object.type !== "object") {
+      throw new Error(
+        `Cannot access property of non-object type: ${object.type}`
+      );
+    }
+
+    const propertyName = (node.property as StringNode).value;
+    const value = object.value.get(propertyName);
+
+    if (value === undefined) {
+      return { type: "null", value: null };
+    }
+
+    return value;
+  }
+
+  // Bracket notation: obj[prop] or arr[index]
+  const property = evaluateNode(node.property, variables, context);
+
+  if (object.type === "array") {
+    // Array index access
+    if (property.type !== "number") {
+      throw new Error(`Array index must be a number, got ${property.type}`);
+    }
+
+    let index = Math.floor(property.value);
+
+    // Support negative indices (Python-style)
+    if (index < 0) {
+      index = object.value.length + index;
+    }
+
+    if (index < 0 || index >= object.value.length) {
+      return { type: "null", value: null };
+    }
+
+    return object.value[index] || { type: "null", value: null };
+  }
+
+  if (object.type === "object") {
+    // Object property access with bracket notation
+    let key: string;
+
+    switch (property.type) {
+      case "string":
+        key = property.value;
+        break;
+      case "number":
+        key = property.value.toString();
+        break;
+      default:
+        throw new Error(
+          `Property key must be string or number, got ${property.type}`
+        );
+    }
+
+    const value = object.value.get(key);
+
+    if (value === undefined) {
+      return { type: "null", value: null };
+    }
+
+    return value;
+  }
+
+  throw new Error(
+    `Cannot access property of non-object/array type: ${object.type}`
+  );
+}
+
+function evaluateIndexAccessNode(
+  _node: IndexAccessNode,
+  _variables: Map<string, CalculatedValue>,
+  _context?: EvaluationContext
+): CalculatedValue {
+  // This is for backward compatibility - we're using PropertyAccessNode for both
+  throw new Error("IndexAccessNode should not be used directly");
+}
+
+function evaluatePropertyAssignmentNode(
+  node: PropertyAssignmentNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const object = evaluateNode(node.object, variables, context);
+
+  if (object.type !== "object") {
+    throw new Error(
+      `Cannot assign property to non-object type: ${object.type}`
+    );
+  }
+
+  const value = evaluateNode(node.value, variables, context);
+  object.value.set(node.property, value);
+
+  return value;
 }
 
 function evaluateNode(
@@ -1455,6 +1821,21 @@ function evaluateNode(
 
     case "ternary":
       return evaluateTernaryNode(node, variables, context);
+
+    case "array":
+      return evaluateArrayNode(node, variables, context);
+
+    case "object":
+      return evaluateObjectNode(node, variables, context);
+
+    case "propertyAccess":
+      return evaluatePropertyAccessNode(node, variables, context);
+
+    case "indexAccess":
+      return evaluateIndexAccessNode(node, variables, context);
+
+    case "propertyAssignment":
+      return evaluatePropertyAssignmentNode(node, variables, context);
 
     default: {
       // This ensures exhaustiveness - TypeScript will error if we miss a case

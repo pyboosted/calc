@@ -1,5 +1,6 @@
 import {
   type AggregateNode,
+  type ArrayNode,
   type ASTNode,
   type AssignmentNode,
   type BinaryOpNode,
@@ -13,6 +14,8 @@ import {
   type LogicalNode,
   type NullNode,
   type NumberNode,
+  type ObjectNode,
+  type PropertyAccessNode,
   type StringNode,
   type TernaryNode,
   type TimeNode,
@@ -241,19 +244,26 @@ export class Parser {
       this.advance(); // consume "as"
       const nextToken = this.current;
 
-      // Check if it's a type cast to string, number, or boolean
+      // Check if it's a type cast to string, number, boolean, array, or object
       if (nextToken.type === TokenType.VARIABLE) {
         const targetType = nextToken.value.toLowerCase();
         if (
           targetType === "string" ||
           targetType === "number" ||
-          targetType === "boolean"
+          targetType === "boolean" ||
+          targetType === "array" ||
+          targetType === "object"
         ) {
           this.advance();
           return {
             type: "typeCast",
             expression: node,
-            targetType: targetType as "string" | "number" | "boolean",
+            targetType: targetType as
+              | "string"
+              | "number"
+              | "boolean"
+              | "array"
+              | "object",
           } as TypeCastNode;
         }
       }
@@ -551,8 +561,53 @@ export class Parser {
   private parsePostfix(): ASTNode {
     let node = this.parsePrimary();
 
-    // Handle unit conversion and percentage
+    // Handle postfix operations: property access, index access, unit conversion, and percentage
     while (true) {
+      // Property access (dot notation)
+      if (this.current.type === TokenType.DOT) {
+        this.advance(); // consume dot
+
+        if (
+          (this.current as Token).type !== TokenType.VARIABLE &&
+          (this.current as Token).type !== TokenType.NUMBER &&
+          (this.current as Token).type !== TokenType.KEYWORD &&
+          (this.current as Token).type !== TokenType.UNIT &&
+          (this.current as Token).type !== TokenType.CONSTANT
+        ) {
+          throw new Error(
+            `Expected property name after '.', got ${this.current.type}`
+          );
+        }
+
+        const property = this.current.value;
+        this.advance();
+
+        node = {
+          type: "propertyAccess",
+          object: node,
+          property: { type: "string", value: property } as StringNode,
+          computed: false,
+        } as PropertyAccessNode;
+        continue;
+      }
+
+      // Index access (bracket notation)
+      if (this.current.type === TokenType.LBRACKET) {
+        this.advance(); // consume [
+        const index = this.parseExpression();
+        this.consume(TokenType.RBRACKET, "Expected ] after index");
+
+        // Determine if this is array index access or object property access
+        // This will be decided at evaluation time based on the type of the object
+        node = {
+          type: "propertyAccess",
+          object: node,
+          property: index,
+          computed: true,
+        } as PropertyAccessNode;
+        continue;
+      }
+
       if (
         this.current.type === TokenType.UNIT ||
         this.current.type === TokenType.CURRENCY
@@ -723,6 +778,16 @@ export class Parser {
     if (this.current.type === TokenType.NULL) {
       this.advance();
       return { type: "null" } as NullNode;
+    }
+
+    // Array literals
+    if (this.current.type === TokenType.LBRACKET) {
+      return this.parseArray();
+    }
+
+    // Object literals
+    if (this.current.type === TokenType.LBRACE) {
+      return this.parseObject();
     }
 
     // Variables and Constants
@@ -969,5 +1034,98 @@ export class Parser {
       return true;
     }
     return false;
+  }
+
+  private parseArray(): ArrayNode {
+    this.consume(TokenType.LBRACKET, "Expected [");
+    const elements: ASTNode[] = [];
+
+    // Handle empty array
+    if (this.current.type === TokenType.RBRACKET) {
+      this.advance();
+      return { type: "array", elements };
+    }
+
+    // Parse first element
+    elements.push(this.parseExpression());
+
+    // Parse remaining elements
+    while (this.current.type === TokenType.COMMA) {
+      this.advance(); // consume comma
+
+      // Allow trailing comma
+      if ((this.current as Token).type === TokenType.RBRACKET) {
+        break;
+      }
+
+      elements.push(this.parseExpression());
+    }
+
+    this.consume(TokenType.RBRACKET, "Expected ]");
+    return { type: "array", elements };
+  }
+
+  private parseObject(): ObjectNode {
+    this.consume(TokenType.LBRACE, "Expected {");
+    const properties = new Map<string, ASTNode>();
+
+    // Handle empty object
+    if (this.current.type === TokenType.RBRACE) {
+      this.advance();
+      return { type: "object", properties };
+    }
+
+    // Parse first property
+    this.parseObjectProperty(properties);
+
+    // Parse remaining properties
+    while (this.current.type === TokenType.COMMA) {
+      this.advance(); // consume comma
+
+      // Allow trailing comma
+      if ((this.current as Token).type === TokenType.RBRACE) {
+        break;
+      }
+
+      this.parseObjectProperty(properties);
+    }
+
+    this.consume(TokenType.RBRACE, "Expected }");
+    return { type: "object", properties };
+  }
+
+  private parseObjectProperty(properties: Map<string, ASTNode>): void {
+    // Property key can be:
+    // - identifier: { foo: 1 }
+    // - string: { "foo": 1 }
+    // - number: { 0: 1 }
+    let key: string;
+
+    if (
+      this.current.type === TokenType.VARIABLE ||
+      this.current.type === TokenType.KEYWORD ||
+      this.current.type === TokenType.UNIT ||
+      this.current.type === TokenType.CONSTANT
+    ) {
+      key = this.current.value;
+      this.advance();
+    } else if (
+      this.current.type === TokenType.STRING_LITERAL ||
+      this.current.type === TokenType.SINGLE_QUOTE_STRING ||
+      this.current.type === TokenType.DOUBLE_QUOTE_STRING
+    ) {
+      key = this.current.value;
+      this.advance();
+    } else if (this.current.type === TokenType.NUMBER) {
+      key = this.current.value;
+      this.advance();
+    } else {
+      throw new Error(`Expected property key, got ${this.current.type}`);
+    }
+
+    this.consume(TokenType.COLON, "Expected : after property key");
+    const value = this.parseExpression();
+
+    properties.set(key, value);
   }
 }

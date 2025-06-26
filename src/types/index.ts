@@ -18,7 +18,9 @@ export type CalculatedValue =
   | { type: "string"; value: string }
   | { type: "date"; value: Date; timezone?: string }
   | { type: "boolean"; value: boolean }
-  | { type: "null"; value: null };
+  | { type: "null"; value: null }
+  | { type: "array"; value: CalculatedValue[] }
+  | { type: "object"; value: Map<string, CalculatedValue> };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -56,6 +58,10 @@ export const TokenType = {
   AND: "AND",
   OR: "OR",
   NOT: "NOT",
+  LBRACE: "LBRACE",
+  RBRACE: "RBRACE",
+  LBRACKET: "LBRACKET",
+  RBRACKET: "RBRACKET",
   EOF: "EOF",
 } as const;
 
@@ -149,7 +155,7 @@ export interface StringNode {
 export interface TypeCastNode {
   type: "typeCast";
   expression: ASTNode;
-  targetType: "string" | "number" | "boolean";
+  targetType: "string" | "number" | "boolean" | "array" | "object" | "json";
 }
 
 export interface BooleanNode {
@@ -182,6 +188,36 @@ export interface LogicalNode {
   right: ASTNode;
 }
 
+export interface ArrayNode {
+  type: "array";
+  elements: ASTNode[];
+}
+
+export interface ObjectNode {
+  type: "object";
+  properties: Map<string, ASTNode>;
+}
+
+export interface PropertyAccessNode {
+  type: "propertyAccess";
+  object: ASTNode;
+  property: ASTNode;
+  computed: boolean;
+}
+
+export interface IndexAccessNode {
+  type: "indexAccess";
+  array: ASTNode;
+  index: ASTNode;
+}
+
+export interface PropertyAssignmentNode {
+  type: "propertyAssignment";
+  object: ASTNode;
+  property: string;
+  value: ASTNode;
+}
+
 // ASTNode is now a discriminated union type
 export type ASTNode =
   | NumberNode
@@ -202,4 +238,9 @@ export type ASTNode =
   | NullNode
   | TernaryNode
   | ComparisonNode
-  | LogicalNode;
+  | LogicalNode
+  | ArrayNode
+  | ObjectNode
+  | PropertyAccessNode
+  | IndexAccessNode
+  | PropertyAssignmentNode;

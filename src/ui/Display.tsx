@@ -49,12 +49,53 @@ function formatResult(result: CalculatedValue): string {
       return result.value ? "true" : "false";
     case "null":
       return "null";
+    case "array":
+      return formatArray(result.value);
+    case "object":
+      return formatObject(result.value);
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = result;
       return _exhaustiveCheck;
     }
   }
+}
+
+function formatArray(arr: CalculatedValue[]): string {
+  if (arr.length === 0) {
+    return "[]";
+  }
+
+  const MAX_ITEMS = 5;
+  const items = arr.slice(0, MAX_ITEMS);
+  const formatted = items.map((item) => formatResult(item)).join(", ");
+
+  if (arr.length > MAX_ITEMS) {
+    return `[${formatted}, ... (${arr.length - MAX_ITEMS} more)]`;
+  }
+
+  return `[${formatted}]`;
+}
+
+function formatObject(obj: Map<string, CalculatedValue>): string {
+  if (obj.size === 0) {
+    return "{}";
+  }
+
+  const MAX_ITEMS = 5;
+  const entries: string[] = [];
+  let count = 0;
+
+  for (const [key, value] of obj) {
+    if (count >= MAX_ITEMS) {
+      entries.push(`... (${obj.size - MAX_ITEMS} more)`);
+      break;
+    }
+    entries.push(`${key}: ${formatResult(value)}`);
+    count++;
+  }
+
+  return `{${entries.join(", ")}}`;
 }
 
 function formatNumber(num: number): string {

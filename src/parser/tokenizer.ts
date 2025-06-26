@@ -333,6 +333,7 @@ export class Tokenizer {
     return { type: TokenType.NUMBER, value, position: start };
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Tokenizer needs to handle many different keyword and identifier types
   private tryReadKeywordOrIdentifier(): Token {
     const start = this.position;
     let value = "";
@@ -424,8 +425,27 @@ export class Tokenizer {
       return { type: TokenType.TIMEZONE, value, position: start };
     }
 
-    // Keywords
-    if (isKeyword(finalLowerValue)) {
+    // Special handling for words that can be both keywords and functions (sum, avg, average)
+    if (["sum", "avg", "average"].includes(finalLowerValue)) {
+      // Peek ahead to see if the next non-whitespace character is '('
+      const savedPos = this.position;
+      while (
+        this.position < this.input.length &&
+        WHITESPACE_PATTERN.test(this.input[this.position] || "")
+      ) {
+        this.position++;
+      }
+      const isFollowedByParen =
+        this.position < this.input.length && this.input[this.position] === "(";
+      this.position = savedPos; // Reset position
+
+      if (isFollowedByParen) {
+        return {
+          type: TokenType.FUNCTION,
+          value: finalLowerValue,
+          position: start,
+        };
+      }
       return {
         type: TokenType.KEYWORD,
         value: finalLowerValue,
@@ -433,10 +453,19 @@ export class Tokenizer {
       };
     }
 
-    // Functions
+    // Check if this is a function
     if (isFunction(finalLowerValue)) {
       return {
         type: TokenType.FUNCTION,
+        value: finalLowerValue,
+        position: start,
+      };
+    }
+
+    // Check if this is a keyword
+    if (isKeyword(finalLowerValue)) {
+      return {
+        type: TokenType.KEYWORD,
         value: finalLowerValue,
         position: start,
       };

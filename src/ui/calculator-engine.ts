@@ -281,6 +281,33 @@ export class CalculatorEngine {
         return a.value === (b as typeof a).value;
       case "null":
         return true; // Both are null
+      case "array": {
+        const bArray = b as typeof a;
+        if (a.value.length !== bArray.value.length) {
+          return false;
+        }
+        for (let i = 0; i < a.value.length; i++) {
+          const aVal = a.value[i];
+          const bVal = bArray.value[i];
+          if (!(aVal && bVal && this.areValuesEqual(aVal, bVal))) {
+            return false;
+          }
+        }
+        return true;
+      }
+      case "object": {
+        const bObject = b as typeof a;
+        if (a.value.size !== bObject.value.size) {
+          return false;
+        }
+        for (const [key, value] of a.value) {
+          const bValue = bObject.value.get(key);
+          if (!(bValue && this.areValuesEqual(value, bValue))) {
+            return false;
+          }
+        }
+        return true;
+      }
       default: {
         // Exhaustive check
         const _exhaustiveCheck: never = a;
