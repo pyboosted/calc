@@ -16,7 +16,9 @@ export interface HistoryEntry {
 export type CalculatedValue =
   | { type: "number"; value: number; unit?: string }
   | { type: "string"; value: string }
-  | { type: "date"; value: Date; timezone?: string };
+  | { type: "date"; value: Date; timezone?: string }
+  | { type: "boolean"; value: boolean }
+  | { type: "null"; value: null };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -40,6 +42,20 @@ export const TokenType = {
   DOUBLE_QUOTE_STRING: "DOUBLE_QUOTE_STRING",
   DOT: "DOT",
   AS: "AS",
+  TRUE: "TRUE",
+  FALSE: "FALSE",
+  NULL: "NULL",
+  QUESTION: "QUESTION",
+  COLON: "COLON",
+  EQUAL: "EQUAL",
+  NOT_EQUAL: "NOT_EQUAL",
+  LESS_THAN: "LESS_THAN",
+  GREATER_THAN: "GREATER_THAN",
+  LESS_EQUAL: "LESS_EQUAL",
+  GREATER_EQUAL: "GREATER_EQUAL",
+  AND: "AND",
+  OR: "OR",
+  NOT: "NOT",
   EOF: "EOF",
 } as const;
 
@@ -133,7 +149,37 @@ export interface StringNode {
 export interface TypeCastNode {
   type: "typeCast";
   expression: ASTNode;
-  targetType: "string" | "number";
+  targetType: "string" | "number" | "boolean";
+}
+
+export interface BooleanNode {
+  type: "boolean";
+  value: boolean;
+}
+
+export interface NullNode {
+  type: "null";
+}
+
+export interface TernaryNode {
+  type: "ternary";
+  condition: ASTNode;
+  trueExpr: ASTNode;
+  falseExpr: ASTNode;
+}
+
+export interface ComparisonNode {
+  type: "comparison";
+  operator: "==" | "!=" | "<" | ">" | "<=" | ">=";
+  left: ASTNode;
+  right: ASTNode;
+}
+
+export interface LogicalNode {
+  type: "logical";
+  operator: "and" | "or" | "not";
+  left?: ASTNode;
+  right: ASTNode;
 }
 
 // ASTNode is now a discriminated union type
@@ -151,4 +197,9 @@ export type ASTNode =
   | DateTimeNode
   | DateOperationNode
   | StringNode
-  | TypeCastNode;
+  | TypeCastNode
+  | BooleanNode
+  | NullNode
+  | TernaryNode
+  | ComparisonNode
+  | LogicalNode;

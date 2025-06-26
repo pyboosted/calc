@@ -5,14 +5,19 @@ import type {
   ASTNode,
   AssignmentNode,
   BinaryOpNode,
+  BooleanNode,
   CalculatedValue,
+  ComparisonNode,
   ConstantNode,
   DateNode,
   DateOperationNode,
   DateTimeNode,
   FunctionNode,
+  LogicalNode,
+  NullNode,
   NumberNode,
   StringNode,
+  TernaryNode,
   TimeNode,
   TypeCastNode,
   UnaryOpNode,
@@ -122,6 +127,10 @@ function formatValue(value: CalculatedValue): string {
       return value.unit ? `${value.value} ${value.unit}` : String(value.value);
     case "date":
       return value.value.toISOString();
+    case "boolean":
+      return value.value ? "true" : "false";
+    case "null":
+      return "null";
     default:
       // This should never happen with our exhaustive type checking
       throw new Error("Unknown value type");
@@ -196,6 +205,27 @@ function evaluateStringNode(
   return { type: "string", value: result };
 }
 
+// Helper function to determine truthiness
+function isTruthy(value: CalculatedValue): boolean {
+  switch (value.type) {
+    case "boolean":
+      return value.value;
+    case "number":
+      return value.value !== 0;
+    case "string":
+      return value.value !== "";
+    case "null":
+      return false;
+    case "date":
+      return true; // Dates are always truthy
+    default: {
+      // Exhaustive check
+      const _exhaustiveCheck: never = value;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
 function evaluateTypeCastNode(
   node: TypeCastNode,
   variables: Map<string, CalculatedValue>,
@@ -218,7 +248,14 @@ function evaluateTypeCastNode(
     if (value.type === "number") {
       return value;
     }
+    if (value.type === "boolean") {
+      return { type: "number", value: value.value ? 1 : 0 };
+    }
     throw new Error(`Cannot convert ${value.type} to number`);
+  }
+
+  if (node.targetType === "boolean") {
+    return { type: "boolean", value: isTruthy(value) };
   }
 
   throw new Error(`Unknown target type: ${node.targetType}`);
@@ -1169,6 +1206,193 @@ function evaluateConstantNode(
   return { type: "number", value };
 }
 
+function evaluateBooleanNode(node: BooleanNode): CalculatedValue {
+  return { type: "boolean", value: node.value };
+}
+
+function evaluateNullNode(_node: NullNode): CalculatedValue {
+  return { type: "null", value: null };
+}
+
+function evaluateComparisonNode(
+  node: ComparisonNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const left = evaluateNode(node.left, variables, context);
+  const right = evaluateNode(node.right, variables, context);
+
+  const result = compareValues(left, right, node.operator);
+  return { type: "boolean", value: result };
+}
+
+function compareValues(
+  left: CalculatedValue,
+  right: CalculatedValue,
+  operator: ComparisonNode["operator"]
+): boolean {
+  switch (operator) {
+    case "==":
+      return isEqual(left, right);
+    case "!=":
+      return !isEqual(left, right);
+    case "<":
+      return isLessThan(left, right);
+    case ">":
+      return isLessThan(right, left);
+    case "<=":
+      return !isLessThan(right, left);
+    case ">=":
+      return !isLessThan(left, right);
+    default: {
+      // Exhaustive check
+      const _exhaustiveCheck: never = operator;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
+function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
+  if (left.type !== right.type) {
+    return false;
+  }
+
+  switch (left.type) {
+    case "number":
+      // If both have units and they're different, try to convert
+      if (
+        left.unit &&
+        (right as typeof left).unit &&
+        left.unit !== (right as typeof left).unit
+      ) {
+        try {
+          const rightUnit = (right as typeof left).unit;
+          if (rightUnit) {
+            const convertedRight = convertUnits(
+              (right as typeof left).value,
+              rightUnit,
+              left.unit
+            );
+            return Math.abs(left.value - convertedRight) < 1e-10; // Allow for floating point errors
+          }
+        } catch {
+          return false; // Units not compatible
+        }
+      }
+      return (
+        left.value === (right as typeof left).value &&
+        left.unit === (right as typeof left).unit
+      );
+    case "string":
+      return left.value === (right as typeof left).value;
+    case "boolean":
+      return left.value === (right as typeof left).value;
+    case "date":
+      return left.value.getTime() === (right as typeof left).value.getTime();
+    case "null":
+      return true;
+    default: {
+      // Exhaustive check
+      const _exhaustiveCheck: never = left;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
+function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
+  // Only compare compatible types
+  if (left.type !== right.type) {
+    throw new Error(`Cannot compare ${left.type} with ${right.type}`);
+  }
+
+  switch (left.type) {
+    case "number":
+      // Handle unit conversion if needed
+      if (
+        left.unit &&
+        (right as typeof left).unit &&
+        left.unit !== (right as typeof left).unit
+      ) {
+        try {
+          const rightUnit = (right as typeof left).unit;
+          if (rightUnit) {
+            const convertedRight = convertUnits(
+              (right as typeof left).value,
+              rightUnit,
+              left.unit
+            );
+            return left.value < convertedRight;
+          }
+        } catch {
+          throw new Error(
+            `Cannot compare ${left.unit} with ${(right as typeof left).unit}`
+          );
+        }
+      }
+      return left.value < (right as typeof left).value;
+    case "string":
+      return left.value < (right as typeof left).value;
+    case "date":
+      return left.value.getTime() < (right as typeof left).value.getTime();
+    default:
+      throw new Error(`Cannot compare ${left.type} values`);
+  }
+}
+
+function evaluateLogicalNode(
+  node: LogicalNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  switch (node.operator) {
+    case "and": {
+      if (node.left) {
+        const left = evaluateNode(node.left, variables, context);
+        if (!isTruthy(left)) {
+          return left; // Short-circuit
+        }
+      }
+      return evaluateNode(node.right, variables, context);
+    }
+
+    case "or": {
+      if (node.left) {
+        const left = evaluateNode(node.left, variables, context);
+        if (isTruthy(left)) {
+          return left; // Short-circuit
+        }
+      }
+      return evaluateNode(node.right, variables, context);
+    }
+
+    case "not": {
+      const value = evaluateNode(node.right, variables, context);
+      return { type: "boolean", value: !isTruthy(value) };
+    }
+
+    default: {
+      // Exhaustive check
+      const _exhaustiveCheck: never = node.operator;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
+function evaluateTernaryNode(
+  node: TernaryNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const condition = evaluateNode(node.condition, variables, context);
+  const conditionValue = isTruthy(condition);
+
+  // Lazy evaluation - only evaluate the selected branch
+  if (conditionValue) {
+    return evaluateNode(node.trueExpr, variables, context);
+  }
+  return evaluateNode(node.falseExpr, variables, context);
+}
+
 function evaluateNode(
   node: ASTNode,
   variables: Map<string, CalculatedValue>,
@@ -1216,6 +1440,21 @@ function evaluateNode(
 
     case "typeCast":
       return evaluateTypeCastNode(node, variables, context);
+
+    case "boolean":
+      return evaluateBooleanNode(node);
+
+    case "null":
+      return evaluateNullNode(node);
+
+    case "comparison":
+      return evaluateComparisonNode(node, variables, context);
+
+    case "logical":
+      return evaluateLogicalNode(node, variables, context);
+
+    case "ternary":
+      return evaluateTernaryNode(node, variables, context);
 
     default: {
       // This ensures exhaustiveness - TypeScript will error if we miss a case

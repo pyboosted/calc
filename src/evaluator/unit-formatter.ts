@@ -32,6 +32,12 @@ export function formatResultWithUnit(result: CalculatedValue): string {
     case "date":
       return formatDate(result.value, result.timezone);
 
+    case "boolean":
+      return result.value ? "true" : "false";
+
+    case "null":
+      return "null";
+
     default: {
       // This should never happen with our exhaustive type checking
       const _exhaustiveCheck: never = result;

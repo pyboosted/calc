@@ -327,6 +327,68 @@ custom = format(today, `'Today is' EEEE`)
 `Path\\to\\file`                       # Backslashes
 `She said \`hello\``                   # Backticks
 
+# Boolean operations (v1.3.1)
+# Boolean literals
+true
+false
+null
+
+# Comparison operators
+5 == 5                                 # true
+5 != 10                                # true
+10 > 5                                 # true
+5 < 10                                 # true
+5 <= 5                                 # true
+10 >= 10                               # true
+
+# String comparisons
+`abc` == `abc`                         # true
+`abc` < `def`                          # true
+`hello` != `world`                     # true
+
+# Unit comparisons
+100 cm == 1 m                          # true
+1000 g < 2 kg                          # true
+32 °F == 0 °C                          # true
+
+# Logical operators
+true and true                          # true
+true and false                         # false
+false or true                          # true
+not true                               # false
+5 > 3 and 10 < 20                      # true
+
+# Short-circuit evaluation
+false and x/0                          # false (doesn't evaluate x/0)
+true or expensive_calculation          # true (doesn't evaluate calculation)
+
+# Ternary operator
+x = 10
+x > 5 ? `big` : `small`                # "big"
+is_member = true
+price = is_member ? 90 : 100           # 90
+
+# Type conversions
+true as number                         # 1
+false as number                        # 0
+0 as boolean                           # false
+1 as boolean                           # true
+`` as boolean                          # false (empty string)
+`hello` as boolean                     # true
+null as boolean                        # false
+
+# Truthiness in conditionals
+count = 0
+count ? `has items` : `empty`          # "empty"
+name = `John`
+name ? `Hello, ${name}` : `Guest`      # "Hello, John"
+
+# Complex expressions
+age = 25
+is_adult = age >= 18
+is_senior = age >= 65
+discount = is_adult and not is_senior ? 10 : 0
+
 # String aggregation
 `Hello`
 ` `

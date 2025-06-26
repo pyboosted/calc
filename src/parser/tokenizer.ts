@@ -333,7 +333,7 @@ export class Tokenizer {
     return { type: TokenType.NUMBER, value, position: start };
   }
 
-  private readIdentifier(): Token {
+  private tryReadKeywordOrIdentifier(): Token {
     const start = this.position;
     let value = "";
 
@@ -396,6 +396,28 @@ export class Tokenizer {
 
     // Check if it's a keyword, function, constant, unit, timezone, or variable
     const finalLowerValue = value.toLowerCase();
+
+    // Check for boolean literals
+    if (finalLowerValue === "true") {
+      return { type: TokenType.TRUE, value: finalLowerValue, position: start };
+    }
+    if (finalLowerValue === "false") {
+      return { type: TokenType.FALSE, value: finalLowerValue, position: start };
+    }
+
+    // Check for null literal
+    if (finalLowerValue === "null") {
+      return { type: TokenType.NULL, value: finalLowerValue, position: start };
+    }
+
+    // Check for logical operators
+    if (["and", "or", "not"].includes(finalLowerValue)) {
+      return {
+        type: TokenType[finalLowerValue.toUpperCase() as "AND" | "OR" | "NOT"],
+        value: finalLowerValue,
+        position: start,
+      };
+    }
 
     // Check if it might be a timezone (contains UTC, GMT, or known timezone names)
     if (isTimezone(value)) {
@@ -734,7 +756,7 @@ export class Tokenizer {
       // Identifiers (variables, functions, units, keywords)
       // Support Unicode letters including Cyrillic
       if (UNICODE_LETTER_PATTERN.test(this.current)) {
-        let token = this.readIdentifier();
+        let token = this.tryReadKeywordOrIdentifier();
 
         // Check if this variable should be converted to a unit based on context
         if (this.shouldTokenizeAsUnit(token)) {
@@ -755,7 +777,81 @@ export class Tokenizer {
         continue;
       }
 
-      // Check for multi-character operators first
+      // Check for comparison operators first (==, !=, <=, >=)
+      if (this.current === "=" && this.peek() === "=") {
+        const token = { type: TokenType.EQUAL, value: "==", position: start };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
+        continue;
+      }
+
+      if (this.current === "!" && this.peek() === "=") {
+        const token = {
+          type: TokenType.NOT_EQUAL,
+          value: "!=",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
+        continue;
+      }
+
+      if (this.current === "<" && this.peek() === "=") {
+        const token = {
+          type: TokenType.LESS_EQUAL,
+          value: "<=",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
+        continue;
+      }
+
+      if (this.current === ">" && this.peek() === "=") {
+        const token = {
+          type: TokenType.GREATER_EQUAL,
+          value: ">=",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
+        continue;
+      }
+
+      // Single character comparison operators
+      if (this.current === "<") {
+        const token = {
+          type: TokenType.LESS_THAN,
+          value: "<",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        continue;
+      }
+
+      if (this.current === ">") {
+        const token = {
+          type: TokenType.GREATER_THAN,
+          value: ">",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        continue;
+      }
+
+      // Check for multi-character operators
       const twoChar = this.current + this.peek();
       const twoCharConfig = operatorMap[twoChar];
       if (twoCharConfig?.multiChar) {
@@ -800,6 +896,32 @@ export class Tokenizer {
 
         tokens.push(token);
         this.lastToken = token;
+        continue;
+      }
+
+      // Check for question mark (ternary operator)
+      if (this.current === "?") {
+        const token = {
+          type: TokenType.QUESTION,
+          value: this.current,
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        continue;
+      }
+
+      // Check for colon (ternary operator)
+      if (this.current === ":") {
+        const token = {
+          type: TokenType.COLON,
+          value: this.current,
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
         continue;
       }
 

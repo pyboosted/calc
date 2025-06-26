@@ -7,10 +7,9 @@ describe("Backtick and Word Boundaries", () => {
 
     // Check word boundary detection for backticks
     const line = "`hello world`";
-    // @ts-expect-error - accessing private method for testing
     const boundaries: number[] = [];
     for (let i = 0; i <= line.length; i++) {
-      // @ts-expect-error
+      // @ts-expect-error - accessing private method for testing
       if (editor.isWordBoundary(line, i)) {
         boundaries.push(i);
       }

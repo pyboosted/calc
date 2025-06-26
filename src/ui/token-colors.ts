@@ -28,6 +28,24 @@ export function getTokenColor(type: TokenType, value?: string): string {
       return "green";
     case TokenType.AS:
       return "blue";
+    case TokenType.TRUE:
+    case TokenType.FALSE:
+    case TokenType.NULL:
+      return "cyan"; // Same color as constants
+    case TokenType.EQUAL:
+    case TokenType.NOT_EQUAL:
+    case TokenType.LESS_THAN:
+    case TokenType.GREATER_THAN:
+    case TokenType.LESS_EQUAL:
+    case TokenType.GREATER_EQUAL:
+      return "yellow"; // Comparison operators
+    case TokenType.AND:
+    case TokenType.OR:
+    case TokenType.NOT:
+      return "magenta"; // Logical operators
+    case TokenType.QUESTION:
+    case TokenType.COLON:
+      return "blue"; // Ternary operator
     default:
       return "white";
   }

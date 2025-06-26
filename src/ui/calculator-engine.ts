@@ -277,6 +277,10 @@ export class CalculatorEngine {
           a.value.getTime() === (b as typeof a).value.getTime() &&
           a.timezone === (b as typeof a).timezone
         );
+      case "boolean":
+        return a.value === (b as typeof a).value;
+      case "null":
+        return true; // Both are null
       default: {
         // Exhaustive check
         const _exhaustiveCheck: never = a;

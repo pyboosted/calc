@@ -45,6 +45,10 @@ function formatResult(result: CalculatedValue): string {
     }
     case "date":
       return result.value.toISOString();
+    case "boolean":
+      return result.value ? "true" : "false";
+    case "null":
+      return "null";
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = result;

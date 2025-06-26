@@ -73,6 +73,9 @@ export const mathConstants = ["pi", "e"] as const;
 // Conversion keywords
 export const conversionKeywords = ["in", "to", "as"];
 
+// Logical operators
+export const logicalOperators = ["and", "or", "not"];
+
 // Helper functions
 export function isKeyword(value: string): boolean {
   return keywords.includes(value.toLowerCase());

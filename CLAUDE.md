@@ -90,9 +90,11 @@ bun test --name-pattern "percentage"
 ### Expression Processing Pipeline
 
 1. **Tokenizer** (`src/parser/tokenizer.ts`): Converts raw input into tokens
-   - Handles numbers, operators, units, functions, variables, keywords, strings
+   - Handles numbers, operators, units, functions, variables, keywords, strings, booleans
    - String literals: backticks with interpolation, single/double quotes without
    - Recognizes multi-character operators and currency symbols
+   - Recognizes comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)
+   - Tokenizes boolean/null keywords and logical operators (`and`, `or`, `not`)
    - Maintains position information for each token
    - Processes escape sequences in strings
 
@@ -103,14 +105,20 @@ bun test --name-pattern "percentage"
    - Handles "X% of Y" syntax separately from regular percentages
    - Parses string literals with interpolation expressions
    - Handles type casting syntax (`expression as type`)
+   - Parses boolean literals (`true`, `false`, `null`)
+   - Implements comparison and logical operators with proper precedence
+   - Supports ternary conditional operator (`? :`)
 
 3. **Evaluator** (`src/evaluator/evaluate.ts`): Executes AST to produce results
    - Maintains variable state across evaluations
    - Handles unit conversions through `convertUnits`
    - Integrates with date/time operations via `date-manager`
-   - Returns discriminated union `CalculatedValue` objects (number, string, or date)
+   - Returns discriminated union `CalculatedValue` objects (number, string, date, boolean, or null)
    - Evaluates string interpolations and operations
-   - Implements type casting between strings and numbers
+   - Implements type casting between strings, numbers, and booleans
+   - Evaluates comparison operations with automatic unit conversion
+   - Implements short-circuit evaluation for logical operators
+   - Uses JavaScript-like truthiness rules for conditional expressions
 
 ### UI Architecture (Ink/React)
 
@@ -142,14 +150,16 @@ The UI uses Ink (React for CLI) with a sophisticated state management system:
      - Uses tokenizer for syntax highlighting
      - Supports Unicode and special character rendering
 
-### Type System (v1.3.0)
+### Type System (v1.3.0, updated v1.3.1)
 
 **CalculatedValue** is now a discriminated union:
 ```typescript
 type CalculatedValue = 
   | { type: 'number'; value: number; unit?: string }
   | { type: 'string'; value: string }
-  | { type: 'date'; value: Date; timezone?: string };
+  | { type: 'date'; value: Date; timezone?: string }
+  | { type: 'boolean'; value: boolean }
+  | { type: 'null'; value: null };
 ```
 
 This allows the calculator to handle multiple data types while maintaining type safety.
@@ -174,8 +184,47 @@ This allows the calculator to handle multiple data types while maintaining type 
    - `format(date, pattern)`: Formats dates using patterns
 
 4. **Type Casting**:
-   - `as string`: Converts numbers/dates to strings
-   - `as number`: Converts strings to numbers (with validation)
+   - `as string`: Converts numbers/dates/booleans to strings
+   - `as number`: Converts strings/booleans to numbers (with validation)
+   - `as boolean`: Converts any type to boolean using truthiness rules
+
+### Boolean Operations (v1.3.1)
+
+1. **Boolean Literals**:
+   - `true`, `false`: Boolean values
+   - `null`: Null value
+
+2. **Comparison Operators**:
+   - `==`, `!=`: Equality and inequality
+   - `<`, `>`, `<=`, `>=`: Relational comparisons
+   - Supports comparing numbers, strings, dates, and booleans
+   - Unit conversions are applied when comparing numbers with units
+
+3. **Logical Operators**:
+   - `and`: Logical AND with short-circuit evaluation
+   - `or`: Logical OR with short-circuit evaluation
+   - `not`: Logical NOT
+   - Operators return the last evaluated value (not just true/false)
+
+4. **Ternary Operator**:
+   - `condition ? trueValue : falseValue`: Conditional expression
+   - Supports nested ternary expressions
+   - Evaluates condition for truthiness
+
+5. **Truthiness Rules**:
+   - `false`, `0`, `""` (empty string), and `null` are falsy
+   - All other values are truthy (including empty arrays/objects if added later)
+   - Dates are always truthy
+
+6. **Operator Precedence** (lowest to highest):
+   - Ternary (`? :`)
+   - Logical OR (`or`)
+   - Logical AND (`and`)
+   - Comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`)
+   - Additive (`+`, `-`)
+   - Multiplicative (`*`, `/`, `%`)
+   - Unary (`-`, `+`, `not`)
+   - Exponentiation (`^`)
 
 ### Key Systems
 
@@ -231,6 +280,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/evaluator.test.ts`: Core calculation logic
 - `tests/parser.test.ts`: AST generation and operator precedence
 - `tests/unit-conversion.test.ts`: Unit conversion accuracy
+- `tests/boolean-operations.test.ts`: Boolean logic, comparisons, and ternary operator
 
 ## Important Notes
 
@@ -248,7 +298,12 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - The tokenizer supports multi-word timezone recognition (e.g., "new york", "los angeles")
 - String literals support three types: backticks with interpolation, single/double quotes without (v1.3.0)
 - String operations maintain type safety through discriminated union CalculatedValue type
-- Type casting with `as` keyword allows conversion between strings and numbers
+- Type casting with `as` keyword allows conversion between strings, numbers, and booleans
 - String functions are case-sensitive and follow JavaScript conventions
 - Escape sequences in strings support `\n`, `\t`, `\\`, and `\`` 
 - Aggregate operations (`total`) concatenate strings when previous results contain strings
+- Boolean operations use JavaScript-like truthiness rules (v1.3.1)
+- Logical operators (`and`, `or`) implement short-circuit evaluation
+- Comparison operators automatically handle unit conversions for numbers with units
+- The ternary operator (`? :`) supports nested expressions and evaluates conditions for truthiness
+- `null` is a distinct type from `false` or `0`, following JavaScript semantics

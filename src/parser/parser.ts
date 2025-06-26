@@ -3,13 +3,18 @@ import {
   type ASTNode,
   type AssignmentNode,
   type BinaryOpNode,
+  type BooleanNode,
+  type ComparisonNode,
   type ConstantNode,
   type DateNode,
   type DateOperationNode,
   type DateTimeNode,
   type FunctionNode,
+  type LogicalNode,
+  type NullNode,
   type NumberNode,
   type StringNode,
+  type TernaryNode,
   type TimeNode,
   type Token,
   TokenType,
@@ -93,7 +98,108 @@ export class Parser {
   }
 
   private parseExpression(): ASTNode {
-    return this.parseConversionExpression();
+    return this.parseTernary();
+  }
+
+  private parseTernary(): ASTNode {
+    const expr = this.parseLogicalOr();
+
+    if (this.current.type === TokenType.QUESTION) {
+      this.advance(); // consume ?
+      const trueExpr = this.parseTernary(); // Allow nested ternaries
+
+      if ((this.current.type as TokenType) !== TokenType.COLON) {
+        throw new Error("Expected ':' in ternary expression");
+      }
+      this.advance(); // consume :
+
+      const falseExpr = this.parseTernary();
+
+      return {
+        type: "ternary",
+        condition: expr,
+        trueExpr,
+        falseExpr,
+      } as TernaryNode;
+    }
+
+    return expr;
+  }
+
+  private parseLogicalOr(): ASTNode {
+    let left = this.parseLogicalAnd();
+
+    while (this.current.type === TokenType.OR) {
+      this.advance();
+      const right = this.parseLogicalAnd();
+      left = { type: "logical", operator: "or", left, right } as LogicalNode;
+    }
+
+    return left;
+  }
+
+  private parseLogicalAnd(): ASTNode {
+    let left = this.parseComparison();
+
+    while (this.current.type === TokenType.AND) {
+      this.advance();
+      const right = this.parseComparison();
+      left = { type: "logical", operator: "and", left, right } as LogicalNode;
+    }
+
+    return left;
+  }
+
+  private parseComparison(): ASTNode {
+    const left = this.parseConversionExpression();
+
+    if (this.isComparisonOperator(this.current.type)) {
+      // We know it's a comparison operator but TypeScript can't narrow it
+      const operator = this.getComparisonOperator(this.current.type);
+      this.advance();
+      const right = this.parseConversionExpression();
+      return { type: "comparison", operator, left, right } as ComparisonNode;
+    }
+
+    return left;
+  }
+
+  private isComparisonOperator(
+    type: TokenType
+  ): type is
+    | "EQUAL"
+    | "NOT_EQUAL"
+    | "LESS_THAN"
+    | "GREATER_THAN"
+    | "LESS_EQUAL"
+    | "GREATER_EQUAL" {
+    return (
+      type === TokenType.EQUAL ||
+      type === TokenType.NOT_EQUAL ||
+      type === TokenType.LESS_THAN ||
+      type === TokenType.GREATER_THAN ||
+      type === TokenType.LESS_EQUAL ||
+      type === TokenType.GREATER_EQUAL
+    );
+  }
+
+  private getComparisonOperator(type: TokenType): ComparisonNode["operator"] {
+    switch (type) {
+      case TokenType.EQUAL:
+        return "==";
+      case TokenType.NOT_EQUAL:
+        return "!=";
+      case TokenType.LESS_THAN:
+        return "<";
+      case TokenType.GREATER_THAN:
+        return ">";
+      case TokenType.LESS_EQUAL:
+        return "<=";
+      case TokenType.GREATER_EQUAL:
+        return ">=";
+      default:
+        throw new Error(`Invalid comparison operator token: ${type}`);
+    }
   }
 
   private isTimeNode(node: ASTNode): boolean {
@@ -135,15 +241,19 @@ export class Parser {
       this.advance(); // consume "as"
       const nextToken = this.current;
 
-      // Check if it's a type cast to string or number
+      // Check if it's a type cast to string, number, or boolean
       if (nextToken.type === TokenType.VARIABLE) {
         const targetType = nextToken.value.toLowerCase();
-        if (targetType === "string" || targetType === "number") {
+        if (
+          targetType === "string" ||
+          targetType === "number" ||
+          targetType === "boolean"
+        ) {
           this.advance();
           return {
             type: "typeCast",
             expression: node,
-            targetType: targetType as "string" | "number",
+            targetType: targetType as "string" | "number" | "boolean",
           } as TypeCastNode;
         }
       }
@@ -423,6 +533,17 @@ export class Parser {
       } as UnaryOpNode;
     }
 
+    // Handle logical NOT
+    if (this.current.type === TokenType.NOT) {
+      this.advance();
+      const operand = this.parseUnary();
+      return {
+        type: "logical",
+        operator: "not",
+        right: operand,
+      } as LogicalNode;
+    }
+
     return this.parsePostfix();
   }
 
@@ -585,6 +706,23 @@ export class Parser {
       const value = this.current.value;
       this.advance();
       return { type: "string", value } as StringNode;
+    }
+
+    // Boolean literals
+    if (this.current.type === TokenType.TRUE) {
+      this.advance();
+      return { type: "boolean", value: true } as BooleanNode;
+    }
+
+    if (this.current.type === TokenType.FALSE) {
+      this.advance();
+      return { type: "boolean", value: false } as BooleanNode;
+    }
+
+    // Null literal
+    if (this.current.type === TokenType.NULL) {
+      this.advance();
+      return { type: "null" } as NullNode;
     }
 
     // Variables and Constants
