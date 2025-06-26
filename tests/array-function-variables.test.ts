@@ -46,10 +46,10 @@ describe("Array Functions with Variables", () => {
     expect(evaluate("last(arr)", variables).value).toBe(5);
     expect(evaluate("length(arr)", variables).value).toBe(5);
 
-    // Test push (mutates array and returns new length)
+    // Test push (mutates array and returns the added item)
     const pushResult = evaluate("push(arr, 6)", variables);
     expect(pushResult.type).toBe("number");
-    expect(pushResult.value).toBe(6); // new length
+    expect(pushResult.value).toBe(6); // the added value
 
     // Verify the array was mutated
     const arrAfterPush = variables.get("arr");

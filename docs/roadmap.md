@@ -449,7 +449,7 @@ wait(ms: number, seed: any): Promise<1>  // Always returns 1 after delay
 exec(path: string, args?: object): Promise<CalculatedValue>
 
 // Array helpers
-push(arr: array, value: any): array  // Returns new array with element added
+push(arr: array, value: any): any    // Mutates array and returns the added value
 pop(arr: array): array  // Returns new array without last element
 first(arr: array): any  // Returns first element
 last(arr: array): any  // Returns last element

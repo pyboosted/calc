@@ -14,10 +14,12 @@ export function evaluateArrayFunction(
       if (!arr || arr.type !== "array") {
         throw new Error("First argument to push must be an array");
       }
+      // Get the items to add
+      const itemsToAdd = args.slice(1);
       // Mutate the original array by adding elements
-      arr.value.push(...args.slice(1));
-      // Return the new length like JavaScript
-      return { type: "number", value: arr.value.length };
+      arr.value.push(...itemsToAdd);
+      // Return the last added item (or the only item if just one)
+      return itemsToAdd.at(-1) || { type: "null", value: null };
     }
 
     case "pop": {

@@ -42,7 +42,7 @@ describe("CLI Multiple Expressions", () => {
     expect(lines[1]).toBe("20");
     expect(lines[2]).toBe("10");
     expect(lines[3]).toBe("30");
-    expect(lines[4]).toBe("4"); // push now returns the new length
+    expect(lines[4]).toBe("40"); // push now returns the pushed value
   });
 
   test("variables persist across multiple -e flags", () => {
