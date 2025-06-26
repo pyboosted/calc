@@ -9,9 +9,11 @@ import {
   type DateTimeNode,
   type FunctionNode,
   type NumberNode,
+  type StringNode,
   type TimeNode,
   type Token,
   TokenType,
+  type TypeCastNode,
   type UnaryOpNode,
   type VariableNode,
 } from "../types";
@@ -124,6 +126,28 @@ export class Parser {
 
   private parseConversionExpression(): ASTNode {
     let node = this.parseOf();
+
+    // Handle type casting with "as" keyword
+    if (
+      this.current.type === TokenType.KEYWORD &&
+      this.current.value === "as"
+    ) {
+      this.advance(); // consume "as"
+      const nextToken = this.current;
+
+      // Check if it's a type cast to string or number
+      if (nextToken.type === TokenType.VARIABLE) {
+        const targetType = nextToken.value.toLowerCase();
+        if (targetType === "string" || targetType === "number") {
+          this.advance();
+          return {
+            type: "typeCast",
+            expression: node,
+            targetType: targetType as "string" | "number",
+          } as TypeCastNode;
+        }
+      }
+    }
 
     // Handle unit/timezone conversion at the expression level (lowest precedence)
     const currentToken = this.current;
@@ -517,6 +541,52 @@ export class Parser {
       return { type: "number", value } as NumberNode;
     }
 
+    // String literals with interpolation (backticks)
+    if (this.current.type === TokenType.STRING_LITERAL) {
+      const token = this.current as Token & {
+        interpolations?: { position: number; expression: string }[];
+      };
+      const value = token.value;
+      const interpolations = token.interpolations;
+      this.advance();
+
+      // If there are interpolations, parse them
+      if (interpolations && interpolations.length > 0) {
+        const parsedInterpolations = interpolations.map((interp) => {
+          // Create a new tokenizer and parser for the interpolation expression
+          const { Tokenizer } = require("./tokenizer");
+          const interpTokenizer = new Tokenizer(interp.expression);
+          const interpTokens = interpTokenizer.tokenize();
+          const interpParser = new Parser(interpTokens);
+          return {
+            position: interp.position,
+            expression: interpParser.parseExpression(),
+          };
+        });
+        return {
+          type: "string",
+          value,
+          interpolations: parsedInterpolations,
+        } as StringNode;
+      }
+
+      return { type: "string", value } as StringNode;
+    }
+
+    // Single quote strings (no interpolation)
+    if (this.current.type === TokenType.SINGLE_QUOTE_STRING) {
+      const value = this.current.value;
+      this.advance();
+      return { type: "string", value } as StringNode;
+    }
+
+    // Double quote strings (no interpolation)
+    if (this.current.type === TokenType.DOUBLE_QUOTE_STRING) {
+      const value = this.current.value;
+      this.advance();
+      return { type: "string", value } as StringNode;
+    }
+
     // Variables and Constants
     // Both VARIABLE and CONSTANT tokens are checked here
     // The evaluator will check variables first, then constants
@@ -631,8 +701,15 @@ export class Parser {
         return { type: "variable", name: "prev" } as VariableNode;
       }
       // Aggregate keywords
-      if (this.current.value === "total" || this.current.value === "average") {
-        const aggregateType = this.current.value;
+      if (["total", "sum", "average", "avg"].includes(this.current.value)) {
+        let aggregateType = this.current.value;
+        // Convert aliases to canonical names
+        if (aggregateType === "sum") {
+          aggregateType = "total";
+        }
+        if (aggregateType === "avg") {
+          aggregateType = "average";
+        }
         this.advance();
 
         // Check for "in unit" syntax

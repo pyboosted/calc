@@ -12,7 +12,9 @@ import type {
   DateTimeNode,
   FunctionNode,
   NumberNode,
+  StringNode,
   TimeNode,
+  TypeCastNode,
   UnaryOpNode,
   VariableNode,
 } from "../types";
@@ -111,9 +113,38 @@ export function evaluate(
   }
 }
 
+// Helper function to format values for display
+function formatValue(value: CalculatedValue): string {
+  switch (value.type) {
+    case "string":
+      return value.value;
+    case "number":
+      return value.unit ? `${value.value} ${value.unit}` : String(value.value);
+    case "date":
+      return value.value.toISOString();
+    default:
+      // This should never happen with our exhaustive type checking
+      throw new Error("Unknown value type");
+  }
+}
+
+// Helper function to process escape sequences
+function processEscapeSequences(str: string): string {
+  // Process escape sequences in the order that won't conflict
+  return (
+    str
+      .replace(/\\\\/g, "\u0000") // Temporarily replace \\ with null char
+      .replace(/\\n/g, "\n") // Replace \n with newline
+      .replace(/\\t/g, "\t") // Replace \t with tab
+      .replace(/\\`/g, "`") // Replace \` with backtick
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: Using null char as temporary placeholder
+      .replace(/\u0000/g, "\\")
+  ); // Replace null char back with single backslash
+}
+
 // Handler functions for each node type
 function evaluateNumberNode(node: NumberNode): CalculatedValue {
-  return { value: node.value, unit: node.unit };
+  return { type: "number", value: node.value, unit: node.unit };
 }
 
 function evaluateVariableNode(
@@ -137,6 +168,62 @@ function evaluateAssignmentNode(
   return result;
 }
 
+function evaluateStringNode(
+  node: StringNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  let result = node.value;
+
+  // Process interpolations if present
+  if (node.interpolations) {
+    // Process from end to start to maintain correct positions
+    for (const interp of [...node.interpolations].reverse()) {
+      const value = evaluateNode(interp.expression, variables, context);
+      const stringValue = formatValue(value);
+
+      // Find and replace the interpolation marker
+      const markerPattern = new RegExp(
+        `\\x00INTERP${node.interpolations.indexOf(interp)}\\x00`
+      );
+      result = result.replace(markerPattern, stringValue);
+    }
+  }
+
+  // Process escape sequences
+  result = processEscapeSequences(result);
+
+  return { type: "string", value: result };
+}
+
+function evaluateTypeCastNode(
+  node: TypeCastNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const value = evaluateNode(node.expression, variables, context);
+
+  if (node.targetType === "string") {
+    return { type: "string", value: formatValue(value) };
+  }
+
+  if (node.targetType === "number") {
+    if (value.type === "string") {
+      const num = Number.parseFloat(value.value);
+      if (Number.isNaN(num)) {
+        throw new Error(`Cannot convert "${value.value}" to number`);
+      }
+      return { type: "number", value: num };
+    }
+    if (value.type === "number") {
+      return value;
+    }
+    throw new Error(`Cannot convert ${value.type} to number`);
+  }
+
+  throw new Error(`Unknown target type: ${node.targetType}`);
+}
+
 function evaluateUnaryNode(
   node: UnaryOpNode,
   variables: Map<string, CalculatedValue>,
@@ -148,9 +235,125 @@ function evaluateUnaryNode(
     case "+":
       return operand;
     case "-":
-      return { value: -operand.value, unit: operand.unit };
+      if (operand.type === "number") {
+        return { type: "number", value: -operand.value, unit: operand.unit };
+      }
+      throw new Error(`Cannot negate ${operand.type}`);
     default:
       throw new Error(`Unknown unary operator: ${node.operator}`);
+  }
+}
+
+// String function implementations
+function evaluateFormat(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("format() requires exactly 2 arguments");
+  }
+  const dateArg = args[0];
+  const patternArg = args[1];
+
+  if (!dateArg || dateArg.type !== "date") {
+    throw new Error("First argument to format() must be a date");
+  }
+  if (!patternArg || patternArg.type !== "string") {
+    throw new Error("Second argument to format() must be a string");
+  }
+
+  // Use date-fns for formatting
+  const { format } = require("date-fns");
+  const formatted = format(dateArg.value, patternArg.value);
+  return { type: "string", value: formatted };
+}
+
+function evaluateLen(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 1) {
+    throw new Error("len() requires exactly 1 argument");
+  }
+  const strArg = args[0];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("len() requires a string argument");
+  }
+  return { type: "number", value: strArg.value.length };
+}
+
+function evaluateSubstr(args: CalculatedValue[]): CalculatedValue {
+  if (args.length < 2 || args.length > 3) {
+    throw new Error("substr() requires 2 or 3 arguments");
+  }
+  const strArg = args[0];
+  const startArg = args[1];
+  const lengthArg = args[2];
+
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to substr() must be a string");
+  }
+  if (!startArg || startArg.type !== "number") {
+    throw new Error("Second argument to substr() must be a number");
+  }
+
+  const start = Math.floor(startArg.value);
+  let substring: string;
+
+  if (lengthArg) {
+    if (lengthArg.type !== "number") {
+      throw new Error("Third argument to substr() must be a number");
+    }
+    const length = Math.floor(lengthArg.value);
+    substring = strArg.value.substring(start, start + length);
+  } else {
+    substring = strArg.value.substring(start);
+  }
+
+  return { type: "string", value: substring };
+}
+
+function evaluateCharAt(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("charAt() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const indexArg = args[1];
+
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to charAt() must be a string");
+  }
+  if (!indexArg || indexArg.type !== "number") {
+    throw new Error("Second argument to charAt() must be a number");
+  }
+
+  const index = Math.floor(indexArg.value);
+  const char = strArg.value.charAt(index);
+  return { type: "string", value: char };
+}
+
+function evaluateTrim(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 1) {
+    throw new Error("trim() requires exactly 1 argument");
+  }
+  const strArg = args[0];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("trim() requires a string argument");
+  }
+  return { type: "string", value: strArg.value.trim() };
+}
+
+function evaluateStringFunction(
+  name: string,
+  args: CalculatedValue[]
+): CalculatedValue {
+  switch (name) {
+    case "format":
+      return evaluateFormat(args);
+    case "len":
+      return evaluateLen(args);
+    case "substr":
+      return evaluateSubstr(args);
+    case "charat":
+      return evaluateCharAt(args);
+    case "trim":
+      return evaluateTrim(args);
+    default:
+      throw new Error(`Unknown string function: ${name}`);
   }
 }
 
@@ -161,14 +364,26 @@ function evaluateFunctionNode(
 ): CalculatedValue {
   const args = node.args.map((arg) => evaluateNode(arg, variables, context));
 
+  // Handle string functions
+  if (["format", "len", "substr", "charat", "trim"].includes(node.name)) {
+    return evaluateStringFunction(node.name, args);
+  }
+
   const func = mathFunctions[node.name];
   if (!func) {
     throw new Error(`Unknown function: ${node.name}`);
   }
 
   // Most math functions strip units
-  const result = func(...args.map((a) => a.value));
-  return { value: result };
+  const numericArgs = args.map((a) => {
+    if (a.type === "number") {
+      return a.value;
+    }
+    throw new Error(`Function ${node.name} requires numeric arguments`);
+  });
+
+  const result = func(...numericArgs);
+  return { type: "number", value: result };
 }
 
 function evaluateDateNode(node: DateNode): CalculatedValue {
@@ -179,8 +394,8 @@ function evaluateDateNode(node: DateNode): CalculatedValue {
     throw new Error(`Invalid date: ${node.value}`);
   }
 
-  // Return the date as a timestamp with a special unit
-  return { value: date.getTime(), unit: "timestamp", date };
+  // Return the date as a timestamp
+  return { type: "date", value: date };
 }
 
 function evaluateTimeNode(node: TimeNode): CalculatedValue {
@@ -209,7 +424,7 @@ function evaluateTimeNode(node: TimeNode): CalculatedValue {
       throw new Error(`Invalid time value: ${node.value}`);
     }
 
-    return { value: date.getTime(), unit: "timestamp", date, timezone };
+    return { type: "date", value: date, timezone };
   } catch (_error) {
     // If there's an error creating the date, return a default time with system timezone
     const [hours, minutes] = node.value.split(":").map(Number);
@@ -223,7 +438,7 @@ function evaluateTimeNode(node: TimeNode): CalculatedValue {
       0,
       0
     );
-    return { value: date.getTime(), unit: "timestamp", date };
+    return { type: "date", value: date };
   }
 }
 
@@ -256,7 +471,7 @@ function evaluateDateTimeNode(node: DateTimeNode): CalculatedValue {
     timezone
   );
 
-  return { value: date.getTime(), unit: "timestamp", date, timezone };
+  return { type: "date", value: date, timezone };
 }
 
 function evaluateDateOperationNode(
@@ -266,18 +481,22 @@ function evaluateDateOperationNode(
 ): CalculatedValue {
   const dateResult = evaluateNode(node.date, variables, context);
 
-  if (!dateResult.date) {
+  // Convert to proper date format if needed
+  if (dateResult.type !== "date") {
     throw new Error("Date operation requires a date");
   }
+  const date = dateResult.value;
 
   const dateManager = DateManager.getInstance();
-  const date = dateResult.date;
 
   if (node.operation === "add" || node.operation === "subtract") {
     if (!(node.value && node.unit)) {
       throw new Error("Date operation requires value and unit");
     }
     const valueResult = evaluateNode(node.value, variables, context);
+    if (valueResult.type !== "number") {
+      throw new Error("Date operation requires a numeric value");
+    }
     const value = valueResult.value;
     const unit = node.unit;
 
@@ -288,9 +507,8 @@ function evaluateDateOperationNode(
 
     // Preserve timezone if present
     return {
-      value: newDate.getTime(),
-      unit: "timestamp",
-      date: newDate,
+      type: "date",
+      value: newDate,
       timezone: dateResult.timezone,
     };
   }
@@ -308,13 +526,13 @@ function evaluateBinaryNode(
     const leftResult = evaluateNode(node.left, variables, context);
     const rightNode = node.right as NumberNode;
 
-    if (leftResult.unit && rightNode.unit) {
+    if (leftResult.type === "number" && leftResult.unit && rightNode.unit) {
       const convertedValue = convertUnits(
         leftResult.value,
         leftResult.unit,
         rightNode.unit
       );
-      return { value: convertedValue, unit: rightNode.unit };
+      return { type: "number", value: convertedValue, unit: rightNode.unit };
     }
     return leftResult;
   }
@@ -325,7 +543,8 @@ function evaluateBinaryNode(
     const rightNode = node.right as VariableNode;
     const targetTimezone = rightNode.name;
 
-    if (leftResult.unit === "timestamp" && leftResult.date) {
+    // Check if it's a date type
+    if (leftResult.type === "date") {
       const timezoneManager = TimezoneManager.getInstance();
 
       // Get source timezone (default to system timezone if not specified)
@@ -340,9 +559,8 @@ function evaluateBinaryNode(
       ) {
         const date = timezoneManager.getNowInTimezone(targetTimezone);
         return {
-          value: date.getTime(),
-          unit: "timestamp",
-          date,
+          type: "date",
+          value: date,
           timezone: targetTimezone,
         };
       }
@@ -350,14 +568,13 @@ function evaluateBinaryNode(
       // Validate and convert timezone
       try {
         const convertedDate = timezoneManager.convertTimezone(
-          leftResult.date,
+          leftResult.value,
           sourceTimezone,
           targetTimezone
         );
         return {
-          value: convertedDate.getTime(),
-          unit: "timestamp",
-          date: convertedDate,
+          type: "date",
+          value: convertedDate,
           timezone: targetTimezone,
         };
       } catch (_error) {
@@ -367,14 +584,14 @@ function evaluateBinaryNode(
     }
 
     // Not a timestamp - try regular unit conversion instead
-    if (leftResult.unit && targetTimezone) {
+    if (leftResult.type === "number" && leftResult.unit && targetTimezone) {
       try {
         const convertedValue = convertUnits(
           leftResult.value,
           leftResult.unit,
           targetTimezone
         );
-        return { value: convertedValue, unit: targetTimezone };
+        return { type: "number", value: convertedValue, unit: targetTimezone };
       } catch (_error) {
         // If unit conversion also fails, throw the original error
         throw new Error("Timezone conversion requires a timestamp value");
@@ -396,6 +613,25 @@ function evaluateBinaryOperation(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  // Handle string operations
+  if (left.type === "string" || right.type === "string") {
+    return evaluateStringOperation(operator, left, right);
+  }
+
+  // Ensure we have numbers for numeric operations
+  if (left.type !== "number" || right.type !== "number") {
+    // Special handling for dates
+    if (
+      (left.type === "date" || right.type === "date") &&
+      (operator === "+" || operator === "-")
+    ) {
+      return evaluateAddSubtract(operator, left, right);
+    }
+    throw new Error(
+      `Cannot perform ${operator} on ${left.type} and ${right.type}`
+    );
+  }
+
   switch (operator) {
     case "+":
     case "-":
@@ -408,33 +644,82 @@ function evaluateBinaryOperation(
       return evaluateDivide(left, right);
 
     case "%":
-      return { value: left.value % right.value };
+      return { type: "number", value: left.value % right.value };
 
     case "percent":
       // Keep percentage as a unit instead of converting immediately
-      return { value: left.value, unit: "%" };
+      return { type: "number", value: left.value, unit: "%" };
 
     case "^":
-      return { value: left.value ** right.value };
+      return { type: "number", value: left.value ** right.value };
 
     case "&":
       // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { value: left.value & right.value };
+      return { type: "number", value: left.value & right.value };
 
     case "|":
       // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { value: left.value | right.value };
+      return { type: "number", value: left.value | right.value };
 
     case "<<":
       // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { value: left.value << right.value };
+      return { type: "number", value: left.value << right.value };
 
     case ">>":
       // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { value: left.value >> right.value };
+      return { type: "number", value: left.value >> right.value };
 
     default:
       throw new Error(`Unknown binary operator: ${operator}`);
+  }
+}
+
+function evaluateStringOperation(
+  operator: string,
+  left: CalculatedValue,
+  right: CalculatedValue
+): CalculatedValue {
+  switch (operator) {
+    case "+": {
+      // String concatenation
+      const leftStr = formatValue(left);
+      const rightStr = formatValue(right);
+      return { type: "string", value: leftStr + rightStr };
+    }
+
+    case "*": {
+      // String multiplication: "abc" * 3 → "abcabcabc"
+      if (left.type === "string" && right.type === "number") {
+        return {
+          type: "string",
+          value: left.value.repeat(Math.floor(right.value)),
+        };
+      }
+      if (left.type === "number" && right.type === "string") {
+        return {
+          type: "string",
+          value: right.value.repeat(Math.floor(left.value)),
+        };
+      }
+      throw new Error(`Cannot multiply ${left.type} and ${right.type}`);
+    }
+
+    case "-": {
+      // String subtraction: "hello.txt" - ".txt" → "hello"
+      if (left.type === "string" && right.type === "string") {
+        if (left.value.endsWith(right.value)) {
+          return {
+            type: "string",
+            value: left.value.slice(0, -right.value.length),
+          };
+        }
+        return left; // No change if not a suffix
+      }
+      throw new Error(`Cannot subtract ${right.type} from ${left.type}`);
+    }
+
+    default:
+      throw new Error(`Cannot perform ${operator} on strings`);
   }
 }
 
@@ -444,11 +729,15 @@ function evaluateAddSubtract(
   right: CalculatedValue
 ): CalculatedValue {
   // Special handling for date arithmetic
-  if (
-    (left.unit === "timestamp" && left.date) ||
-    (right.unit === "timestamp" && right.date)
-  ) {
+  if (left.type === "date" || right.type === "date") {
     return evaluateDateArithmetic(operator, left, right);
+  }
+
+  // Ensure we have numbers for numeric operations
+  if (left.type !== "number" || right.type !== "number") {
+    throw new Error(
+      `Cannot ${operator === "+" ? "add" : "subtract"} ${left.type} and ${right.type}`
+    );
   }
 
   // Special handling for percentage units
@@ -464,7 +753,7 @@ function evaluateAddSubtract(
   // Simple arithmetic
   const result =
     operator === "+" ? left.value + right.value : left.value - right.value;
-  return { value: result, unit: left.unit || right.unit };
+  return { type: "number", value: result, unit: left.unit || right.unit };
 }
 
 function evaluateDateArithmetic(
@@ -474,57 +763,55 @@ function evaluateDateArithmetic(
 ): CalculatedValue {
   const dateManager = DateManager.getInstance();
 
-  // Handle: date - date (returns difference in milliseconds)
-  if (
-    left.unit === "timestamp" &&
-    left.date &&
-    right.unit === "timestamp" &&
-    right.date
-  ) {
+  // Extract dates from new format
+  const leftDate = left.type === "date" ? left.value : null;
+  const rightDate = right.type === "date" ? right.value : null;
+
+  const leftTimezone = left.type === "date" ? left.timezone : undefined;
+  const rightTimezone = right.type === "date" ? right.timezone : undefined;
+
+  // Handle: date - date (returns difference in seconds)
+  if (leftDate && rightDate) {
     if (operator === "-") {
-      const diffMs = left.date.getTime() - right.date.getTime();
+      const diffMs = leftDate.getTime() - rightDate.getTime();
       // Convert to seconds for easier unit conversion
       const diffSeconds = diffMs / 1000;
-      return { value: diffSeconds, unit: "seconds" };
+      return { type: "number", value: diffSeconds, unit: "seconds" };
     }
     throw new Error("Cannot add two dates");
   }
 
+  // Get numeric value and unit from right side
+  const rightValue = right.type === "number" ? right.value : 0;
+  const rightUnit = right.type === "number" ? right.unit : undefined;
+
   // Handle: date + time period
-  if (
-    left.unit === "timestamp" &&
-    left.date &&
-    right.unit &&
-    isTimePeriodUnit(right.unit)
-  ) {
+  if (leftDate && rightUnit && isTimePeriodUnit(rightUnit)) {
     const newDate =
       operator === "+"
-        ? dateManager.addPeriod(left.date, right.value, right.unit)
-        : dateManager.subtractPeriod(left.date, right.value, right.unit);
+        ? dateManager.addPeriod(leftDate, rightValue, rightUnit)
+        : dateManager.subtractPeriod(leftDate, rightValue, rightUnit);
     // Preserve timezone if present
     return {
-      value: newDate.getTime(),
-      unit: "timestamp",
-      date: newDate,
-      timezone: left.timezone,
+      type: "date",
+      value: newDate,
+      timezone: leftTimezone,
     };
   }
 
+  // Get numeric value and unit from left side
+  const leftValue = left.type === "number" ? left.value : 0;
+  const leftUnit = left.type === "number" ? left.unit : undefined;
+
   // Handle: time period + date
-  if (
-    right.unit === "timestamp" &&
-    right.date &&
-    left.unit &&
-    isTimePeriodUnit(left.unit)
-  ) {
+  if (rightDate && leftUnit && isTimePeriodUnit(leftUnit)) {
     if (operator === "+") {
-      const newDate = dateManager.addPeriod(right.date, left.value, left.unit);
+      const newDate = dateManager.addPeriod(rightDate, leftValue, leftUnit);
       // Preserve timezone if present
       return {
-        value: newDate.getTime(),
-        unit: "timestamp",
-        date: newDate,
-        timezone: right.timezone,
+        type: "date",
+        value: newDate,
+        timezone: rightTimezone,
       };
     }
     throw new Error("Cannot subtract a date from a time period");
@@ -539,12 +826,15 @@ function evaluatePercentageOperation(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  if (left.type !== "number" || right.type !== "number") {
+    throw new Error("Percentage operations require numeric values");
+  }
   const percentageAmount = left.value * (right.value / 100);
   const result =
     operator === "+"
       ? left.value + percentageAmount
       : left.value - percentageAmount;
-  return { value: result, unit: left.unit };
+  return { type: "number", value: result, unit: left.unit };
 }
 
 function evaluateWithUnitConversion(
@@ -552,6 +842,10 @@ function evaluateWithUnitConversion(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  if (left.type !== "number" || right.type !== "number") {
+    throw new Error("Unit conversion requires numeric values");
+  }
+
   if (!(left.unit && right.unit)) {
     throw new Error("Unit conversion requires both values to have units");
   }
@@ -562,7 +856,7 @@ function evaluateWithUnitConversion(
       operator === "+"
         ? left.value + convertedRight
         : left.value - convertedRight;
-    return { value: result, unit: left.unit };
+    return { type: "number", value: result, unit: left.unit };
   } catch {
     throw new Error(
       `Cannot ${operator === "+" ? "add" : "subtract"} ${left.unit} and ${right.unit}`
@@ -574,16 +868,22 @@ function evaluateMultiply(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  if (left.type !== "number" || right.type !== "number") {
+    throw new Error("Multiplication requires numeric values");
+  }
   const result = left.value * right.value;
   // For now, keep the unit from the side that has one
   const unit = left.unit || right.unit;
-  return { value: result, unit };
+  return { type: "number", value: result, unit };
 }
 
 function evaluateDivide(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  if (left.type !== "number" || right.type !== "number") {
+    throw new Error("Division requires numeric values");
+  }
   if (right.value === 0) {
     throw new Error("Division by zero");
   }
@@ -591,7 +891,7 @@ function evaluateDivide(
   // Division cancels units if they're the same
   const unit =
     left.unit && right.unit && left.unit === right.unit ? undefined : left.unit;
-  return { value: result, unit };
+  return { type: "number", value: result, unit };
 }
 
 function evaluateAggregateNode(
@@ -604,10 +904,11 @@ function evaluateAggregateNode(
 
   // Check if we have a date/timestamp and time periods for smart date arithmetic
   const dateResults = context.previousResults.filter(
-    (result) => result && result.unit === "timestamp" && result.date
+    (result) => result && result.type === "date"
   );
   const timePeriodResults = context.previousResults.filter(
-    (result) => result && isTimePeriodUnit(result.unit)
+    (result) =>
+      result && result.type === "number" && isTimePeriodUnit(result.unit)
   );
 
   // If we have exactly one date and one or more time periods, add them together
@@ -623,8 +924,18 @@ function evaluateAggregateNode(
     let totalSeconds = 0;
     for (const period of timePeriodResults) {
       try {
-        if (period.unit) {
-          const seconds = convertUnits(period.value, period.unit, "seconds");
+        let value: number;
+        let unit: string | undefined;
+
+        if (period.type === "number") {
+          value = period.value;
+          unit = period.unit;
+        } else {
+          continue;
+        }
+
+        if (unit) {
+          const seconds = convertUnits(value, unit, "seconds");
           totalSeconds += seconds;
         }
       } catch (_error) {
@@ -633,31 +944,63 @@ function evaluateAggregateNode(
     }
 
     // Add the total time period to the date
-    if (totalSeconds !== 0 && dateResult && dateResult.date) {
+    if (totalSeconds !== 0 && dateResult) {
       const dateManagerInstance = DateManager.getInstance();
+      let date: Date;
+      let timezone: string | undefined;
+
+      if (dateResult.type === "date") {
+        date = dateResult.value;
+        timezone = dateResult.timezone;
+      } else {
+        throw new Error("Invalid date result");
+      }
+
       const newDate = dateManagerInstance.addPeriod(
-        dateResult.date,
+        date,
         totalSeconds,
         "seconds"
       );
       return {
-        value: newDate.getTime(),
-        unit: "timestamp",
-        date: newDate,
-        timezone: dateResult.timezone,
+        type: "date",
+        value: newDate,
+        timezone,
       };
     }
   }
 
+  // Check if we have string values for concatenation
+  const stringResults = context.previousResults.filter(
+    (result) => result && result.type === "string"
+  );
+
+  // If we have strings and operation is total, concatenate them
+  if (
+    node.operation === "total" &&
+    stringResults.length > 0 &&
+    !node.targetUnit
+  ) {
+    const concatenated = stringResults
+      .map((r) => (r.type === "string" ? r.value : ""))
+      .join("");
+    return { type: "string", value: concatenated };
+  }
+
   // Filter for numeric values with their units (original behavior)
   const valuesWithUnits = context.previousResults
-    .filter(
-      (result) =>
-        result &&
-        typeof result.value === "number" &&
-        !Number.isNaN(result.value)
-    )
-    .map((result) => ({ value: result.value, unit: result.unit }));
+    .filter((result) => {
+      if (!result) {
+        return false;
+      }
+      return result.type === "number" && !Number.isNaN(result.value);
+    })
+    .map((result) => {
+      if (result.type === "number") {
+        return { value: result.value, unit: result.unit };
+      }
+      // This shouldn't happen due to filter above
+      return { value: 0 };
+    });
 
   if (valuesWithUnits.length === 0) {
     throw new Error(`No numeric values to ${node.operation}`);
@@ -667,11 +1010,11 @@ function evaluateAggregateNode(
   const resultUnit = determineResultUnit(valuesWithUnits, node.targetUnit);
 
   if (node.operation === "total") {
-    return { value: totalValue, unit: resultUnit };
+    return { type: "number", value: totalValue, unit: resultUnit };
   }
   // average
   const avg = totalValue / valuesWithUnits.length;
-  return { value: avg, unit: resultUnit };
+  return { type: "number", value: avg, unit: resultUnit };
 }
 
 function calculateAggregateValue(
@@ -823,7 +1166,7 @@ function evaluateConstantNode(
   if (value === undefined) {
     throw new Error(`Unknown constant: ${node.name}`);
   }
-  return { value };
+  return { type: "number", value };
 }
 
 function evaluateNode(
@@ -868,12 +1211,16 @@ function evaluateNode(
     case "aggregate":
       return evaluateAggregateNode(node, context);
 
+    case "string":
+      return evaluateStringNode(node, variables, context);
+
+    case "typeCast":
+      return evaluateTypeCastNode(node, variables, context);
+
     default: {
       // This ensures exhaustiveness - TypeScript will error if we miss a case
       const _exhaustiveCheck: never = node;
-      throw new Error(
-        `Unknown node type: ${(node as unknown as { type: string }).type}`
-      );
+      return _exhaustiveCheck;
     }
   }
 }

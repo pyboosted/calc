@@ -12,12 +12,11 @@ export interface HistoryEntry {
   result: CalculatedValue;
 }
 
-export interface CalculatedValue {
-  value: number;
-  unit?: string;
-  date?: Date;
-  timezone?: string;
-}
+// Discriminated union type for all calculated values
+export type CalculatedValue =
+  | { type: "number"; value: number; unit?: string }
+  | { type: "string"; value: string }
+  | { type: "date"; value: Date; timezone?: string };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -36,6 +35,11 @@ export const TokenType = {
   RPAREN: "RPAREN",
   COMMA: "COMMA",
   EQUALS: "EQUALS",
+  STRING_LITERAL: "STRING_LITERAL",
+  SINGLE_QUOTE_STRING: "SINGLE_QUOTE_STRING",
+  DOUBLE_QUOTE_STRING: "DOUBLE_QUOTE_STRING",
+  DOT: "DOT",
+  AS: "AS",
   EOF: "EOF",
 } as const;
 
@@ -120,6 +124,18 @@ export interface DateOperationNode {
   unit?: string;
 }
 
+export interface StringNode {
+  type: "string";
+  value: string;
+  interpolations?: { position: number; expression: ASTNode }[];
+}
+
+export interface TypeCastNode {
+  type: "typeCast";
+  expression: ASTNode;
+  targetType: "string" | "number";
+}
+
 // ASTNode is now a discriminated union type
 export type ASTNode =
   | NumberNode
@@ -133,4 +149,6 @@ export type ASTNode =
   | DateNode
   | TimeNode
   | DateTimeNode
-  | DateOperationNode;
+  | DateOperationNode
+  | StringNode
+  | TypeCastNode;

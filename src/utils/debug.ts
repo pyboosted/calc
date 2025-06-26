@@ -189,11 +189,19 @@ export function debugEvaluation(
       error: error.message,
       stack: error.stack,
     });
-  } else {
-    debugLog("EVAL", `Success: ${expression} = ${result?.value}`, {
-      value: result?.value,
-      unit: result?.unit,
-    });
+  } else if (result) {
+    const details: Record<string, unknown> = {
+      type: result.type,
+      value: result.value,
+    };
+
+    if (result.type === "number" && result.unit) {
+      details.unit = result.unit;
+    } else if (result.type === "date" && result.timezone) {
+      details.timezone = result.timezone;
+    }
+
+    debugLog("EVAL", `Success: ${expression} = ${result.value}`, details);
   }
 }
 

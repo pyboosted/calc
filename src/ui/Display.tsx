@@ -33,14 +33,24 @@ export const Display: React.FC<DisplayProps> = ({ result, error, input }) => {
 };
 
 function formatResult(result: CalculatedValue): string {
-  const formattedNumber = formatNumber(result.value);
-
-  if (result.unit) {
-    // Use the existing formatUnit function from unit-formatter.ts
-    return `${formattedNumber} ${formatUnit(result.unit)}`;
+  switch (result.type) {
+    case "string":
+      return `"${result.value}"`;
+    case "number": {
+      const formattedNumber = formatNumber(result.value);
+      if (result.unit) {
+        return `${formattedNumber} ${formatUnit(result.unit)}`;
+      }
+      return formattedNumber;
+    }
+    case "date":
+      return result.value.toISOString();
+    default: {
+      // Exhaustive check
+      const _exhaustiveCheck: never = result;
+      return _exhaustiveCheck;
+    }
   }
-
-  return formattedNumber;
 }
 
 function formatNumber(num: number): string {

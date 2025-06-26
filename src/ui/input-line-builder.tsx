@@ -70,10 +70,10 @@ export function buildCharacterParts({
         );
       } else if (
         cursorPosition !== undefined &&
-        ((cursorPosition === partEnd && partEnd === text.length) ||
-          cursorPosition > text.length)
+        cursorPosition === partEnd &&
+        partEnd === text.length
       ) {
-        // Cursor is at the end of text
+        // Cursor is exactly at the end of text
         parts.push(
           ...buildPartsForEndOfLine(
             part,
@@ -100,6 +100,20 @@ export function buildCharacterParts({
       }
 
       charIndex = partEnd;
+    }
+
+    // Handle cursor past end of text (edge case)
+    if (
+      cursorPosition !== undefined &&
+      cursorPosition > text.length &&
+      !showLineEndIndicator
+    ) {
+      // Add a space with cursor
+      parts.push({
+        text: " ",
+        inverse: true,
+        color: inactiveCursor ? "gray" : undefined,
+      });
     }
 
     // Add line ending indicator if needed

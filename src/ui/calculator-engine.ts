@@ -231,10 +231,9 @@ export class CalculatorEngine {
       lineVariables.forEach((value, key) => {
         if (key !== "prev") {
           const oldValue = cumulativeVariables.get(key);
-          const hasChanged =
-            !oldValue ||
-            oldValue.value !== value.value ||
-            oldValue.unit !== value.unit;
+          const hasChanged = !(
+            oldValue && this.areValuesEqual(oldValue, value)
+          );
 
           if (hasChanged) {
             cumulativeVariables.set(key, value);
@@ -259,6 +258,29 @@ export class CalculatorEngine {
         line.error = (error as Error).message;
       } else {
         line.error = null;
+      }
+    }
+  }
+
+  private areValuesEqual(a: CalculatedValue, b: CalculatedValue): boolean {
+    if (a.type !== b.type) {
+      return false;
+    }
+
+    switch (a.type) {
+      case "number":
+        return a.value === b.value && a.unit === (b as typeof a).unit;
+      case "string":
+        return a.value === (b as typeof a).value;
+      case "date":
+        return (
+          a.value.getTime() === (b as typeof a).value.getTime() &&
+          a.timezone === (b as typeof a).timezone
+        );
+      default: {
+        // Exhaustive check
+        const _exhaustiveCheck: never = a;
+        return _exhaustiveCheck;
       }
     }
   }

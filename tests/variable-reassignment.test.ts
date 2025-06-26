@@ -58,10 +58,12 @@ describe("Variable Reassignment", () => {
 
     evaluate("dist = 100 m", variables);
     expect(evaluate("dist", variables).value).toBe(100);
-    expect(evaluate("dist", variables).unit).toBe("m");
+    const distResult1 = evaluate("dist", variables);
+    expect(distResult1.type === "number" && distResult1.unit).toBe("m");
 
     evaluate("dist = 5 km", variables);
     expect(evaluate("dist", variables).value).toBe(5);
-    expect(evaluate("dist", variables).unit).toBe("km");
+    const distResult2 = evaluate("dist", variables);
+    expect(distResult2.type === "number" && distResult2.unit).toBe("km");
   });
 });

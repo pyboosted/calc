@@ -8,7 +8,8 @@ describe("Cyrillic Variable Names", () => {
     // переменная = 10
     const result1 = evaluate("переменная = 10", vars);
     expect(result1.value).toBe(10);
-    expect(vars.get("переменная").value).toBe(10);
+    const переменнаяValue = vars.get("переменная");
+    expect(переменнаяValue?.value).toBe(10);
 
     // переменная + 5
     const result2 = evaluate("переменная + 5", vars);
@@ -36,7 +37,8 @@ describe("Cyrillic Variable Names", () => {
     evaluate("у = 10", vars); // Cyrillic у
     evaluate("сумма = x + у", vars);
 
-    expect(vars.get("сумма").value).toBe(15);
+    const суммаValue = vars.get("сумма");
+    expect(суммаValue?.value).toBe(15);
   });
 
   test("Cyrillic variables with mathematical functions", () => {
@@ -53,7 +55,7 @@ describe("Cyrillic Variable Names", () => {
     evaluate("расстояние = 100", vars);
     const result = evaluate("расстояние * 1 km in meters", vars);
     expect(result.value).toBe(100_000);
-    expect(result.unit).toBe("meters");
+    expect(result.type === "number" && result.unit).toBe("meters");
   });
 
   test("Cyrillic variables with date arithmetic", () => {
@@ -61,7 +63,6 @@ describe("Cyrillic Variable Names", () => {
 
     evaluate("дни = 3", vars);
     const result = evaluate("дни * 1 day + today", vars);
-    expect(result.unit).toBe("timestamp");
-    expect(result.date).toBeDefined();
+    expect(result.type === "date").toBe(true);
   });
 });

@@ -19,7 +19,7 @@ describe("Units Without Spaces", () => {
   ])("parses %s correctly", (expression, expectedValue, expectedUnit) => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBe(expectedValue);
-    expect(result.unit).toBe(expectedUnit);
+    expect(result.type === "number" && result.unit).toBe(expectedUnit);
   });
 
   test.each([
@@ -29,7 +29,7 @@ describe("Units Without Spaces", () => {
   ])("compound expression: %s", (expression, expectedValue, expectedUnit) => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBeCloseTo(expectedValue);
-    expect(result.unit).toBe(expectedUnit);
+    expect(result.type === "number" && result.unit).toBe(expectedUnit);
   });
 
   test.each([
@@ -40,9 +40,9 @@ describe("Units Without Spaces", () => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBe(expectedValue);
     if (expectedUnit !== undefined) {
-      expect(result.unit).toBe(expectedUnit);
+      expect(result.type === "number" && result.unit).toBe(expectedUnit);
     } else {
-      expect(result.unit).toBeUndefined();
+      expect(result.type === "number" && result.unit).toBeUndefined();
     }
   });
 });

@@ -51,7 +51,7 @@ describe("Unit Conversions", () => {
           expect(result.value).toBe(expectedValue);
         }
 
-        expect(result.unit).toBe(expectedUnit);
+        expect(result.type === "number" && result.unit).toBe(expectedUnit);
       }
     );
   });

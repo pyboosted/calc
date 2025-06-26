@@ -22,6 +22,8 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan("-e '5 feet in meters'")}     Unit conversion
   ${chalk.green("calc")} ${chalk.cyan("-e 'today + 5 days'")}       Date arithmetic
   ${chalk.green("calc")} ${chalk.cyan("-e '20% of 150'")}           Percentage calculations
+  ${chalk.green("calc")} ${chalk.cyan('-e "`Hello, World!`"')}     String literal
+  ${chalk.green("calc")} ${chalk.cyan('-e "123 as string"')}        Type casting
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
@@ -41,6 +43,8 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Variables: ${chalk.cyan("x = 10")}, then use ${chalk.cyan("x")}
   ${chalk.gray("•")} Previous result: use ${chalk.cyan("'prev'")}
   ${chalk.gray("•")} Aggregates: ${chalk.cyan("'total'")} and ${chalk.cyan("'average'")}
+  ${chalk.gray("•")} String support: ${chalk.cyan("literals, interpolation, operations")}
+  ${chalk.gray("•")} Type casting: ${chalk.cyan("as string, as number")}
   ${chalk.gray("•")} Unit conversions: ${chalk.cyan("length, weight, time, data, etc.")}
   ${chalk.gray("•")} Live currency conversion ${chalk.cyan("(300+ currencies)")}
   ${chalk.gray("•")} Date/time operations with timezone support

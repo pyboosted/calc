@@ -8,12 +8,12 @@ describe("Percentage as Unit", () => {
     // Assign percentage to variable
     const discount = evaluate("discount = 10%", vars);
     expect(discount.value).toBe(10);
-    expect(discount.unit).toBe("%");
+    expect(discount.type === "number" && discount.unit).toBe("%");
 
     // Verify it's stored correctly
     const stored = vars.get("discount");
-    expect(stored.value).toBe(10);
-    expect(stored.unit).toBe("%");
+    expect(stored?.value).toBe(10);
+    expect(stored?.type === "number" && stored?.unit).toBe("%");
   });
 
   test("subtracts percentage from numeric value", () => {
@@ -28,7 +28,7 @@ describe("Percentage as Unit", () => {
     // price - discount should be 90 (100 - 10% of 100)
     const result = evaluate("price - discount", vars);
     expect(result.value).toBe(90);
-    expect(result.unit).toBeUndefined();
+    expect(result.type === "number" && result.unit).toBeUndefined();
   });
 
   test("subtracts percentage from value with unit", () => {
@@ -43,7 +43,7 @@ describe("Percentage as Unit", () => {
     // price - discount should be 90 EUR
     const result = evaluate("price - discount", vars);
     expect(result.value).toBe(90);
-    expect(result.unit).toBe("EUR");
+    expect(result.type === "number" && result.unit).toBe("EUR");
   });
 
   test("adds percentage to numeric value", () => {
@@ -58,7 +58,7 @@ describe("Percentage as Unit", () => {
     // price + tax should be 108 (100 + 8% of 100)
     const result = evaluate("price + tax", vars);
     expect(result.value).toBe(108);
-    expect(result.unit).toBeUndefined();
+    expect(result.type === "number" && result.unit).toBeUndefined();
   });
 
   test("adds percentage to value with unit", () => {
@@ -73,7 +73,7 @@ describe("Percentage as Unit", () => {
     // price + tax should be 108 USD
     const result = evaluate("price + tax", vars);
     expect(result.value).toBe(108);
-    expect(result.unit).toBe("USD");
+    expect(result.type === "number" && result.unit).toBe("USD");
   });
 
   test("handles complex percentage calculations", () => {
@@ -89,7 +89,7 @@ describe("Percentage as Unit", () => {
     // Apply first discount
     const afterFirst = evaluate("original - discount1", vars);
     expect(afterFirst.value).toBe(900);
-    expect(afterFirst.unit).toBe("RUB");
+    expect(afterFirst.type === "number" && afterFirst.unit).toBe("RUB");
 
     // Store intermediate result
     evaluate("afterDiscount1 = original - discount1", vars);
@@ -97,7 +97,7 @@ describe("Percentage as Unit", () => {
     // Apply second discount to the discounted price
     const final = evaluate("afterDiscount1 - discount2", vars);
     expect(final.value).toBe(855); // 900 - 5% of 900 = 900 - 45 = 855
-    expect(final.unit).toBe("RUB");
+    expect(final.type === "number" && final.unit).toBe("RUB");
   });
 
   test("inline percentage still works", () => {
@@ -110,7 +110,7 @@ describe("Percentage as Unit", () => {
     // With currency
     const resultCurrency = evaluate("100 eur - 10%", vars);
     expect(resultCurrency.value).toBe(90);
-    expect(resultCurrency.unit).toBe("EUR");
+    expect(resultCurrency.type === "number" && resultCurrency.unit).toBe("EUR");
   });
 
   // TODO: The "of" syntax with percentage variables would require parser changes

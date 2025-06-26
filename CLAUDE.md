@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, string manipulation (v1.3.0), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -90,21 +90,27 @@ bun test --name-pattern "percentage"
 ### Expression Processing Pipeline
 
 1. **Tokenizer** (`src/parser/tokenizer.ts`): Converts raw input into tokens
-   - Handles numbers, operators, units, functions, variables, keywords
+   - Handles numbers, operators, units, functions, variables, keywords, strings
+   - String literals: backticks with interpolation, single/double quotes without
    - Recognizes multi-character operators and currency symbols
    - Maintains position information for each token
+   - Processes escape sequences in strings
 
 2. **Parser** (`src/parser/parser.ts`): Builds Abstract Syntax Tree (AST) from tokens
    - Recursive descent parser with proper operator precedence
    - Special handling for percentage operations in context (e.g., `100 - 10%` → `100 - (100 * 10/100)`)
    - Converts unit syntax (`100 cm`) into binary operations
    - Handles "X% of Y" syntax separately from regular percentages
+   - Parses string literals with interpolation expressions
+   - Handles type casting syntax (`expression as type`)
 
 3. **Evaluator** (`src/evaluator/evaluate.ts`): Executes AST to produce results
    - Maintains variable state across evaluations
    - Handles unit conversions through `convertUnits`
    - Integrates with date/time operations via `date-manager`
-   - Returns `CalculatedValue` objects with value and optional unit
+   - Returns discriminated union `CalculatedValue` objects (number, string, or date)
+   - Evaluates string interpolations and operations
+   - Implements type casting between strings and numbers
 
 ### UI Architecture (Ink/React)
 
@@ -135,6 +141,41 @@ The UI uses Ink (React for CLI) with a sophisticated state management system:
      - Handles cursor display and text selection highlighting
      - Uses tokenizer for syntax highlighting
      - Supports Unicode and special character rendering
+
+### Type System (v1.3.0)
+
+**CalculatedValue** is now a discriminated union:
+```typescript
+type CalculatedValue = 
+  | { type: 'number'; value: number; unit?: string }
+  | { type: 'string'; value: string }
+  | { type: 'date'; value: Date; timezone?: string };
+```
+
+This allows the calculator to handle multiple data types while maintaining type safety.
+
+### String Processing (v1.3.0)
+
+1. **String Literals**:
+   - Backticks (`): Support interpolation with `${expression}` syntax
+   - Single quotes ('): No interpolation, literal strings only
+   - Double quotes ("): No interpolation, literal strings only
+
+2. **String Operations**:
+   - **Concatenation (+)**: Joins strings or converts and joins mixed types
+   - **Repetition (*)**: `string * number` repeats the string
+   - **Subtraction (-)**: Removes suffix if present
+
+3. **String Functions** (`src/evaluator/string-functions.ts`):
+   - `len(string)`: Returns length
+   - `substr(string, start, length?)`: Extracts substring
+   - `charat(string, index)`: Gets character at index
+   - `trim(string)`: Removes whitespace
+   - `format(date, pattern)`: Formats dates using patterns
+
+4. **Type Casting**:
+   - `as string`: Converts numbers/dates to strings
+   - `as number`: Converts strings to numbers (with validation)
 
 ### Key Systems
 
@@ -205,3 +246,9 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Clipboard operations (copy/cut/paste) work with system clipboard
 - Comments can be inline with `#` (e.g., `2 + 2 # basic math`)
 - The tokenizer supports multi-word timezone recognition (e.g., "new york", "los angeles")
+- String literals support three types: backticks with interpolation, single/double quotes without (v1.3.0)
+- String operations maintain type safety through discriminated union CalculatedValue type
+- Type casting with `as` keyword allows conversion between strings and numbers
+- String functions are case-sensitive and follow JavaScript conventions
+- Escape sequences in strings support `\n`, `\t`, `\\`, and `\`` 
+- Aggregate operations (`total`) concatenate strings when previous results contain strings

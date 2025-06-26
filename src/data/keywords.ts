@@ -23,7 +23,9 @@ export const keywords = [
   "is",
   "prev",
   "total",
+  "sum",
   "average",
+  "avg",
   ...dateKeywords,
   "from",
   "ago",
@@ -58,6 +60,11 @@ export const functions = [
   "average",
   "avg",
   "fromunix",
+  "format",
+  "len",
+  "substr",
+  "charat",
+  "trim",
 ];
 
 // Mathematical constants

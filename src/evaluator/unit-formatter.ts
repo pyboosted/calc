@@ -7,25 +7,37 @@ const TRAILING_ZEROS_PATTERN = /0+$/;
 const THOUSANDS_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g;
 
 export function formatResultWithUnit(result: CalculatedValue): string {
-  const num = result.value;
-  const unit = result.unit;
+  switch (result.type) {
+    case "string":
+      // Show strings with quotes to indicate type
+      return `"${result.value}"`;
 
-  // Special formatting for dates
-  if (unit === "timestamp" && result.date) {
-    return formatDate(result.date, result.timezone);
+    case "number": {
+      const num = result.value;
+      const unit = result.unit;
+
+      if (!unit) {
+        return formatNumber(num);
+      }
+
+      // Special formatting for time units
+      if (isTimeUnit(unit)) {
+        return formatTime(num, unit);
+      }
+
+      // Regular formatting
+      return `${formatNumber(num)} ${formatUnit(unit)}`;
+    }
+
+    case "date":
+      return formatDate(result.value, result.timezone);
+
+    default: {
+      // This should never happen with our exhaustive type checking
+      const _exhaustiveCheck: never = result;
+      return _exhaustiveCheck;
+    }
   }
-
-  if (!unit) {
-    return formatNumber(num);
-  }
-
-  // Special formatting for time units
-  if (isTimeUnit(unit)) {
-    return formatTime(num, unit);
-  }
-
-  // Regular formatting
-  return `${formatNumber(num)} ${formatUnit(unit)}`;
 }
 
 function isTimeUnit(unit: string): boolean {

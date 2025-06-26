@@ -11,12 +11,11 @@ describe("Date Arithmetic with Variables", () => {
     // test * 1 day should be 2 days
     const result1 = evaluate("test * 1 day", vars);
     expect(result1.value).toBe(2);
-    expect(result1.unit).toBe("day");
+    expect(result1.type === "number" && result1.unit).toBe("day");
 
     // test * 1 day + today should add 2 days to today
     const result2 = evaluate("test * 1 day + today", vars);
-    expect(result2.unit).toBe("timestamp");
-    expect(result2.date).toBeDefined();
+    expect(result2.type === "date").toBe(true);
 
     // Verify it's 2 days from today
     const today = new Date();
@@ -24,11 +23,12 @@ describe("Date Arithmetic with Variables", () => {
     const expectedDate = new Date(today);
     expectedDate.setDate(expectedDate.getDate() + 2);
 
-    expect(result2.date).toBeDefined();
-    const resultDate = new Date(result2.date as Date);
-    resultDate.setHours(0, 0, 0, 0);
+    if (result2.type === "date") {
+      const resultDate = new Date(result2.value);
+      resultDate.setHours(0, 0, 0, 0);
 
-    expect(resultDate.getTime()).toBe(expectedDate.getTime());
+      expect(resultDate.getTime()).toBe(expectedDate.getTime());
+    }
   });
 
   test("date + variable * time period", () => {
@@ -39,8 +39,7 @@ describe("Date Arithmetic with Variables", () => {
 
     // today + x * 1 week should add 3 weeks to today
     const result = evaluate("today + x * 1 week", vars);
-    expect(result.unit).toBe("timestamp");
-    expect(result.date).toBeDefined();
+    expect(result.type === "date").toBe(true);
 
     // Verify it's 3 weeks from today
     const today = new Date();
@@ -48,11 +47,12 @@ describe("Date Arithmetic with Variables", () => {
     const expectedDate = new Date(today);
     expectedDate.setDate(expectedDate.getDate() + 21); // 3 weeks = 21 days
 
-    expect(result.date).toBeDefined();
-    const resultDate = new Date(result.date as Date);
-    resultDate.setHours(0, 0, 0, 0);
+    if (result.type === "date") {
+      const resultDate = new Date(result.value);
+      resultDate.setHours(0, 0, 0, 0);
 
-    expect(resultDate.getTime()).toBe(expectedDate.getTime());
+      expect(resultDate.getTime()).toBe(expectedDate.getTime());
+    }
   });
 
   test("complex date arithmetic expressions", () => {
@@ -63,7 +63,7 @@ describe("Date Arithmetic with Variables", () => {
 
     // tomorrow + num * 1 day - 2 days
     const result = evaluate("tomorrow + num * 1 day - 2 days", vars);
-    expect(result.unit).toBe("timestamp");
+    expect(result.type === "date").toBe(true);
 
     // Should be: tomorrow + 5 days - 2 days = tomorrow + 3 days = 4 days from today
     const today = new Date();
@@ -71,11 +71,12 @@ describe("Date Arithmetic with Variables", () => {
     const expectedDate = new Date(today);
     expectedDate.setDate(expectedDate.getDate() + 4);
 
-    expect(result.date).toBeDefined();
-    const resultDate = new Date(result.date as Date);
-    resultDate.setHours(0, 0, 0, 0);
+    if (result.type === "date") {
+      const resultDate = new Date(result.value);
+      resultDate.setHours(0, 0, 0, 0);
 
-    expect(resultDate.getTime()).toBe(expectedDate.getTime());
+      expect(resultDate.getTime()).toBe(expectedDate.getTime());
+    }
   });
 
   test("time period + time period without dates", () => {
@@ -86,6 +87,6 @@ describe("Date Arithmetic with Variables", () => {
     // x * 1 hour + 30 minutes should be 2.5 hours
     const result = evaluate("x * 1 hour + 30 minutes", vars);
     expect(result.value).toBe(2.5);
-    expect(result.unit).toBe("hour");
+    expect(result.type === "number" && result.unit).toBe("hour");
   });
 });

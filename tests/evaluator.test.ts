@@ -38,7 +38,7 @@ describe("Percentage Calculations", () => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBe(expectedValue);
     if (expectedUnit !== undefined) {
-      expect(result.unit).toBe(expectedUnit);
+      expect(result.type === "number" && result.unit).toBe(expectedUnit);
     }
   });
 });
@@ -54,7 +54,7 @@ describe("Variables", () => {
   });
 
   test("prev variable with value", () => {
-    const vars = new Map([["prev", { value: 42 }]]);
+    const vars = new Map([["prev", { type: "number" as const, value: 42 }]]);
     const result = evaluate("prev * 2", vars);
     expect(result.value).toBe(84);
   });
@@ -78,7 +78,7 @@ describe("Inline Comments", () => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBe(expectedValue);
     if (expectedUnit !== undefined) {
-      expect(result.unit).toBe(expectedUnit);
+      expect(result.type === "number" && result.unit).toBe(expectedUnit);
     }
   });
 
@@ -86,6 +86,7 @@ describe("Inline Comments", () => {
     const vars = new Map();
     const result = evaluate("price = 100 # base price", vars);
     expect(result.value).toBe(100);
-    expect(vars.get("price").value).toBe(100);
+    const priceValue = vars.get("price");
+    expect(priceValue?.value).toBe(100);
   });
 });

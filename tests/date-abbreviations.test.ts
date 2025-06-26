@@ -31,18 +31,16 @@ describe("Date Arithmetic with Abbreviations", () => {
         const vars = new Map();
         const now = new Date();
         vars.set("testDate", {
-          value: now.getTime(),
-          unit: "timestamp",
-          date: now,
+          type: "date" as const,
+          value: now,
         });
 
         const result = evaluate(expression, vars);
-        expect(result.unit).toBe("timestamp");
-        expect(result.date).toBeDefined();
-        if (!result.date) {
-          throw new Error("Date should be defined");
+        expect(result.type === "date").toBe(true);
+        if (result.type !== "date") {
+          throw new Error("Result should be a date");
         }
-        const diff = (result.date.getTime() - now.getTime()) / divisor;
+        const diff = (result.value.getTime() - now.getTime()) / divisor;
         expect(diff).toBeCloseTo(expectedValue, 1);
       }
     );
@@ -58,11 +56,11 @@ describe("Date Arithmetic with Abbreviations", () => {
       const base = evaluate(baseExpression, vars);
       const result = evaluate(expression, vars);
 
-      if (!(result.date && base.date)) {
-        throw new Error("Dates should be defined");
+      if (!(result.type === "date" && base.type === "date")) {
+        throw new Error("Results should be dates");
       }
       const dayDiff =
-        (result.date.getTime() - base.date.getTime()) / (1000 * 60 * 60 * 24);
+        (result.value.getTime() - base.value.getTime()) / (1000 * 60 * 60 * 24);
       expect(dayDiff).toBeCloseTo(expectedDays, 1);
     }
   );
@@ -73,21 +71,20 @@ describe("Date Arithmetic with Abbreviations", () => {
     // In date context, 'm' should be minutes
     const now = new Date();
     vars.set("testDate", {
-      value: now.getTime(),
-      unit: "timestamp",
-      date: now,
+      type: "date" as const,
+      value: now,
     });
     const dateResult = evaluate("testDate + 5m", vars);
-    if (!dateResult.date) {
-      throw new Error("Date should be defined");
+    if (dateResult.type !== "date") {
+      throw new Error("Result should be a date");
     }
-    const minDiff = (dateResult.date.getTime() - now.getTime()) / (1000 * 60);
+    const minDiff = (dateResult.value.getTime() - now.getTime()) / (1000 * 60);
     expect(minDiff).toBeCloseTo(5, 1);
 
     // In unit conversion context, 'm' should be meters
     const unitResult = evaluate("100 cm to m", vars);
     expect(unitResult.value).toBe(1);
-    expect(unitResult.unit).toBe("m");
+    expect(unitResult.type === "number" && unitResult.unit).toBe("m");
   });
 
   test.each([

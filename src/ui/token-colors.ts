@@ -22,6 +22,12 @@ export function getTokenColor(type: TokenType, value?: string): string {
         return "cyan";
       }
       return "blue";
+    case TokenType.STRING_LITERAL:
+    case TokenType.SINGLE_QUOTE_STRING:
+    case TokenType.DOUBLE_QUOTE_STRING:
+      return "green";
+    case TokenType.AS:
+      return "blue";
     default:
       return "white";
   }

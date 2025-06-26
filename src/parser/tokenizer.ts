@@ -466,6 +466,146 @@ export class Tokenizer {
     return wordOperators[word] || word;
   }
 
+  private tryReadSingleQuoteString(): Token | null {
+    if (this.current !== "'") {
+      return null;
+    }
+
+    const start = this.position;
+    let value = "";
+
+    this.advance(); // Skip opening single quote
+
+    while (this.position < this.input.length && this.current !== "'") {
+      if (this.current === "\\" && this.peek() !== "") {
+        // Handle escape sequences
+        this.advance(); // Skip backslash
+        value += this.current;
+        this.advance();
+      } else {
+        value += this.current;
+        this.advance();
+      }
+    }
+
+    if (this.current !== "'") {
+      throw new Error("Unterminated string literal");
+    }
+
+    this.advance(); // Skip closing single quote
+
+    return {
+      type: TokenType.SINGLE_QUOTE_STRING,
+      value,
+      position: start,
+    };
+  }
+
+  private tryReadDoubleQuoteString(): Token | null {
+    if (this.current !== '"') {
+      return null;
+    }
+
+    const start = this.position;
+    let value = "";
+
+    this.advance(); // Skip opening double quote
+
+    while (this.position < this.input.length && this.current !== '"') {
+      if (this.current === "\\" && this.peek() !== "") {
+        // Handle escape sequences
+        this.advance(); // Skip backslash
+        value += this.current;
+        this.advance();
+      } else {
+        value += this.current;
+        this.advance();
+      }
+    }
+
+    if (this.current !== '"') {
+      throw new Error("Unterminated string literal");
+    }
+
+    this.advance(); // Skip closing double quote
+
+    return {
+      type: TokenType.DOUBLE_QUOTE_STRING,
+      value,
+      position: start,
+    };
+  }
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: it is complex cause it means to be
+  private tryReadStringLiteral(): Token | null {
+    if (this.current !== "`") {
+      return null;
+    }
+
+    const start = this.position;
+    let value = "";
+    const interpolations: { position: number; expression: string }[] = [];
+
+    this.advance(); // Skip opening backtick
+
+    while (this.position < this.input.length && this.current !== "`") {
+      if (this.current === "\\" && this.peek() !== "") {
+        // Handle escape sequences
+        this.advance(); // Skip backslash
+        value += this.current;
+        this.advance();
+      } else if (this.current === "$" && this.peek() === "{") {
+        // Handle interpolation
+        const interpStart = value.length;
+        this.advance(); // Skip $
+        this.advance(); // Skip {
+
+        let braceCount = 1;
+        let expression = "";
+
+        while (this.position < this.input.length && braceCount > 0) {
+          if (this.current === "{") {
+            braceCount++;
+          } else if (this.current === "}") {
+            braceCount--;
+            if (braceCount === 0) {
+              break;
+            }
+          }
+          expression += this.current;
+          this.advance();
+        }
+
+        if (braceCount !== 0) {
+          throw new Error("Unterminated string interpolation");
+        }
+
+        this.advance(); // Skip closing }
+        interpolations.push({ position: interpStart, expression });
+        // Add a marker that will be replaced later
+        value += `\x00INTERP${interpolations.length - 1}\x00`;
+      } else {
+        value += this.current;
+        this.advance();
+      }
+    }
+
+    if (this.current !== "`") {
+      throw new Error("Unterminated string literal");
+    }
+
+    this.advance(); // Skip closing backtick
+
+    return {
+      type: TokenType.STRING_LITERAL,
+      value,
+      position: start,
+      interpolations, // Store interpolations in token for parser
+    } as Token & {
+      interpolations?: { position: number; expression: string }[];
+    };
+  }
+
   private isCurrency(value: string): boolean {
     // Check if this value is a known unit first to avoid conflicts
     if (isUnit(value)) {
@@ -537,6 +677,7 @@ export class Tokenizer {
     return false;
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: tokenizer is alwayscomplex
   tokenize(): Token[] {
     const tokens: Token[] = [];
 
@@ -548,6 +689,36 @@ export class Tokenizer {
       }
 
       const start = this.position;
+
+      // String literals with interpolation (backticks)
+      if (this.current === "`") {
+        const token = this.tryReadStringLiteral();
+        if (token) {
+          tokens.push(token);
+          this.lastToken = token;
+          continue;
+        }
+      }
+
+      // Single quote strings (no interpolation)
+      if (this.current === "'") {
+        const token = this.tryReadSingleQuoteString();
+        if (token) {
+          tokens.push(token);
+          this.lastToken = token;
+          continue;
+        }
+      }
+
+      // Double quote strings (no interpolation)
+      if (this.current === '"') {
+        const token = this.tryReadDoubleQuoteString();
+        if (token) {
+          tokens.push(token);
+          this.lastToken = token;
+          continue;
+        }
+      }
 
       // Numbers
       if (
@@ -629,6 +800,19 @@ export class Tokenizer {
 
         tokens.push(token);
         this.lastToken = token;
+        continue;
+      }
+
+      // Check for dot operator
+      if (this.current === ".") {
+        const token = {
+          type: TokenType.DOT,
+          value: this.current,
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
         continue;
       }
 

@@ -84,8 +84,8 @@ describe("Mathematical Constants", () => {
     expect(pi1.value).toBeCloseTo(Math.PI, 10);
 
     // After setting variables, they override constants
-    vars.set("e", { value: 10 });
-    vars.set("pi", { value: 3 });
+    vars.set("e", { type: "number", value: 10 });
+    vars.set("pi", { type: "number", value: 3 });
 
     const e2 = evaluate("e", vars);
     expect(e2.value).toBe(10);

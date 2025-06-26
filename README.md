@@ -18,12 +18,19 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Variables**: `x = 10`, then use `x` in expressions
 - **Previous result**: Use `prev` to reference the previous line's result (skips empty lines and comments)
 - **Aggregate operations**: `total` and `average` calculate sum/mean of previous numeric values (stops at empty line or comment)
+  - String concatenation: `total` concatenates strings when previous results contain strings
 - **Smart percentage calculations**: 
   - Basic: `20%` = 0.2
   - With operations: `100 - 10%` = 90, `100 + 10%` = 110
   - "Of" syntax: `20% of 100` = 20
   - Direct percentage math: `25% + 25%` = 0.5
-- **Syntax highlighting**: Numbers, operators, units, functions, and variables are color-coded
+- **String support** (v1.3.0):
+  - String literals: backticks with interpolation (`hello ${name}`), single quotes ('text'), double quotes ("text")
+  - String operations: concatenation (+), repetition (*), suffix removal (-)
+  - Type casting: `as string`, `as number`
+  - String functions: `len`, `substr`, `charat`, `trim`, `format`
+  - Escape sequences: `\n`, `\t`, `\\`, `\``
+- **Syntax highlighting**: Numbers, operators, units, functions, variables, and strings are color-coded
 - **History navigation**: Use up/down arrows to navigate through previous calculations
 - **Multi-line support**: Press Enter to add new lines to expressions
 - **Comments**: Use `#` for inline comments (e.g., `5 * 4 # multiply numbers`)
@@ -271,6 +278,60 @@ rent + food + utilities
 
 Remaining
 3500 - 1250
+
+# String operations (v1.3.0)
+# String literals
+`Hello, World!`                        # Backticks with interpolation
+'Single quotes'                        # No interpolation
+"Double quotes"                        # No interpolation
+
+# String interpolation
+name = `John`
+greeting = `Hello, ${name}!`
+x = 10
+message = `The value is ${x * 2}`
+
+# String concatenation
+`Hello` + ` ` + `World`
+"Hello" + 123                          # "Hello123"
+123 + " items"                         # "123 items"
+
+# String repetition
+`=` * 50                               # Creates a line of 50 equals signs
+"abc" * 3                              # "abcabcabc"
+
+# String subtraction (suffix removal)
+`report_2025.txt` - `.txt`             # "report_2025"
+"hello world" - " world"               # "hello"
+
+# Type casting
+num_str = 123 as string                # "123"
+str_num = `456` as number              # 456
+pi_str = 3.14159 as string             # "3.14159"
+
+# String functions
+len(`Hello`)                           # 5
+substr(`Hello, World!`, 0, 5)          # "Hello"
+substr(`Hello, World!`, 7)             # "World!"
+charat(`Hello`, 1)                     # "e"
+trim(`  spaces  `)                     # "spaces"
+
+# Date formatting with strings
+today_str = format(today, `dd/MM/yyyy`)
+time_str = format(now, `HH:mm:ss`)
+custom = format(today, `'Today is' EEEE`)
+
+# Escape sequences
+`Line 1\nLine 2`                       # Newline
+`Column1\tColumn2`                     # Tab
+`Path\\to\\file`                       # Backslashes
+`She said \`hello\``                   # Backticks
+
+# String aggregation
+`Hello`
+` `
+`World`
+total                                  # "Hello World"
 ```
 
 ## Architecture

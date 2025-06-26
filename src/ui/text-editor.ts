@@ -1015,6 +1015,17 @@ export class TextEditor extends EventEmitter {
 
     // Then handle character input
     if (input && !key.ctrl && !key.meta) {
+      // Explicitly handle space character to ensure it's always processed
+      if (input === " " || (input.length === 1 && input.charCodeAt(0) === 32)) {
+        if (this.selection) {
+          this.replaceSelection(" ");
+        } else {
+          this.insertChar(" ");
+        }
+        this.emitChange();
+        return true;
+      }
+
       // If there's a selection, replace it
       if (this.selection) {
         this.replaceSelection(input);
