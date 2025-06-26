@@ -30,6 +30,7 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan('-e "[1, 2, 3]"')}            Array literal
   ${chalk.green("calc")} ${chalk.cyan('-e "{a: 1, b: 2}"')}         Object literal
   ${chalk.green("calc")} ${chalk.cyan('-e "sum([1, 2, 3])"')}       Array functions
+  ${chalk.green("calc")} ${chalk.cyan('-e "x = 5; x += 3"')}        Compound assignment
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
@@ -45,6 +46,7 @@ ${chalk.bold.yellow("KEYBOARD SHORTCUTS:")}
 
 ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Basic arithmetic: ${chalk.cyan("+, -, *, /, ^, %")}
+  ${chalk.gray("•")} Compound assignments: ${chalk.cyan("+=, -=")} for all types
   ${chalk.gray("•")} Functions: ${chalk.cyan("sqrt, sin, cos, log, round, etc.")}
   ${chalk.gray("•")} Variables: ${chalk.cyan("x = 10")}, then use ${chalk.cyan("x")}
   ${chalk.gray("•")} Previous result: use ${chalk.cyan("'prev'")}

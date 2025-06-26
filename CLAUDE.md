@@ -66,6 +66,7 @@ bun run typecheck && bun run lint && npm version patch && git push && npm publis
 1. Always run `bun run typecheck` to ensure no TypeScript errors
 2. Always run `bun run lint` to fix linting issues
 3. Always run `bun run format` to ensure consistent code style
+4. Always run `bun test` to ensure all tests pass
 
 **Before publishing to npm:**
 1. Always run `bun run build` to ensure the dist/ folder is up to date

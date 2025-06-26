@@ -846,6 +846,16 @@ function evaluateBinaryOperation(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  // Handle array operations first (before string operations)
+  if (left.type === "array") {
+    if (operator === "+") {
+      return evaluateArrayAddition(left, right);
+    }
+    if (operator === "-") {
+      return evaluateArraySubtraction(left, right);
+    }
+  }
+
   // Handle string operations
   if (left.type === "string" || right.type === "string") {
     return evaluateStringOperation(operator, left, right);
@@ -905,6 +915,47 @@ function evaluateBinaryOperation(
     default:
       throw new Error(`Unknown binary operator: ${operator}`);
   }
+}
+
+function evaluateArrayAddition(
+  left: CalculatedValue & { type: "array" },
+  right: CalculatedValue
+): CalculatedValue {
+  // If right is an array, concatenate arrays
+  if (right.type === "array") {
+    return {
+      type: "array",
+      value: [...left.value, ...right.value],
+    };
+  }
+
+  // Otherwise, append the single item to the array
+  return {
+    type: "array",
+    value: [...left.value, right],
+  };
+}
+
+function evaluateArraySubtraction(
+  left: CalculatedValue & { type: "array" },
+  right: CalculatedValue
+): CalculatedValue {
+  // Remove all occurrences of the value from the array
+  if (right.type === "array") {
+    // Remove all elements that exist in the right array
+    const toRemove = new Set(right.value.map((v) => JSON.stringify(v)));
+    return {
+      type: "array",
+      value: left.value.filter((item) => !toRemove.has(JSON.stringify(item))),
+    };
+  }
+
+  // Remove all occurrences of the single value
+  const valueStr = JSON.stringify(right);
+  return {
+    type: "array",
+    value: left.value.filter((item) => JSON.stringify(item) !== valueStr),
+  };
 }
 
 function evaluateStringOperation(

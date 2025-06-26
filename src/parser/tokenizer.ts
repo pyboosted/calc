@@ -427,7 +427,7 @@ export class Tokenizer {
 
     // Special handling for words that can be both keywords and functions (sum, avg, average)
     if (["sum", "avg", "average"].includes(finalLowerValue)) {
-      // Peek ahead to see if the next non-whitespace character is '('
+      // Peek ahead to see if the next non-whitespace character is '(' or '=' or '+=' or '-='
       const savedPos = this.position;
       while (
         this.position < this.input.length &&
@@ -435,14 +435,36 @@ export class Tokenizer {
       ) {
         this.position++;
       }
-      const isFollowedByParen =
-        this.position < this.input.length && this.input[this.position] === "(";
+
+      let isFollowedByParen = false;
+      let isFollowedByAssignment = false;
+
+      if (this.position < this.input.length) {
+        const nextChar = this.input[this.position];
+        isFollowedByParen = nextChar === "(";
+        isFollowedByAssignment =
+          nextChar === "=" ||
+          (nextChar === "+" &&
+            this.position + 1 < this.input.length &&
+            this.input[this.position + 1] === "=") ||
+          (nextChar === "-" &&
+            this.position + 1 < this.input.length &&
+            this.input[this.position + 1] === "=");
+      }
+
       this.position = savedPos; // Reset position
 
       if (isFollowedByParen) {
         return {
           type: TokenType.FUNCTION,
           value: finalLowerValue,
+          position: start,
+        };
+      }
+      if (isFollowedByAssignment) {
+        return {
+          type: TokenType.VARIABLE,
+          value,
           position: start,
         };
       }
@@ -803,6 +825,33 @@ export class Tokenizer {
         while (this.position < this.input.length) {
           this.advance();
         }
+        continue;
+      }
+
+      // Check for compound assignment operators first (+=, -=)
+      if (this.current === "+" && this.peek() === "=") {
+        const token = {
+          type: TokenType.PLUS_EQUALS,
+          value: "+=",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
+        continue;
+      }
+
+      if (this.current === "-" && this.peek() === "=") {
+        const token = {
+          type: TokenType.MINUS_EQUALS,
+          value: "-=",
+          position: start,
+        };
+        tokens.push(token);
+        this.lastToken = token;
+        this.advance();
+        this.advance();
         continue;
       }
 

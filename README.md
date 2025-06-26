@@ -16,6 +16,7 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Examples: `100 cm in meters`, `32 F in C`, `1 hour in minutes`
 - **Live currency conversion**: 300+ currencies updated daily from free API
 - **Variables**: `x = 10`, then use `x` in expressions
+- **Compound assignments**: `x += 5`, `text -= ".txt"`, `arr += [1,2,3]` - works for all types
 - **Previous result**: Use `prev` to reference the previous line's result (skips empty lines and comments)
 - **Aggregate operations**: `total` and `average` calculate sum/mean of previous numeric values (stops at empty line or comment)
   - String concatenation: `total` concatenates strings when previous results contain strings
@@ -42,6 +43,7 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Array functions: `push`, `pop`, `first`, `last`, `slice`, `length`, `sum`, `avg`/`average`
   - Object functions: `keys`, `values`, `has`
   - Property access: dot notation (`obj.property`), bracket notation (`arr[0]`)
+  - Array operations: `[1,2] + [3,4]` → `[1,2,3,4]`, `[1,2,3] + 4` → `[1,2,3,4]`, `[1,2,3,2] - 2` → `[1,3]`
   - Type casting: `as array`, `as object` (parses JSON strings)
 - **Syntax highlighting**: Numbers, operators, units, functions, variables, and strings are color-coded
 - **History navigation**: Use up/down arrows to navigate through previous calculations

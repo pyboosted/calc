@@ -97,6 +97,31 @@ export class Parser {
       } as AssignmentNode;
     }
 
+    // Handle compound assignments (+=, -=)
+    if (
+      (this.current.type === TokenType.PLUS_EQUALS ||
+        this.current.type === TokenType.MINUS_EQUALS) &&
+      expr.type === "variable"
+    ) {
+      const operator = this.current.type === TokenType.PLUS_EQUALS ? "+" : "-";
+      this.advance(); // consume += or -=
+      const rightValue = this.parseExpression();
+
+      // Convert a += b to a = a + b
+      const binaryOp: BinaryOpNode = {
+        type: "binary",
+        operator,
+        left: expr,
+        right: rightValue,
+      };
+
+      return {
+        type: "assignment",
+        variable: (expr as VariableNode).name,
+        value: binaryOp,
+      } as AssignmentNode;
+    }
+
     return expr;
   }
 
