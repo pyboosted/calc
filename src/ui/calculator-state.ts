@@ -115,7 +115,7 @@ export class CalculatorStateManager extends EventEmitter {
       while (engineLines.length < lines.length) {
         this.engine.insertLine(engineLines.length);
       }
-      
+
       // Remove extra lines
       while (engineLines.length > lines.length) {
         this.engine.deleteLine(engineLines.length - 1);

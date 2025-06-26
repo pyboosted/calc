@@ -95,15 +95,23 @@ async function main() {
   // Initialize managers
   await initializeManagers(args);
 
-  // Check for -e flag for expression evaluation
-  const expressionIndex = args.indexOf("-e");
-  if (expressionIndex !== -1) {
-    const expression = args[expressionIndex + 1];
-    if (!expression) {
-      console.error(chalk.red("Error: No expression provided after -e"));
-      process.exit(1);
+  // Check for -e flag(s) for expression evaluation
+  const expressions: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "-e") {
+      const expression = args[i + 1];
+      if (!expression) {
+        console.error(chalk.red("Error: No expression provided after -e"));
+        process.exit(1);
+      }
+      expressions.push(expression);
+      i++; // Skip the expression argument
     }
-    processNonInteractiveMode(expression, debugMode);
+  }
+
+  if (expressions.length > 0) {
+    // Join all expressions with newlines to evaluate them in sequence
+    processNonInteractiveMode(expressions.join("\n"), debugMode);
     return;
   }
 

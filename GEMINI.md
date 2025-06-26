@@ -249,8 +249,8 @@ This allows the calculator to handle multiple data types while maintaining type 
    - Nested objects: `{person: {name: "John", age: 30}}`
 
 3. **Array Functions**:
-   - `push(arr, value)`: Add element to end, returns new array
-   - `pop(arr)`: Remove last element, returns new array
+   - `push(arr, value)`: Add element to end (mutates array), returns new length
+   - `pop(arr)`: Remove last element (mutates array), returns removed element or null
    - `first(arr)`: Get first element
    - `last(arr)`: Get last element
    - `slice(arr, start, end?)`: Extract portion of array
@@ -362,7 +362,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - The ternary operator (`? :`) supports nested expressions and evaluates conditions for truthiness
 - `null` is a distinct type from `false` or `0`, following JavaScript semantics
 - Arrays and objects are first-class types with full support for literals, functions, and property access (v1.3.2)
-- Array functions like `push` and `pop` return new arrays (immutable operations)
+- Array functions `push` and `pop` mutate the array (like JavaScript) - push returns new length, pop returns removed element
 - The `sum`, `avg`, and `average` functions can work as both aggregate keywords and array functions
 - Type casting supports parsing JSON strings to arrays/objects with `as array` and `as object`
 - Property access works with both dot notation and bracket notation for arrays and objects

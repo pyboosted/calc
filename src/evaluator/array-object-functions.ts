@@ -14,9 +14,10 @@ export function evaluateArrayFunction(
       if (!arr || arr.type !== "array") {
         throw new Error("First argument to push must be an array");
       }
-      // Return new array with elements added (immutable)
-      const newElements = [...arr.value, ...args.slice(1)];
-      return { type: "array", value: newElements };
+      // Mutate the original array by adding elements
+      arr.value.push(...args.slice(1));
+      // Return the new length like JavaScript
+      return { type: "number", value: arr.value.length };
     }
 
     case "pop": {
@@ -28,11 +29,12 @@ export function evaluateArrayFunction(
         throw new Error("Argument to pop must be an array");
       }
       if (arr.value.length === 0) {
-        return arr; // Return empty array unchanged
+        // Return undefined for empty array like JavaScript
+        return { type: "null", value: null };
       }
-      // Return new array without last element (immutable)
-      const newElements = arr.value.slice(0, -1);
-      return { type: "array", value: newElements };
+      // Mutate the original array and return the removed element
+      const removedElement = arr.value.pop();
+      return removedElement || { type: "null", value: null };
     }
 
     case "first": {

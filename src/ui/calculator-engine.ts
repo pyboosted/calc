@@ -77,7 +77,7 @@ export class CalculatorEngine {
   // Update multiple lines without triggering recalculation until all are updated
   updateLines(updates: Array<{ index: number; content: string }>): void {
     let minChangedIndex = this.lines.length;
-    
+
     // Apply all updates first
     for (const { index, content } of updates) {
       if (index < 0 || index >= this.lines.length) {

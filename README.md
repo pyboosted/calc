@@ -425,8 +425,8 @@ total                                  # "Hello World"
 
 # Array functions
 arr = [1, 2, 3]
-push(arr, 4)                           # [1, 2, 3, 4]
-pop(arr)                               # [1, 2]
+push(arr, 4)                           # 4 (returns new length, arr is now [1, 2, 3, 4])
+pop(arr)                               # 4 (returns removed element, arr is now [1, 2, 3])
 first(arr)                             # 1
 last(arr)                              # 3
 slice(arr, 1, 2)                       # [2]
