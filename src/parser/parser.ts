@@ -22,6 +22,7 @@ import {
   type Token,
   TokenType,
   type TypeCastNode,
+  type TypeCheckNode,
   type UnaryOpNode,
   type VariableNode,
 } from "../types";
@@ -181,6 +182,40 @@ export class Parser {
   private parseComparison(): ASTNode {
     const left = this.parseConversionExpression();
 
+    // Handle "is" keyword for type checking
+    if (
+      this.current.type === TokenType.KEYWORD &&
+      this.current.value === "is"
+    ) {
+      this.advance(); // consume "is"
+
+      // Accept any identifier-like token as a potential type name
+      const validTypeTokens = [
+        TokenType.VARIABLE,
+        TokenType.UNIT,
+        TokenType.KEYWORD,
+        TokenType.CURRENCY,
+        TokenType.CONSTANT,
+        TokenType.FUNCTION,
+        TokenType.NULL, // Allow "null" as type name
+      ];
+
+      if (!validTypeTokens.includes(this.current.type)) {
+        throw new Error(
+          `Expected type name after 'is', got ${this.current.value}`
+        );
+      }
+
+      const checkType = this.current.value;
+      this.advance();
+
+      return {
+        type: "typeCheck",
+        expression: left,
+        checkType,
+      } as TypeCheckNode;
+    }
+
     if (this.isComparisonOperator(this.current.type)) {
       // We know it's a comparison operator but TypeScript can't narrow it
       const operator = this.getComparisonOperator(this.current.type);
@@ -261,12 +296,15 @@ export class Parser {
   private parseConversionExpression(): ASTNode {
     let node = this.parseOf();
 
-    // Handle type casting with "as" keyword
+    // Handle type casting with "as" or "to" keyword for type conversions
     if (
       this.current.type === TokenType.KEYWORD &&
-      this.current.value === "as"
+      (this.current.value === "as" || this.current.value === "to")
     ) {
-      this.advance(); // consume "as"
+      const savedPosition = this.position;
+      const savedCurrent = this.current;
+
+      this.advance(); // consume "as" or "to"
       const nextToken = this.current;
 
       // Check if it's a type cast to string, number, boolean, array, or object
@@ -292,6 +330,10 @@ export class Parser {
           } as TypeCastNode;
         }
       }
+
+      // Not a type cast, restore position for unit/timezone conversion handling
+      this.position = savedPosition;
+      this.current = savedCurrent;
     }
 
     // Handle unit/timezone conversion at the expression level (lowest precedence)

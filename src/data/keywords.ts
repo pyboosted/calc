@@ -19,7 +19,6 @@ export const keywords = [
   "to",
   "as",
   "of",
-  "what",
   "is",
   "prev",
   "total",
@@ -73,6 +72,10 @@ export const functions = [
   // Environment and argument functions
   "env",
   "arg",
+  // Type inspection functions
+  "unit",
+  "timezone",
+  "type",
 ];
 
 // Mathematical constants

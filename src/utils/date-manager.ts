@@ -139,7 +139,7 @@ export class DateManager {
     // Calculate days to add/subtract to get to the target day in current week
     // We consider Monday as start of week for this calculation
     let daysToTarget = targetDay - currentDay;
-    
+
     // If target is Sunday (0) and we're past Sunday, it should be next Sunday
     if (targetDay === 0 && currentDay > 0) {
       daysToTarget += 7;
@@ -148,7 +148,7 @@ export class DateManager {
     else if (currentDay === 0 && targetDay > 0) {
       // Already correct, no adjustment needed
     }
-    
+
     return startOfDay(addDays(today, daysToTarget));
   }
 

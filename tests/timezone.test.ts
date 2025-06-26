@@ -142,11 +142,16 @@ describe("Timezone Support", () => {
   });
 
   test("time conversion with single letter timezone", () => {
-    // Should treat single letters as timezone when converting time
-    const result = evaluate("10:00 to m", new Map());
+    // Should reject invalid single letter timezones
+    expect(() => evaluate("10:00 to m", new Map())).toThrow(
+      "Invalid timezone: m"
+    );
+
+    // But valid timezones should work
+    const result = evaluate("10:00 to utc", new Map());
     expect(result.type === "date").toBe(true);
     if (result.type === "date") {
-      expect(result.timezone).toBe("m");
+      expect(result.timezone).toBe("utc");
     }
   });
 

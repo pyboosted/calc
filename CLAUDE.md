@@ -282,6 +282,32 @@ This allows the calculator to handle multiple data types while maintaining type 
      - Functions (operate on array arguments)
    - Context-aware tokenization determines usage
 
+### Type System and Type Checking (v1.3.1)
+
+The calculator supports type checking with the `is` keyword and helper functions:
+
+1. **Type Checking with `is` keyword**:
+   ```
+   100 is number → true
+   "hello" is string → true
+   today is date → true
+   now is datetime → true (has time component)
+   100usd is currency → true
+   100m is length → true
+   ```
+
+2. **Type Inspection Functions**:
+   - `unit(value)` - returns the unit of a number (or null)
+   - `timezone(value)` - returns the timezone of a date (or "local")
+   - `type(value)` - returns the type as a string
+
+3. **Supported Type Checks**:
+   - Basic types: `number`, `string`, `date`, `boolean`, `null`, `array`, `object`
+   - Special types:
+     - `datetime` - dates with time component (not at start of day)
+     - `currency` - numbers with currency units
+   - Unit categories: `length`, `weight`, `volume`, `temperature`, `data`, `area`, `time`
+
 ### Key Systems
 
 1. **Unit Conversion** (`src/evaluator/unit-converter.ts`)

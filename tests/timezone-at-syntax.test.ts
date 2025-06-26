@@ -4,8 +4,8 @@ import { evaluate } from "../src/evaluator/evaluate";
 
 describe("Timezone @ Syntax vs in/to Syntax", () => {
   test("now@timezone creates time in specified timezone", () => {
-    const result1 = evaluate("now@ny");
-    const result2 = evaluate("now in ny");
+    const result1 = evaluate("now@ny", new Map());
+    const result2 = evaluate("now in ny", new Map());
 
     expect(result1.type).toBe("date");
     expect(result2.type).toBe("date");
@@ -24,7 +24,7 @@ describe("Timezone @ Syntax vs in/to Syntax", () => {
   });
 
   test("today@timezone creates start of day in specified timezone", () => {
-    const result = evaluate("today@tokyo");
+    const result = evaluate("today@tokyo", new Map());
 
     expect(result.type).toBe("date");
     if (result.type === "date") {
@@ -39,8 +39,8 @@ describe("Timezone @ Syntax vs in/to Syntax", () => {
   });
 
   test("today@timezone vs today in timezone show different times", () => {
-    const result1 = evaluate("today@tokyo");
-    const result2 = evaluate("today in tokyo");
+    const result1 = evaluate("today@tokyo", new Map());
+    const result2 = evaluate("today in tokyo", new Map());
 
     expect(result1.type).toBe("date");
     expect(result2.type).toBe("date");
@@ -57,7 +57,7 @@ describe("Timezone @ Syntax vs in/to Syntax", () => {
   });
 
   test("time literals with @timezone", () => {
-    const result = evaluate("15:30@paris");
+    const result = evaluate("15:30@paris", new Map());
 
     expect(result.type).toBe("date");
     if (result.type === "date") {
@@ -71,8 +71,8 @@ describe("Timezone @ Syntax vs in/to Syntax", () => {
   });
 
   test("tomorrow@timezone and yesterday@timezone", () => {
-    const tomorrow = evaluate("tomorrow@utc");
-    const yesterday = evaluate("yesterday@utc");
+    const tomorrow = evaluate("tomorrow@utc", new Map());
+    const yesterday = evaluate("yesterday@utc", new Map());
 
     expect(tomorrow.type).toBe("date");
     expect(yesterday.type).toBe("date");

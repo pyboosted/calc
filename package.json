@@ -1,15 +1,19 @@
 {
   "name": "boosted-calc",
-  "version": "1.3.8",
+  "version": "1.3.9",
   "description": "A powerful terminal-based calculator with unit conversions, currency support, and more",
   "keywords": [
     "calculator",
     "cli",
-    "terminal",
-    "unit-conversion",
+    "command-line",
     "currency",
+    "financial",
+    "ink",
     "math",
-    "typescript"
+    "terminal",
+    "tui",
+    "typescript",
+    "unit-conversion"
   ],
   "author": "pyboosted",
   "license": "MIT",

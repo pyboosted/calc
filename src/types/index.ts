@@ -221,6 +221,12 @@ export interface PropertyAssignmentNode {
   value: ASTNode;
 }
 
+export interface TypeCheckNode {
+  type: "typeCheck";
+  expression: ASTNode;
+  checkType: string;
+}
+
 // ASTNode is now a discriminated union type
 export type ASTNode =
   | NumberNode
@@ -246,4 +252,5 @@ export type ASTNode =
   | ObjectNode
   | PropertyAccessNode
   | IndexAccessNode
-  | PropertyAssignmentNode;
+  | PropertyAssignmentNode
+  | TypeCheckNode;

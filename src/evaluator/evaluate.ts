@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { isTemperature, unitDefinitions } from "../data/units";
 import { Parser } from "../parser/parser";
 import { Tokenizer } from "../parser/tokenizer";
 import type {
@@ -26,9 +27,11 @@ import type {
   TernaryNode,
   TimeNode,
   TypeCastNode,
+  TypeCheckNode,
   UnaryOpNode,
   VariableNode,
 } from "../types";
+import { CurrencyManager } from "../utils/currency-manager";
 import { DateManager } from "../utils/date-manager";
 import {
   debugAST,
@@ -83,6 +86,32 @@ function isTimePeriodUnit(unit: string | undefined): boolean {
     "years",
     "yr",
   ].includes(unit);
+}
+
+function isUnitInCategory(unit: string, category: string): boolean {
+  const unitLower = unit.toLowerCase();
+  const unitDef = unitDefinitions[unitLower];
+
+  if (!unitDef) {
+    // Check if it's a temperature unit
+    if (category === "temperature" && isTemperature(unitLower)) {
+      return true;
+    }
+    return false;
+  }
+
+  // Map categories to base units
+  const categoryMapping: Record<string, string[]> = {
+    length: ["meter"],
+    weight: ["gram"],
+    volume: ["liter"],
+    time: ["second"],
+    data: ["byte"],
+    area: ["meter^2"],
+  };
+
+  const baseUnits = categoryMapping[category];
+  return baseUnits ? baseUnits.includes(unitDef.baseUnit) : false;
 }
 
 export interface EvaluationContext {
@@ -599,6 +628,49 @@ function evaluateFunctionNode(
     });
   }
 
+  // Handle type inspection functions
+  if (node.name === "unit") {
+    if (node.args.length !== 1) {
+      throw new Error("unit() takes exactly one argument");
+    }
+    const arg = node.args[0];
+    if (!arg) {
+      throw new Error("unit() requires an argument");
+    }
+    const value = evaluateNode(arg, variables, context);
+    if (value.type === "number" && value.unit) {
+      return { type: "string", value: value.unit.toLowerCase() };
+    }
+    return { type: "null", value: null };
+  }
+
+  if (node.name === "timezone") {
+    if (node.args.length !== 1) {
+      throw new Error("timezone() takes exactly one argument");
+    }
+    const arg = node.args[0];
+    if (!arg) {
+      throw new Error("timezone() requires an argument");
+    }
+    const value = evaluateNode(arg, variables, context);
+    if (value.type === "date") {
+      return { type: "string", value: value.timezone || "local" };
+    }
+    return { type: "null", value: null };
+  }
+
+  if (node.name === "type") {
+    if (node.args.length !== 1) {
+      throw new Error("type() takes exactly one argument");
+    }
+    const arg = node.args[0];
+    if (!arg) {
+      throw new Error("type() requires an argument");
+    }
+    const value = evaluateNode(arg, variables, context);
+    return { type: "string", value: value.type };
+  }
+
   const args = node.args.map((arg) => evaluateNode(arg, variables, context));
 
   // Handle string functions
@@ -921,22 +993,16 @@ function evaluateBinaryNode(
     if (leftResult.type === "date") {
       const timezoneManager = TimezoneManager.getInstance();
 
-      // Validate and convert timezone
-      try {
-        // For timezone conversion, we just change the timezone label
-        // The actual moment in time (timestamp) remains the same
-        if (!timezoneManager.isValidTimezone(targetTimezone)) {
-          throw new Error(`Invalid timezone: ${targetTimezone}`);
-        }
-        return {
-          type: "date",
-          value: leftResult.value, // Keep the same timestamp
-          timezone: targetTimezone,
-        };
-      } catch (_error) {
-        // If timezone conversion fails, return the original date with the attempted timezone
-        return { ...leftResult, timezone: targetTimezone };
+      // For timezone conversion, we just change the timezone label
+      // The actual moment in time (timestamp) remains the same
+      if (!timezoneManager.isValidTimezone(targetTimezone)) {
+        throw new Error(`Invalid timezone: ${targetTimezone}`);
       }
+      return {
+        type: "date",
+        value: leftResult.value, // Keep the same timestamp
+        timezone: targetTimezone,
+      };
     }
 
     // Not a timestamp - try regular unit conversion instead
@@ -1596,6 +1662,68 @@ function evaluateComparisonNode(
   return { type: "boolean", value: result };
 }
 
+function evaluateTypeCheckNode(
+  node: TypeCheckNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const value = evaluateNode(node.expression, variables, context);
+  const checkType = node.checkType.toLowerCase();
+
+  // Basic type checks
+  if (checkType === value.type) {
+    return { type: "boolean", value: true };
+  }
+
+  // Special type checks
+  switch (checkType) {
+    case "datetime":
+      // Check if it's a date with time component (not at start of day)
+      if (value.type === "date") {
+        const date = value.value;
+        const isStartOfDay =
+          date.getHours() === 0 &&
+          date.getMinutes() === 0 &&
+          date.getSeconds() === 0 &&
+          date.getMilliseconds() === 0;
+        return { type: "boolean", value: !isStartOfDay };
+      }
+      return { type: "boolean", value: false };
+
+    case "currency":
+      // Check if it's a number with a currency unit
+      if (value.type === "number" && value.unit) {
+        const currencyManager = CurrencyManager.getInstance();
+        // Currency manager needs the unit in the right case
+        return {
+          type: "boolean",
+          value: currencyManager.getRate(value.unit) !== undefined,
+        };
+      }
+      return { type: "boolean", value: false };
+
+    case "length":
+    case "weight":
+    case "volume":
+    case "temperature":
+    case "data":
+    case "area":
+    case "time":
+      // Check if it's a number with a unit in the specified category
+      if (value.type === "number" && value.unit) {
+        return {
+          type: "boolean",
+          value: isUnitInCategory(value.unit, checkType),
+        };
+      }
+      return { type: "boolean", value: false };
+
+    default:
+      // Unknown type check
+      return { type: "boolean", value: false };
+  }
+}
+
 function compareValues(
   left: CalculatedValue,
   right: CalculatedValue,
@@ -1989,6 +2117,9 @@ function evaluateNode(
 
     case "comparison":
       return evaluateComparisonNode(node, variables, context);
+
+    case "typeCheck":
+      return evaluateTypeCheckNode(node, variables, context);
 
     case "logical":
       return evaluateLogicalNode(node, variables, context);
