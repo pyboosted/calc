@@ -128,25 +128,17 @@ describe("Timezone Support", () => {
   });
 
   test("partial timezone name does not crash", () => {
-    // Should accept partial timezone names without crashing
-    const result = evaluate("10:00@y", new Map());
-    expect(result.type === "date").toBe(true);
-    if (result.type === "date") {
-      expect(result.timezone).toBe("y");
-    }
+    // Should reject partial timezone names with proper error
+    expect(() => evaluate("10:00@y", new Map())).toThrow(
+      "Invalid time: 10:00@y"
+    );
   });
 
-  test("invalid timezone falls back to system timezone", () => {
-    // Should handle invalid timezone gracefully
-    const result = evaluate("10:00@invalidtz", new Map());
-    expect(result.type === "date").toBe(true);
-    if (result.type === "date") {
-      expect(result.timezone).toBe("invalidtz");
-      // Time should still be created using system timezone
-      const hours = result.value.getHours();
-      expect(hours).toBeGreaterThanOrEqual(0);
-      expect(hours).toBeLessThanOrEqual(23);
-    }
+  test("invalid timezone throws error", () => {
+    // Should reject invalid timezones with proper error
+    expect(() => evaluate("10:00@invalidtz", new Map())).toThrow(
+      "Invalid time: 10:00@invalidtz"
+    );
   });
 
   test("time conversion with single letter timezone", () => {

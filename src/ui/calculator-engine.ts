@@ -290,16 +290,10 @@ export class CalculatorEngine {
         line.assignedVariables = undefined;
       }
     } catch (error) {
-      // Both modes now treat invalid expressions as comments for consistent rendering
+      // Store the error for display
       line.result = null;
-      line.isComment = true;
-
-      // In debug mode, also store the error for display
-      if (this.debugMode) {
-        line.error = (error as Error).message;
-      } else {
-        line.error = null;
-      }
+      line.error = (error as Error).message;
+      line.isComment = false;
     }
   }
 

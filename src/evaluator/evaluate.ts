@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { Parser } from "../parser/parser";
 import { Tokenizer } from "../parser/tokenizer";
 import type {
@@ -468,8 +469,18 @@ function evaluateFormat(args: CalculatedValue[]): CalculatedValue {
     throw new Error("Second argument to format() must be a string");
   }
 
-  // Use date-fns for formatting
-  const { format } = require("date-fns");
+  // Use timezone-aware formatting if the date has a timezone
+  if (dateArg.timezone) {
+    const timezoneManager = TimezoneManager.getInstance();
+    const formatted = timezoneManager.formatInTimezone(
+      dateArg.value,
+      dateArg.timezone,
+      patternArg.value
+    );
+    return { type: "string", value: formatted };
+  }
+
+  // Otherwise use local time formatting
   const formatted = format(dateArg.value, patternArg.value);
   return { type: "string", value: formatted };
 }
@@ -641,14 +652,91 @@ function evaluateFunctionNode(
 
 function evaluateDateNode(node: DateNode): CalculatedValue {
   const dateManager = DateManager.getInstance();
-  const date = dateManager.parseRelativeDate(node.value);
+  const timezoneManager = TimezoneManager.getInstance();
 
-  if (!date) {
-    throw new Error(`Invalid date: ${node.value}`);
+  try {
+    // Special handling for date keywords with timezone
+    if (node.timezone) {
+      // Validate timezone first
+      if (!timezoneManager.isValidTimezone(node.timezone)) {
+        throw new Error(`Invalid timezone: ${node.timezone}`);
+      }
+
+      if (node.value === "now") {
+        // Get current time in the specified timezone
+        const now = new Date();
+        return { type: "date", value: now, timezone: node.timezone };
+      }
+      if (node.value === "today") {
+        // Get start of day in the specified timezone
+        const now = new Date();
+        const startOfDay = timezoneManager.createDateInTimezone(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          now.getDate(),
+          0,
+          0,
+          node.timezone
+        );
+        return { type: "date", value: startOfDay, timezone: node.timezone };
+      }
+      if (node.value === "tomorrow") {
+        // Get start of tomorrow in the specified timezone
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const startOfTomorrow = timezoneManager.createDateInTimezone(
+          tomorrow.getFullYear(),
+          tomorrow.getMonth() + 1,
+          tomorrow.getDate(),
+          0,
+          0,
+          node.timezone
+        );
+        return {
+          type: "date",
+          value: startOfTomorrow,
+          timezone: node.timezone,
+        };
+      }
+      if (node.value === "yesterday") {
+        // Get start of yesterday in the specified timezone
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startOfYesterday = timezoneManager.createDateInTimezone(
+          yesterday.getFullYear(),
+          yesterday.getMonth() + 1,
+          yesterday.getDate(),
+          0,
+          0,
+          node.timezone
+        );
+        return {
+          type: "date",
+          value: startOfYesterday,
+          timezone: node.timezone,
+        };
+      }
+      // For weekdays with timezone, we'd need more complex logic
+      // For now, fall through to regular parsing and add timezone
+    }
+
+    const date = dateManager.parseRelativeDate(node.value);
+
+    if (!date) {
+      throw new Error(`Invalid date: ${node.value}`);
+    }
+
+    // Return the date with timezone (explicit or local)
+    return node.timezone
+      ? { type: "date", value: date, timezone: node.timezone }
+      : { type: "date", value: date, timezone: "local" };
+  } catch (_error) {
+    throw new Error(
+      `Invalid date: ${node.value}${node.timezone ? `@${node.timezone}` : ""}`
+    );
   }
-
-  // Return the date as a timestamp
-  return { type: "date", value: date };
 }
 
 function evaluateTimeNode(node: TimeNode): CalculatedValue {
@@ -658,73 +746,106 @@ function evaluateTimeNode(node: TimeNode): CalculatedValue {
     // Parse time components
     const [hours, minutes] = node.value.split(":").map(Number);
 
-    // Get current date in the specified timezone
-    const timezone = node.timezone || timezoneManager.getSystemTimezone();
+    // Get current date
     const now = new Date();
 
-    // Create date with time in specified timezone
-    const date = timezoneManager.createDateInTimezone(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      now.getDate(),
-      hours ?? 0,
-      minutes ?? 0,
-      timezone
-    );
+    // Validate timezone if provided
+    if (node.timezone && !timezoneManager.isValidTimezone(node.timezone)) {
+      throw new Error(`Invalid timezone: ${node.timezone}`);
+    }
+
+    // Create date with time
+    let date: Date;
+    let timezone: string | undefined = node.timezone;
+
+    if (node.timezone) {
+      // Create date in specified timezone
+      date = timezoneManager.createDateInTimezone(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        now.getDate(),
+        hours ?? 0,
+        minutes ?? 0,
+        node.timezone
+      );
+    } else {
+      // Create date in local timezone
+      date = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        hours ?? 0,
+        minutes ?? 0
+      );
+      // Mark as local timezone
+      timezone = "local";
+    }
 
     // Check if the date is valid
     if (!date || Number.isNaN(date.getTime())) {
       throw new Error(`Invalid time value: ${node.value}`);
     }
 
+    // Return with timezone
     return { type: "date", value: date, timezone };
   } catch (_error) {
-    // If there's an error creating the date, return a default time with system timezone
-    const [hours, minutes] = node.value.split(":").map(Number);
-    const now = new Date();
-    const date = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      hours,
-      minutes,
-      0,
-      0
+    // If there's an error creating the date with timezone, throw a proper error
+    throw new Error(
+      `Invalid time: ${node.value}${node.timezone ? `@${node.timezone}` : ""}`
     );
-    return { type: "date", value: date };
   }
 }
 
 function evaluateDateTimeNode(node: DateTimeNode): CalculatedValue {
   const timezoneManager = TimezoneManager.getInstance();
 
-  // Parse date components
-  const dateParts = node.dateValue.match(DATE_PATTERN);
-  if (!dateParts) {
-    throw new Error(`Invalid date format: ${node.dateValue}`);
+  try {
+    // Parse date components
+    const dateParts = node.dateValue.match(DATE_PATTERN);
+    if (!dateParts) {
+      throw new Error(`Invalid date format: ${node.dateValue}`);
+    }
+
+    const day = Number.parseInt(dateParts[1] ?? "1", 10);
+    const month = Number.parseInt(dateParts[2] ?? "1", 10);
+    const year = Number.parseInt(dateParts[3] ?? "2000", 10);
+
+    // Parse time components
+    const [hours, minutes] = node.timeValue.split(":").map(Number);
+
+    // Validate timezone if provided
+    if (node.timezone && !timezoneManager.isValidTimezone(node.timezone)) {
+      throw new Error(`Invalid timezone: ${node.timezone}`);
+    }
+
+    // Create date
+    let date: Date;
+    let timezone: string;
+
+    if (node.timezone) {
+      // Create date in specified timezone
+      date = timezoneManager.createDateInTimezone(
+        year,
+        month,
+        day,
+        hours ?? 0,
+        minutes ?? 0,
+        node.timezone
+      );
+      timezone = node.timezone;
+    } else {
+      // Create date in local timezone
+      date = new Date(year, month - 1, day, hours ?? 0, minutes ?? 0);
+      timezone = "local";
+    }
+
+    // Return with timezone
+    return { type: "date", value: date, timezone };
+  } catch (_error) {
+    throw new Error(
+      `Invalid datetime: ${node.dateValue}T${node.timeValue}${node.timezone ? `@${node.timezone}` : ""}`
+    );
   }
-
-  const day = Number.parseInt(dateParts[1] ?? "1", 10);
-  const month = Number.parseInt(dateParts[2] ?? "1", 10);
-  const year = Number.parseInt(dateParts[3] ?? "2000", 10);
-
-  // Parse time components
-  const [hours, minutes] = node.timeValue.split(":").map(Number);
-
-  // Get timezone or use system timezone
-  const timezone = node.timezone || timezoneManager.getSystemTimezone();
-
-  // Create date in specified timezone
-  const date = timezoneManager.createDateInTimezone(
-    year,
-    month,
-    day,
-    hours ?? 0,
-    minutes ?? 0,
-    timezone
-  );
-
-  return { type: "date", value: date, timezone };
 }
 
 function evaluateDateOperationNode(
@@ -800,9 +921,8 @@ function evaluateBinaryNode(
     if (leftResult.type === "date") {
       const timezoneManager = TimezoneManager.getInstance();
 
-      // Get source timezone (default to system timezone if not specified)
-      const sourceTimezone =
-        leftResult.timezone || timezoneManager.getSystemTimezone();
+      // Get source timezone (default to "local" if not specified)
+      const sourceTimezone = leftResult.timezone || "local";
 
       // For "now in timezone", we don't need to convert, just get current time in target timezone
       if (

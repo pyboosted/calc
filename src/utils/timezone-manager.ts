@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 export class TimezoneManager {
@@ -5,6 +6,9 @@ export class TimezoneManager {
 
   // Map of common timezone names to IANA timezone identifiers
   private timezoneMap: Record<string, string> = {
+    // Special aliases
+    local: "local",
+
     // UTC offsets
     utc: "UTC",
     "utc-0": "UTC",
@@ -46,15 +50,23 @@ export class TimezoneManager {
     "new york": "America/New_York",
     ny: "America/New_York",
     nyc: "America/New_York",
+    new_york: "America/New_York",
     la: "America/Los_Angeles",
     losangeles: "America/Los_Angeles",
     "los angeles": "America/Los_Angeles",
+    los_angeles: "America/Los_Angeles",
+    sf: "America/Los_Angeles",
+    sanfrancisco: "America/Los_Angeles",
+    "san francisco": "America/Los_Angeles",
+    san_francisco: "America/Los_Angeles",
     chicago: "America/Chicago",
     denver: "America/Denver",
     dubai: "Asia/Dubai",
     singapore: "Asia/Singapore",
     hongkong: "Asia/Hong_Kong",
     "hong kong": "Asia/Hong_Kong",
+    hong_kong: "Asia/Hong_Kong",
+    hk: "Asia/Hong_Kong",
     shanghai: "Asia/Shanghai",
     beijing: "Asia/Shanghai",
     mumbai: "Asia/Kolkata",
@@ -70,13 +82,20 @@ export class TimezoneManager {
     johannesburg: "Africa/Johannesburg",
     capetown: "Africa/Johannesburg",
     "cape town": "Africa/Johannesburg",
+    cape_town: "Africa/Johannesburg",
     saopaulo: "America/Sao_Paulo",
     "sao paulo": "America/Sao_Paulo",
+    sao_paulo: "America/Sao_Paulo",
+    sp: "America/Sao_Paulo",
     buenosaires: "America/Argentina/Buenos_Aires",
     "buenos aires": "America/Argentina/Buenos_Aires",
+    buenos_aires: "America/Argentina/Buenos_Aires",
+    ba: "America/Argentina/Buenos_Aires",
     mexico: "America/Mexico_City",
     mexicocity: "America/Mexico_City",
     "mexico city": "America/Mexico_City",
+    mexico_city: "America/Mexico_City",
+    mx: "America/Mexico_City",
     toronto: "America/Toronto",
     vancouver: "America/Vancouver",
     montreal: "America/Montreal",
@@ -84,12 +103,16 @@ export class TimezoneManager {
     // Time zone abbreviations
     est: "America/New_York",
     edt: "America/New_York",
+    eastern: "America/New_York",
     cst: "America/Chicago",
     cdt: "America/Chicago",
+    central: "America/Chicago",
     mst: "America/Denver",
     mdt: "America/Denver",
+    mountain: "America/Denver",
     pst: "America/Los_Angeles",
     pdt: "America/Los_Angeles",
+    pacific: "America/Los_Angeles",
     gmt: "GMT",
     bst: "Europe/London",
     cet: "Europe/Paris",
@@ -138,6 +161,25 @@ export class TimezoneManager {
         return date;
       }
 
+      // Handle "local" timezone
+      if (fromTz === "local" && toTz === "local") {
+        return date; // No conversion needed
+      }
+
+      if (fromTz === "local") {
+        // Converting from local to another timezone
+        const systemTz = this.getSystemTimezone();
+        const utcDate = fromZonedTime(date, systemTz);
+        return toZonedTime(utcDate, toTz);
+      }
+
+      if (toTz === "local") {
+        // Converting from another timezone to local
+        const systemTz = this.getSystemTimezone();
+        const utcDate = fromZonedTime(date, fromTz);
+        return toZonedTime(utcDate, systemTz);
+      }
+
       // First, get the time in the source timezone
       const utcDate = fromZonedTime(date, fromTz);
 
@@ -175,6 +217,12 @@ export class TimezoneManager {
         }
       }
 
+      // Handle "local" timezone
+      if (tz === "local") {
+        // Just create a date in the local timezone
+        return new Date(year, month - 1, day, hour, minute, 0, 0);
+      }
+
       // Create a date object representing the local time in the target timezone
       const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
 
@@ -191,6 +239,13 @@ export class TimezoneManager {
    */
   formatInTimezone(date: Date, timezone: string, formatString: string): string {
     const tz = this.getTimezone(timezone);
+
+    // Handle "local" timezone
+    if (tz === "local") {
+      // Use date-fns format function for local timezone
+      return format(date, formatString);
+    }
+
     return formatInTimeZone(date, tz, formatString);
   }
 
@@ -207,6 +262,11 @@ export class TimezoneManager {
         return new Date();
       }
 
+      // Handle "local" timezone
+      if (tz === "local") {
+        return new Date();
+      }
+
       return toZonedTime(new Date(), tz);
     } catch (_error) {
       // If conversion fails, return current time
@@ -219,6 +279,11 @@ export class TimezoneManager {
    */
   isValidTimezone(name: string): boolean {
     const normalized = name.toLowerCase().trim();
+
+    // Special case for "local"
+    if (normalized === "local") {
+      return true;
+    }
 
     // Check if it's in our map
     if (this.timezoneMap[normalized]) {

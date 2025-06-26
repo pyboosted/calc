@@ -125,6 +125,7 @@ export interface AggregateNode {
 export interface DateNode {
   type: "date";
   value: string;
+  timezone?: string;
 }
 
 export interface TimeNode {

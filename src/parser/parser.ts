@@ -991,6 +991,36 @@ export class Parser {
       ) {
         const dateValue = this.current.value;
         this.advance();
+
+        // Check for timezone after date keyword (e.g., now@tokyo, today@berlin)
+        const currentToken = this.current;
+        if (currentToken.type === TokenType.AT_SYMBOL) {
+          this.advance(); // consume @
+          const tokenAfterAt = this.current;
+          if (tokenAfterAt.type === TokenType.EOF) {
+            // Incomplete expression - treat as date without timezone
+            return { type: "date", value: dateValue } as DateNode;
+          }
+
+          // Accept any identifier-like token as a potential timezone
+          if (
+            tokenAfterAt.type === TokenType.TIMEZONE ||
+            tokenAfterAt.type === TokenType.VARIABLE ||
+            tokenAfterAt.type === TokenType.UNIT ||
+            tokenAfterAt.type === TokenType.CURRENCY ||
+            tokenAfterAt.type === TokenType.KEYWORD
+          ) {
+            const timezone = tokenAfterAt.value;
+            this.advance();
+            return {
+              type: "date",
+              value: dateValue,
+              timezone,
+            } as DateNode;
+          }
+          throw new Error(`Invalid timezone: ${tokenAfterAt.value}`);
+        }
+
         return { type: "date", value: dateValue } as DateNode;
       }
     }

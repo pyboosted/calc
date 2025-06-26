@@ -1,10 +1,14 @@
 import { format } from "date-fns";
 import type { CalculatedValue } from "../types";
 import { ConfigManager } from "../utils/config-manager";
+import { TimezoneManager } from "../utils/timezone-manager";
 
 // Regex patterns
 const TRAILING_ZEROS_PATTERN = /0+$/;
 const THOUSANDS_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g;
+
+// Initialize timezone manager at module level
+const timezoneManager = TimezoneManager.getInstance();
 
 export function formatResultWithUnit(result: CalculatedValue): string {
   switch (result.type) {
@@ -149,46 +153,93 @@ export function formatNumber(num: number): string {
 }
 
 function formatDate(date: Date, timezone?: string): string {
-  const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
-  );
-  const startOfDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate()
-  );
-
-  let baseFormat: string;
-
-  // If the date is today and the time is not midnight, show time
-  if (
-    startOfDate.getTime() === startOfToday.getTime() &&
-    (date.getHours() !== 0 ||
-      date.getMinutes() !== 0 ||
-      date.getSeconds() !== 0)
-  ) {
-    baseFormat = format(date, "EEE, MMM d, yyyy 'at' HH:mm");
-  }
-  // If the time component is not midnight, show it
-  else if (
-    date.getHours() !== 0 ||
-    date.getMinutes() !== 0 ||
-    date.getSeconds() !== 0
-  ) {
-    baseFormat = format(date, "EEE, MMM d, yyyy 'at' HH:mm");
-  } else {
-    baseFormat = format(date, "EEE, MMM d, yyyy");
+  // Check if date is valid
+  if (!date?.getTime || Number.isNaN(date.getTime())) {
+    return "Invalid Date";
   }
 
-  // Append timezone if provided
+  // Determine the format string based on whether time component exists
+  let formatString: string;
+
+  // If timezone is provided, we need to check time in that timezone
   if (timezone) {
-    return `${baseFormat}@${timezone}`;
-  }
+    try {
+      // Format temporarily to check if time component exists
+      const timeCheck = timezoneManager.formatInTimezone(
+        date,
+        timezone,
+        "HH:mm:ss"
+      );
+      const hasTime = timeCheck !== "00:00:00";
 
-  return baseFormat;
+      // Check if it's today in that timezone
+      const todayInTz = timezoneManager.formatInTimezone(
+        new Date(),
+        timezone,
+        "yyyy-MM-dd"
+      );
+      const dateInTz = timezoneManager.formatInTimezone(
+        date,
+        timezone,
+        "yyyy-MM-dd"
+      );
+      const isToday = todayInTz === dateInTz;
+
+      if (isToday && hasTime) {
+        formatString = "EEE, MMM d, yyyy 'at' HH:mm";
+      } else if (hasTime) {
+        formatString = "EEE, MMM d, yyyy 'at' HH:mm";
+      } else {
+        formatString = "EEE, MMM d, yyyy";
+      }
+
+      // Format in the specified timezone and append timezone
+      const formatted = timezoneManager.formatInTimezone(
+        date,
+        timezone,
+        formatString
+      );
+      return `${formatted}@${timezone}`;
+    } catch (_error) {
+      // If timezone formatting fails, fall back to local formatting
+      return `${format(date, "EEE, MMM d, yyyy")}@${timezone}`;
+    }
+  } else {
+    // No timezone - use local time formatting
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const startOfDate = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+
+    // If the date is today and the time is not midnight, show time
+    if (
+      startOfDate.getTime() === startOfToday.getTime() &&
+      (date.getHours() !== 0 ||
+        date.getMinutes() !== 0 ||
+        date.getSeconds() !== 0)
+    ) {
+      formatString = "EEE, MMM d, yyyy 'at' HH:mm";
+    }
+    // If the time component is not midnight, show it
+    else if (
+      date.getHours() !== 0 ||
+      date.getMinutes() !== 0 ||
+      date.getSeconds() !== 0
+    ) {
+      formatString = "EEE, MMM d, yyyy 'at' HH:mm";
+    } else {
+      formatString = "EEE, MMM d, yyyy";
+    }
+
+    return `${format(date, formatString)}@local`;
+  }
 }
 
 export function formatUnit(unit: string): string {
