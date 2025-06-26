@@ -251,6 +251,7 @@ This allows the calculator to handle multiple data types while maintaining type 
 3. **Array Functions**:
    - `push(arr, value)`: Add element to end (mutates array), returns new length
    - `pop(arr)`: Remove last element (mutates array), returns removed element or null
+   - Note: Arrays are deep-cloned during recalculation to prevent accumulation issues
    - `first(arr)`: Get first element
    - `last(arr)`: Get last element
    - `slice(arr, start, end?)`: Extract portion of array

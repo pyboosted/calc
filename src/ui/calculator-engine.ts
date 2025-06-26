@@ -1,5 +1,6 @@
 import { evaluate } from "../evaluator/evaluate";
 import type { CalculatedValue } from "../types";
+import { deepCloneCalculatedValue } from "../utils/deep-clone";
 
 interface LineState {
   id: string;
@@ -159,7 +160,8 @@ export class CalculatorEngine {
       // Use stored assigned variables if available
       if (line.assignedVariables) {
         line.assignedVariables.forEach((value, key) => {
-          cumulativeVariables.set(key, value);
+          // Deep clone the value to prevent mutation issues
+          cumulativeVariables.set(key, deepCloneCalculatedValue(value));
         });
       }
     }
