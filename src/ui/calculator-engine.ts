@@ -74,6 +74,34 @@ export class CalculatorEngine {
     this.evaluateFromLine(index);
   }
 
+  // Update multiple lines without triggering recalculation until all are updated
+  updateLines(updates: Array<{ index: number; content: string }>): void {
+    let minChangedIndex = this.lines.length;
+    
+    // Apply all updates first
+    for (const { index, content } of updates) {
+      if (index < 0 || index >= this.lines.length) {
+        continue;
+      }
+
+      const line = this.lines[index];
+      if (!line) {
+        continue;
+      }
+
+      const oldContent = line.content;
+      if (oldContent !== content) {
+        line.content = content;
+        minChangedIndex = Math.min(minChangedIndex, index);
+      }
+    }
+
+    // Recalculate once from the first changed line
+    if (minChangedIndex < this.lines.length) {
+      this.evaluateFromLine(minChangedIndex);
+    }
+  }
+
   insertLine(index: number): void {
     const newLine: LineState = {
       id: this.generateId(),

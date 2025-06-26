@@ -100,22 +100,39 @@ export class CalculatorStateManager extends EventEmitter {
     const lines = this.editor.getLines();
     const engineLines = this.engine.getLines();
 
-    // Update existing lines
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line !== undefined) {
-        if (i < engineLines.length) {
-          this.engine.updateLine(i, line);
-        } else {
-          this.engine.insertLine(i);
-          this.engine.updateLine(i, line);
-        }
+    // Collect all line updates to batch them
+    const updates: Array<{ index: number; content: string }> = [];
+    let needsStructuralChange = false;
+
+    // Check if we need to add or remove lines
+    if (lines.length !== engineLines.length) {
+      needsStructuralChange = true;
+    }
+
+    // If structural changes are needed, do them first
+    if (needsStructuralChange) {
+      // Add missing lines
+      while (engineLines.length < lines.length) {
+        this.engine.insertLine(engineLines.length);
+      }
+      
+      // Remove extra lines
+      while (engineLines.length > lines.length) {
+        this.engine.deleteLine(engineLines.length - 1);
       }
     }
 
-    // Remove extra lines from engine
-    while (engineLines.length > lines.length) {
-      this.engine.deleteLine(engineLines.length - 1);
+    // Collect all content updates
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line !== undefined && i < this.engine.getLines().length) {
+        updates.push({ index: i, content: line });
+      }
+    }
+
+    // Apply all updates at once
+    if (updates.length > 0) {
+      this.engine.updateLines(updates);
     }
 
     // Don't emit during construction
