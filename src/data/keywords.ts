@@ -27,12 +27,6 @@ export const keywords = [
   "average",
   "avg",
   ...dateKeywords,
-  "from",
-  "ago",
-  "hence",
-  "start",
-  "end",
-  "beginning",
 ];
 
 // Mathematical functions

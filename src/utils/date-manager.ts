@@ -76,7 +76,7 @@ export class DateManager {
       case "friday":
       case "saturday":
       case "sunday":
-        return this.getNextWeekday(lowerInput);
+        return this.getCurrentWeekday(lowerInput);
       default: {
         // Try parsing DD.MM.YYYY or DD/MM/YYYY format
         const match = input.match(DATE_PATTERN);
@@ -120,9 +120,9 @@ export class DateManager {
   }
 
   /**
-   * Get the next occurrence of a weekday
+   * Get the specified weekday in the current week
    */
-  private getNextWeekday(weekday: string): Date {
+  private getCurrentWeekday(weekday: string): Date {
     const weekdays = [
       "sunday",
       "monday",
@@ -136,12 +136,20 @@ export class DateManager {
     const today = new Date();
     const currentDay = getDay(today);
 
-    let daysToAdd = targetDay - currentDay;
-    if (daysToAdd <= 0) {
-      daysToAdd += 7;
+    // Calculate days to add/subtract to get to the target day in current week
+    // We consider Monday as start of week for this calculation
+    let daysToTarget = targetDay - currentDay;
+    
+    // If target is Sunday (0) and we're past Sunday, it should be next Sunday
+    if (targetDay === 0 && currentDay > 0) {
+      daysToTarget += 7;
     }
-
-    return startOfDay(addDays(today, daysToAdd));
+    // If we're on Sunday (0) and target is a weekday, it should be in the upcoming week
+    else if (currentDay === 0 && targetDay > 0) {
+      // Already correct, no adjustment needed
+    }
+    
+    return startOfDay(addDays(today, daysToTarget));
   }
 
   /**
