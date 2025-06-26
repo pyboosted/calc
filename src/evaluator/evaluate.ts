@@ -921,33 +921,16 @@ function evaluateBinaryNode(
     if (leftResult.type === "date") {
       const timezoneManager = TimezoneManager.getInstance();
 
-      // Get source timezone (default to "local" if not specified)
-      const sourceTimezone = leftResult.timezone || "local";
-
-      // For "now in timezone", we don't need to convert, just get current time in target timezone
-      if (
-        leftResult.timezone === undefined &&
-        node.left.type === "date" &&
-        (node.left as DateNode).value === "now"
-      ) {
-        const date = timezoneManager.getNowInTimezone(targetTimezone);
-        return {
-          type: "date",
-          value: date,
-          timezone: targetTimezone,
-        };
-      }
-
       // Validate and convert timezone
       try {
-        const convertedDate = timezoneManager.convertTimezone(
-          leftResult.value,
-          sourceTimezone,
-          targetTimezone
-        );
+        // For timezone conversion, we just change the timezone label
+        // The actual moment in time (timestamp) remains the same
+        if (!timezoneManager.isValidTimezone(targetTimezone)) {
+          throw new Error(`Invalid timezone: ${targetTimezone}`);
+        }
         return {
           type: "date",
-          value: convertedDate,
+          value: leftResult.value, // Keep the same timestamp
           timezone: targetTimezone,
         };
       } catch (_error) {
