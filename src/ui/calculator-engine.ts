@@ -9,6 +9,8 @@ interface LineState {
   error: string | null;
   isComment: boolean;
   assignedVariables?: Map<string, CalculatedValue>;
+  // Snapshot of all variables after this line is evaluated
+  variableSnapshot?: Map<string, CalculatedValue>;
 }
 
 export class CalculatorEngine {
@@ -80,7 +82,7 @@ export class CalculatorEngine {
 
     line.content = content;
 
-    // Re-evaluate from this line onwards since variables might have changed
+    // Re-evaluate from this line onwards
     this.evaluateFromLine(index);
   }
 
@@ -157,19 +159,14 @@ export class CalculatorEngine {
   }
 
   private evaluateFromLine(startIndex: number): void {
-    // Build up variables from lines before startIndex
+    // Get the variable snapshot from the line before startIndex
     const cumulativeVariables = new Map<string, CalculatedValue>();
 
-    for (let i = 0; i < startIndex; i++) {
-      const line = this.lines[i];
-      if (!line) {
-        continue;
-      }
-
-      // Use stored assigned variables if available
-      if (line.assignedVariables) {
-        line.assignedVariables.forEach((value, key) => {
-          // Deep clone the value to prevent mutation issues
+    if (startIndex > 0) {
+      const prevLine = this.lines[startIndex - 1];
+      if (prevLine?.variableSnapshot) {
+        // Deep clone the entire snapshot to prevent mutations
+        prevLine.variableSnapshot.forEach((value, key) => {
           cumulativeVariables.set(key, deepCloneCalculatedValue(value));
         });
       }
@@ -211,6 +208,12 @@ export class CalculatorEngine {
       line.result = null;
       line.error = null;
       line.isComment = false;
+      // Store variable snapshot for empty lines too
+      const snapshot = new Map<string, CalculatedValue>();
+      cumulativeVariables.forEach((value, key) => {
+        snapshot.set(key, deepCloneCalculatedValue(value));
+      });
+      line.variableSnapshot = snapshot;
       return;
     }
 
@@ -219,6 +222,12 @@ export class CalculatorEngine {
       line.result = null;
       line.error = null;
       line.isComment = true;
+      // Store variable snapshot for comments too
+      const snapshot = new Map<string, CalculatedValue>();
+      cumulativeVariables.forEach((value, key) => {
+        snapshot.set(key, deepCloneCalculatedValue(value));
+      });
+      line.variableSnapshot = snapshot;
       return;
     }
 
@@ -236,6 +245,7 @@ export class CalculatorEngine {
     }
 
     // Create variables for this line
+    // No need to deep clone here as cumulativeVariables is already deep cloned
     const lineVariables = new Map(cumulativeVariables);
     if (prevValue) {
       lineVariables.set("prev", prevValue);
@@ -277,8 +287,10 @@ export class CalculatorEngine {
           );
 
           if (hasChanged) {
-            cumulativeVariables.set(key, value);
-            assignedInThisLine.set(key, value);
+            // Deep clone the value before storing to prevent mutation issues
+            const clonedValue = deepCloneCalculatedValue(value);
+            cumulativeVariables.set(key, clonedValue);
+            assignedInThisLine.set(key, clonedValue);
           }
         }
       });
@@ -289,11 +301,25 @@ export class CalculatorEngine {
       } else {
         line.assignedVariables = undefined;
       }
+
+      // Store a snapshot of all variables after this line
+      const snapshot = new Map<string, CalculatedValue>();
+      cumulativeVariables.forEach((value, key) => {
+        snapshot.set(key, deepCloneCalculatedValue(value));
+      });
+      line.variableSnapshot = snapshot;
     } catch (error) {
       // Store the error for display
       line.result = null;
       line.error = (error as Error).message;
       line.isComment = false;
+
+      // Even on error, store the current variable state
+      const snapshot = new Map<string, CalculatedValue>();
+      cumulativeVariables.forEach((value, key) => {
+        snapshot.set(key, deepCloneCalculatedValue(value));
+      });
+      line.variableSnapshot = snapshot;
     }
   }
 
