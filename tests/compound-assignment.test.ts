@@ -1,36 +1,73 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import type { CalculatedValue } from "../src/types";
 
 describe("Compound Assignment Operators", () => {
   describe("+= operator", () => {
-    test("number += number", () => {
-      const variables = new Map();
-      evaluate("x = 10", variables);
-      const result = evaluate("x += 5", variables);
-      expect(result.type).toBe("number");
-      expect(result.value).toBe(15);
-      expect(variables.get("x").value).toBe(15);
-    });
+    test.each([
+      {
+        name: "number += number",
+        setup: "x = 10",
+        operation: "x += 5",
+        expectedType: "number",
+        expectedValue: 15,
+        checkVariable: true,
+      },
+      {
+        name: "string += string",
+        setup: 'msg = "Hello"',
+        operation: 'msg += " World"',
+        expectedType: "string",
+        expectedValue: "Hello World",
+        checkVariable: true,
+      },
+      {
+        name: "string += number",
+        setup: 'text = "Value: "',
+        operation: "text += 42",
+        expectedType: "string",
+        expectedValue: "Value: 42",
+      },
+      {
+        name: "number += percentage",
+        setup: "price = 100",
+        operation: "price += 10%",
+        expectedType: "number",
+        expectedValue: 110,
+      },
+    ])(
+      "$name",
+      ({ setup, operation, expectedType, expectedValue, checkVariable }) => {
+        const variables = new Map<string, CalculatedValue>();
+        evaluate(setup, variables);
+        const result = evaluate(operation, variables);
+        expect(result.type).toBe(
+          expectedType as
+            | "number"
+            | "string"
+            | "date"
+            | "boolean"
+            | "null"
+            | "array"
+            | "object"
+        );
+        expect(result.value).toBe(expectedValue);
 
-    test("string += string", () => {
-      const variables = new Map();
-      evaluate('msg = "Hello"', variables);
-      const result = evaluate('msg += " World"', variables);
-      expect(result.type).toBe("string");
-      expect(result.value).toBe("Hello World");
-      expect(variables.get("msg").value).toBe("Hello World");
-    });
-
-    test("string += number", () => {
-      const variables = new Map();
-      evaluate('text = "Value: "', variables);
-      const result = evaluate("text += 42", variables);
-      expect(result.type).toBe("string");
-      expect(result.value).toBe("Value: 42");
-    });
+        if (checkVariable) {
+          const varName = operation.split(" ")[0];
+          if (varName) {
+            const storedVar = variables.get(varName);
+            expect(storedVar).toBeDefined();
+            if (storedVar) {
+              expect(storedVar.value).toBe(expectedValue);
+            }
+          }
+        }
+      }
+    );
 
     test("array += number (append single item)", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("arr = [1, 2, 3]", variables);
       const result = evaluate("arr += 4", variables);
       expect(result.type).toBe("array");
@@ -44,7 +81,7 @@ describe("Compound Assignment Operators", () => {
     });
 
     test("array += array (concatenate arrays)", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("a = [1, 2]", variables);
       const result = evaluate("a += [3, 4]", variables);
       expect(result.type).toBe("array");
@@ -55,21 +92,22 @@ describe("Compound Assignment Operators", () => {
     });
 
     test("array += nested array", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("a = [1, 2, 3, 4, 5]", variables);
       const result = evaluate("a += [[6, 7]]", variables);
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(6);
-        expect(result.value[5].type).toBe("array");
-        if (result.value[5].type === "array") {
-          expect(result.value[5].value.map((v) => v.value)).toEqual([6, 7]);
+        const lastItem = result.value[5];
+        expect(lastItem).toBeDefined();
+        if (lastItem && lastItem.type === "array") {
+          expect(lastItem.value.map((v) => v.value)).toEqual([6, 7]);
         }
       }
     });
 
     test("date += time period", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("d = today", variables);
       const originalDateVal = variables.get("d");
       if (originalDateVal && originalDateVal.type === "date") {
@@ -86,25 +124,55 @@ describe("Compound Assignment Operators", () => {
   });
 
   describe("-= operator", () => {
-    test("number -= number", () => {
-      const variables = new Map();
-      evaluate("x = 20", variables);
-      const result = evaluate("x -= 8", variables);
-      expect(result.type).toBe("number");
-      expect(result.value).toBe(12);
-      expect(variables.get("x").value).toBe(12);
-    });
+    test.each([
+      {
+        name: "number -= number",
+        setup: "x = 20",
+        operation: "x -= 8",
+        expectedType: "number",
+        expectedValue: 12,
+        checkVariable: true,
+      },
+      {
+        name: "string -= suffix",
+        setup: 'filename = "document.txt"',
+        operation: 'filename -= ".txt"',
+        expectedType: "string",
+        expectedValue: "document",
+      },
+    ])(
+      "$name",
+      ({ setup, operation, expectedType, expectedValue, checkVariable }) => {
+        const variables = new Map<string, CalculatedValue>();
+        evaluate(setup, variables);
+        const result = evaluate(operation, variables);
+        expect(result.type).toBe(
+          expectedType as
+            | "number"
+            | "string"
+            | "date"
+            | "boolean"
+            | "null"
+            | "array"
+            | "object"
+        );
+        expect(result.value).toBe(expectedValue);
 
-    test("string -= suffix", () => {
-      const variables = new Map();
-      evaluate('filename = "document.txt"', variables);
-      const result = evaluate('filename -= ".txt"', variables);
-      expect(result.type).toBe("string");
-      expect(result.value).toBe("document");
-    });
+        if (checkVariable) {
+          const varName = operation.split(" ")[0];
+          if (varName) {
+            const storedVar = variables.get(varName);
+            expect(storedVar).toBeDefined();
+            if (storedVar) {
+              expect(storedVar.value).toBe(expectedValue);
+            }
+          }
+        }
+      }
+    );
 
     test("array -= single value (remove all occurrences)", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("arr = [1, 2, 3, 2, 4]", variables);
       const result = evaluate("arr -= 2", variables);
       expect(result.type).toBe("array");
@@ -115,7 +183,7 @@ describe("Compound Assignment Operators", () => {
     });
 
     test("array -= array (remove all matching elements)", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("arr = [1, 2, 3, 4, 5]", variables);
       const result = evaluate("arr -= [2, 4]", variables);
       expect(result.type).toBe("array");
@@ -126,7 +194,7 @@ describe("Compound Assignment Operators", () => {
     });
 
     test("date -= time period", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("d = today", variables);
       const originalDateVal = variables.get("d");
       if (originalDateVal && originalDateVal.type === "date") {
@@ -142,77 +210,80 @@ describe("Compound Assignment Operators", () => {
 
   describe("Chained compound assignments", () => {
     test("multiple += operations", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("sum = 0", variables);
       evaluate("sum += 10", variables);
       evaluate("sum += 20", variables);
       evaluate("sum += 30", variables);
       const result = variables.get("sum");
-      expect(result.type).toBe("number");
-      expect(result.value).toBe(60);
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result.type).toBe("number");
+        expect(result.value).toBe(60);
+      }
     });
 
     test("mixed compound assignments", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate("val = 100", variables);
       evaluate("val += 50", variables);
       evaluate("val -= 30", variables);
       const result = variables.get("val");
-      expect(result.type).toBe("number");
-      expect(result.value).toBe(120);
+      expect(result).toBeDefined();
+      if (result) {
+        expect(result.type).toBe("number");
+        expect(result.value).toBe(120);
+      }
     });
   });
 
   describe("Edge cases", () => {
     test("undefined variable += value should throw", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       expect(() => evaluate("nonexistent += 5", variables)).toThrow();
     });
 
-    test("number += percentage", () => {
-      const variables = new Map();
-      evaluate("price = 100", variables);
-      const result = evaluate("price += 10%", variables);
-      expect(result.type).toBe("number");
-      expect(result.value).toBe(110);
-    });
-
     test("array with mixed types", () => {
-      const variables = new Map();
+      const variables = new Map<string, CalculatedValue>();
       evaluate('arr = [1, "hello", true]', variables);
       const result = evaluate("arr += null", variables);
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(4);
-        expect(result.value[3].type).toBe("null");
+        const lastItem = result.value[3];
+        expect(lastItem).toBeDefined();
+        if (lastItem) {
+          expect(lastItem.type).toBe("null");
+        }
       }
     });
   });
 });
 
 describe("Array + operator", () => {
-  test("array + single value", () => {
-    const variables = new Map();
-    const result = evaluate("[1, 2, 3] + 4", variables);
+  test.each([
+    {
+      expression: "[1, 2, 3] + 4",
+      expectedLength: 4,
+      expectedValues: [1, 2, 3, 4],
+    },
+    {
+      expression: "[1, 2] + [3, 4]",
+      expectedLength: 4,
+      expectedValues: [1, 2, 3, 4],
+    },
+  ])("$expression", ({ expression, expectedLength, expectedValues }) => {
+    const variables = new Map<string, CalculatedValue>();
+    const result = evaluate(expression, variables);
     expect(result.type).toBe("array");
     if (result.type === "array") {
-      expect(result.value).toHaveLength(4);
-      expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4]);
-    }
-  });
-
-  test("array + array", () => {
-    const variables = new Map();
-    const result = evaluate("[1, 2] + [3, 4]", variables);
-    expect(result.type).toBe("array");
-    if (result.type === "array") {
-      expect(result.value).toHaveLength(4);
-      expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4]);
+      expect(result.value).toHaveLength(expectedLength);
+      expect(result.value.map((v) => v.value)).toEqual(expectedValues);
     }
   });
 
   test("array + string", () => {
-    const variables = new Map();
+    const variables = new Map<string, CalculatedValue>();
     const result = evaluate('[1, 2, 3] + "hello"', variables);
     expect(result.type).toBe("array");
     if (result.type === "array") {
@@ -225,52 +296,48 @@ describe("Array + operator", () => {
   });
 
   test("array + nested array", () => {
-    const variables = new Map();
+    const variables = new Map<string, CalculatedValue>();
     const result = evaluate("[1, 2] + [[3, 4]]", variables);
     expect(result.type).toBe("array");
     if (result.type === "array") {
       expect(result.value).toHaveLength(3);
       const item = result.value[2];
       if (item && item.type === "array") {
-        expect(item.value.map((v: any) => v.value)).toEqual([3, 4]);
+        expect(item.value.map((v) => v.value)).toEqual([3, 4]);
       }
     }
   });
 });
 
 describe("Array - operator", () => {
-  test("array - single value", () => {
-    const variables = new Map();
-    const result = evaluate("[1, 2, 3, 2, 4] - 2", variables);
+  test.each([
+    {
+      expression: "[1, 2, 3, 2, 4] - 2",
+      expectedLength: 3,
+      expectedValues: [1, 3, 4],
+    },
+    {
+      expression: "[1, 2, 3, 4, 5] - [2, 4]",
+      expectedLength: 3,
+      expectedValues: [1, 3, 5],
+    },
+    {
+      expression: "[1, 2, 3] - 4",
+      expectedLength: 3,
+      expectedValues: [1, 2, 3],
+    },
+  ])("$expression", ({ expression, expectedLength, expectedValues }) => {
+    const variables = new Map<string, CalculatedValue>();
+    const result = evaluate(expression, variables);
     expect(result.type).toBe("array");
     if (result.type === "array") {
-      expect(result.value).toHaveLength(3);
-      expect(result.value.map((v) => v.value)).toEqual([1, 3, 4]);
-    }
-  });
-
-  test("array - array", () => {
-    const variables = new Map();
-    const result = evaluate("[1, 2, 3, 4, 5] - [2, 4]", variables);
-    expect(result.type).toBe("array");
-    if (result.type === "array") {
-      expect(result.value).toHaveLength(3);
-      expect(result.value.map((v) => v.value)).toEqual([1, 3, 5]);
-    }
-  });
-
-  test("array - non-existent value", () => {
-    const variables = new Map();
-    const result = evaluate("[1, 2, 3] - 4", variables);
-    expect(result.type).toBe("array");
-    if (result.type === "array") {
-      expect(result.value).toHaveLength(3);
-      expect(result.value.map((v) => v.value)).toEqual([1, 2, 3]);
+      expect(result.value).toHaveLength(expectedLength);
+      expect(result.value.map((v) => v.value)).toEqual(expectedValues);
     }
   });
 
   test("array - with mixed types", () => {
-    const variables = new Map();
+    const variables = new Map<string, CalculatedValue>();
     const result = evaluate('[1, "hello", 2, "world", 1] - 1', variables);
     expect(result.type).toBe("array");
     if (result.type === "array") {
