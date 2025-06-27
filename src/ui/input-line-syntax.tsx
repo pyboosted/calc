@@ -1,6 +1,6 @@
 import { Tokenizer } from "../parser/tokenizer";
 import { type Token, TokenType } from "../types";
-import { getTokenColor } from "./token-colors";
+import { getFunctionDefinitionColor, getTokenColor } from "./token-colors";
 
 export function getHighlightedParts(
   text: string
@@ -29,6 +29,42 @@ export function getHighlightedParts(
   return getHighlightedPartsWithoutComment(text);
 }
 
+function isFunctionDefinition(tokens: Token[], index: number): boolean {
+  // Check if this variable token is part of a function definition pattern:
+  // variable(params...) = expression
+  if (index >= tokens.length || tokens[index]?.type !== TokenType.VARIABLE) {
+    return false;
+  }
+
+  // Look for pattern: VARIABLE LPAREN ... RPAREN EQUALS
+  let i = index + 1;
+
+  // Must be followed by LPAREN
+  if (i >= tokens.length || tokens[i]?.type !== TokenType.LPAREN) {
+    return false;
+  }
+  i++;
+
+  // Skip parameters and commas until we find RPAREN
+  let parenDepth = 1;
+  while (i < tokens.length && parenDepth > 0) {
+    const token = tokens[i];
+    if (!token) {
+      break;
+    }
+
+    if (token.type === TokenType.LPAREN) {
+      parenDepth++;
+    } else if (token.type === TokenType.RPAREN) {
+      parenDepth--;
+    }
+    i++;
+  }
+
+  // Check if we found matching RPAREN and it's followed by EQUALS
+  return i < tokens.length && tokens[i]?.type === TokenType.EQUALS;
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: This function handles complex syntax highlighting logic
 function getHighlightedPartsWithoutComment(
   text: string
@@ -51,8 +87,16 @@ function getHighlightedPartsWithoutComment(
         end: number;
       }
     >();
+
+    // Create an array of tokens (excluding EOF) with their indices for function definition detection
+    const tokenArray: Token[] = [];
+    const tokenIndexMap = new Map<Token, number>();
+
     for (const token of tokens) {
-      if (token.type !== TokenType.EOF) {
+      if (token && token.type !== TokenType.EOF) {
+        tokenIndexMap.set(token, tokenArray.length);
+        tokenArray.push(token);
+
         // Calculate the actual token length in the input
         let tokenLength = token.value.length;
 
@@ -109,12 +153,45 @@ function getHighlightedPartsWithoutComment(
           i = tokenInfo.end - 1; // Skip to end of string
           continue;
         }
-        charColor = getTokenColor(tokenInfo.token.type, tokenInfo.token.value);
+
+        // Check if this is a function definition
+        if (tokenInfo.token.type === TokenType.VARIABLE) {
+          const tokenIndex = tokenIndexMap.get(tokenInfo.token);
+          if (
+            tokenIndex !== undefined &&
+            isFunctionDefinition(tokenArray, tokenIndex)
+          ) {
+            charColor = getFunctionDefinitionColor();
+          } else {
+            charColor = getTokenColor(
+              tokenInfo.token.type,
+              tokenInfo.token.value
+            );
+          }
+        } else {
+          charColor = getTokenColor(
+            tokenInfo.token.type,
+            tokenInfo.token.value
+          );
+        }
       } else {
         // Check if we're inside a token
         for (const [start, info] of tokenMap) {
           if (i >= start && i < info.end) {
-            charColor = getTokenColor(info.token.type, info.token.value);
+            // Check if this is a function definition
+            if (info.token.type === TokenType.VARIABLE) {
+              const tokenIndex = tokenIndexMap.get(info.token);
+              if (
+                tokenIndex !== undefined &&
+                isFunctionDefinition(tokenArray, tokenIndex)
+              ) {
+                charColor = getFunctionDefinitionColor();
+              } else {
+                charColor = getTokenColor(info.token.type, info.token.value);
+              }
+            } else {
+              charColor = getTokenColor(info.token.type, info.token.value);
+            }
             break;
           }
         }

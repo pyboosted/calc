@@ -59,3 +59,7 @@ export function getTokenColor(type: TokenType, value?: string): string {
       return "white";
   }
 }
+
+export function getFunctionDefinitionColor(): string {
+  return "#c678dd"; // Purple - different from regular function calls (magenta)
+}
