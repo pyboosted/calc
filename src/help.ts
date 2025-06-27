@@ -23,6 +23,9 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan("-e '100 USD in EUR'")}       Currency conversion
   ${chalk.green("calc")} ${chalk.cyan("-e '5 feet in meters'")}     Unit conversion
   ${chalk.green("calc")} ${chalk.cyan("-e 'today + 5 days'")}       Date arithmetic
+  ${chalk.green("calc")} ${chalk.cyan("-e '100m / 10s'")}           Velocity calculation
+  ${chalk.green("calc")} ${chalk.cyan("-e '60 km/h to m/s'")}       Compound unit conversion
+  ${chalk.green("calc")} ${chalk.cyan("-e '5kg * 2 m/s²'")}         Force calculation (Newton)
   ${chalk.green("calc")} ${chalk.cyan("-e '20% of 150'")}           Percentage calculations
   ${chalk.green("calc")} ${chalk.cyan('-e "`Hello, World!`"')}     String literal
   ${chalk.green("calc")} ${chalk.cyan('-e "123 as string"')}        Type casting
@@ -62,6 +65,8 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Arrays and objects: ${chalk.cyan("literals, functions, property access")}
   ${chalk.gray("•")} Type casting: ${chalk.cyan("as string, as number, as boolean, as array, as object")}
   ${chalk.gray("•")} Unit conversions: ${chalk.cyan("length, weight, time, data, etc.")}
+  ${chalk.gray("•")} Dimensional analysis: ${chalk.cyan("m/s, kg⋅m/s², N, J, W, Hz, Pa")}
+  ${chalk.gray("•")} Compound unit conversions: ${chalk.cyan("km/h to m/s, kWh to J")}
   ${chalk.gray("•")} Live currency conversion ${chalk.cyan("(300+ currencies)")}
   ${chalk.gray("•")} Date/time operations with timezone support
   ${chalk.gray("•")} Environment variables: ${chalk.cyan('env("VAR_NAME")')}

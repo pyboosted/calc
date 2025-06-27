@@ -1,10 +1,18 @@
-# Roadmap: Enhanced Calculator with Scripting Capabilities
+# Roadmap: Enhanced Calculator with Advanced Features
 
 ## Overview
-This roadmap outlines the transformation of the calculator into a powerful scripting environment, delivered in two major releases:
+This roadmap outlines the evolution of the calculator, reflecting both completed features and future enhancements.
 
-- **v1.3.0**: Foundation - Strings, objects, booleans, type system, env/args
-- **v1.4.0**: Async & Integration - Async evaluation, shell execution, file execution
+### Note on v1.4.0
+The original roadmap planned async features for v1.4.0, but we pivoted to implement dimensional analysis instead. This decision was driven by the immediate value of supporting scientific and engineering calculations with proper unit handling. The async features have been moved to v1.5.0.
+
+### Completed Releases:
+- **v1.3.0-v1.3.9**: Foundation - Strings, objects, booleans, type system, env/args, type checking
+- **v1.4.0**: Dimensional Analysis - Complete overhaul to support compound units and physics calculations
+
+### Future Releases:
+- **v1.5.0**: Async & Integration - Shell execution, file execution, async evaluation
+- **v1.6.0**: Custom Functions - User-defined functions from .mjs files
 
 ### Command Line Usage
 ```bash
@@ -27,16 +35,38 @@ echo '{"price": 100}' | calc tax.calc -o | calc format.calc -o
 calc process.calc --output > result.json
 ```
 
-## Example Use Case
+## Current Capabilities (v1.4.0)
 ```calc
-# String operations examples
+# String operations
 separator = "=" * 50
 filename = "report_2025.txt" - ".txt"  # "report_2025"
 greeting = `Hello, ${user_name}!`
 
-# Shell with stdin for data processing
-# Arrays are first-class types with proper indexing
+# Arrays and objects
 data = {users: [{name: "Alice", age: 30}, {name: "Bob", age: 25}]}
+ages = [30, 25, 35, 28]
+avg(ages)  # 29.5
+
+# Dimensional analysis and physics
+velocity = 100m / 10s                   # 10 m/s
+velocity to km/h                        # 36 km/h
+force = 5kg * 2 m/s²                    # 10 N
+energy = force * 10m                    # 100 J
+power = energy / 5s                     # 20 W
+
+# Environment and arguments
+port = env("PORT") as number
+config = arg() as object
+
+# Type checking
+100 is number                           # true
+velocity is quantity                    # true
+10 N is force                          # true
+```
+
+## Future Capabilities (v1.5.0+)
+```calc
+# Shell execution (planned)
 names = shell("jq -r '.users[].name'", data as json)  # "Alice\nBob"
 sorted_csv = shell("sort -t, -k2 -n", "name,age\nAlice,30\nBob,25")
 
@@ -505,75 +535,31 @@ class DependencyGraph {
 - Pending indicator with spinner
 - Visual distinction between stale, pending, and current results
 
-## 6. Implementation Steps
+## Completed Implementation
 
-The implementation is organized into 8 phases across two major releases:
+### Release 1.3.0-1.3.9 - Foundation ✅
+All foundation features have been successfully implemented:
+- String support with interpolation
+- Boolean operations and comparisons
+- Arrays and objects with full property access
+- Environment variables and command-line arguments
+- Type checking with `is` keyword
+- Compound assignments (+=, -=)
 
-## Release 1.3.0 - Foundation (Phases 1-4)
+### Release 1.4.0 - Dimensional Analysis ✅
+Complete overhaul of the unit system:
+- Dimensional tracking with exponents
+- Compound unit parsing (m/s, kg⋅m/s², etc.)
+- Physics units (N, J, W, Hz, Pa)
+- Smart unit conversion and simplification
+- Type-safe unit definitions
+
+## Future Implementation Steps
+
+### Release 1.5.0 - Async & Integration
 Target: 2-3 weeks
 
-### Phase 1: String Support and Basic Types (Week 1)
-1. Add new token types: STRING_LITERAL, TRUE, FALSE, NULL
-2. Implement string interpolation in tokenizer and evaluator
-3. Update parser for string, boolean, and null nodes
-4. Add string operations:
-   - Concatenation with `+` operator
-   - Multiplication with `*` (e.g., `"abc" * 3` → `"abcabcabc"`)
-   - Subtraction with `-` (e.g., `"hello world" - "world"` → `"hello "`)
-   - Type conversions: `123 as string`, `"123" as number`
-5. Add boolean operations:
-   - Literals: `true`, `false`
-   - Comparison operators: `==`, `!=`, `<`, `>`, `<=`, `>=`
-   - Logical operators: `and`, `or`, `not`
-   - Ternary operator: `condition ? true_expr : false_expr`
-   - Short-circuit evaluation for efficiency
-6. Implement `format()` function for date formatting:
-   - `format(today, "dd.MM.yyyy")` → `"25.06.2025"`
-   - `format(now, "HH:mm:ss")` → `"14:30:45"`
-7. Update UI to display all new types properly
-
-### Phase 2: Object and Array Support (Week 1-2)
-1. Add array literal parsing:
-   - Empty arrays: `[]`
-   - Simple arrays: `[1, 2, 3]`
-   - Mixed types: `[1, "hello", true]`
-   - Nested arrays: `[[1, 2], [3, 4]]`
-2. Add object literal parsing:
-   - Empty objects: `{}`
-   - Inline syntax: `{key: value, key2: value2}`
-   - Multi-line property assignment: `obj.key = value`
-3. Implement access patterns:
-   - Array indexing: `arr[0]`, `arr[index]`
-   - Object properties: `obj.prop` (static), `obj[key]` (dynamic)
-   - Mixed: `data.users[i].name`
-4. Add built-in functions:
-   - Array: `push()`, `pop()`, `first()`, `last()`, `sum()`, `avg()`, `length()`
-   - Object: `keys()`, `values()`, `has()`
-5. Add type casting with `as` operator
-6. Update result display for arrays and objects
-7. Handle missing properties/indices gracefully
-
-### Phase 3: Environment and Arguments (Week 2)
-1. Implement `env()` function for environment variables
-2. Implement `arg()` function with priority: stdin → --arg → null
-3. Add stdin detection to check if data is being piped
-4. Add CLI flags:
-   - `--arg` for passing a single string argument
-   - `-o` / `--output` for outputting only the last result
-5. Handle type conversions: `env("PORT") as number`, `arg() as object`
-6. Add tests for env/arg access including piped input
-7. Document usage patterns for JSON, string arguments, and piping
-
-### Phase 4: Type System Refactor (Week 2-3)
-1. Convert CalculatedValue to discriminated union
-2. Update all evaluator functions to use new types
-3. Add type narrowing throughout codebase
-4. Update variable storage to handle all types
-
-## Release 1.4.0 - Async & Integration (Phases 5-8)
-Target: 2-3 weeks after 1.3.0
-
-### Phase 5: Async Infrastructure (Week 3)
+#### Phase 1: Async Infrastructure
 1. Convert evaluator to async/await
 2. Add pending state to LineState
 3. Implement dependency tracking with debounced re-evaluation:
@@ -591,7 +577,7 @@ Target: 2-3 weeks after 1.3.0
    - Re-evaluates only when ms or seed changes
    - Shows pending state during wait
 
-### Phase 6: Shell Execution (Week 3-4)
+#### Phase 2: Shell Execution
 1. Implement `shell(command, stdin?)` function for command execution
 2. Support string interpolation in shell commands
 3. Add optional stdin parameter for piping data
@@ -599,7 +585,7 @@ Target: 2-3 weeks after 1.3.0
 5. Handle stdout/stderr/exit codes
 6. Add shell command history and caching
 
-### Phase 7: File Execution (Week 4)
+#### Phase 3: File Execution
 1. Implement `exec()` function with isolation
 2. Add file content caching:
    - Cache loaded file contents in memory
@@ -612,17 +598,17 @@ Target: 2-3 weeks after 1.3.0
 6. Add file path validation and security
 7. Implement `restart` command to clear all caches
 
-### Phase 8: UI Polish and Testing (Week 5)
+#### Phase 4: UI Polish and Testing
 1. Add progress indicators for long operations
 2. Implement operation cancellation
 3. Add comprehensive error messages
 4. Write integration tests
 5. Performance optimization
 
-## Release 1.5.0 - Custom Functions (Phase 9)
-Target: 1-2 weeks after 1.4.0
+### Release 1.6.0 - Custom Functions
+Target: 1-2 weeks after 1.5.0
 
-### Phase 9: Custom Functions Support
+#### Phase 1: Custom Functions Support
 1. Implement dynamic import for `.mjs` files
 2. Add `--functions` CLI flag for specifying function file
 3. Add functions path to config file options
@@ -794,7 +780,7 @@ class FileCache {
 
 ## Release Summary
 
-### v1.3.0 - Foundation Release
+### v1.3.0-v1.3.9 - Foundation Release ✅ COMPLETED
 - **String support**: Backtick strings with interpolation, operations (+, *, -)
 - **Object support**: Object literals `{}`, array syntax `[]`, dot and bracket notation
 - **Type system**: Booleans, null, type casting with `as`, ternary operator `? :`
@@ -802,9 +788,18 @@ class FileCache {
 - **Array functions**: `format()`, `push()`, `first()`, `last()`, `sum()`, `avg()`, `length()`
 - **Environment integration**: `env()` function, `arg()` with stdin/--arg support
 - **Pipeline mode**: `-o` flag for composable scripts
+- **Type checking**: `is` keyword for type validation (v1.3.9)
 - **No breaking changes**: Full backward compatibility
 
-### v1.4.0 - Async & Integration Release
+### v1.4.0 - Dimensional Analysis Release ✅ COMPLETED
+- **Dimensional analysis**: Full support for compound units (m/s, kg⋅m/s², etc.)
+- **Physics units**: N (Newton), J (Joule), W (Watt), Hz (Hertz), Pa (Pascal)
+- **Smart unit conversion**: Works with compound units (60 km/h to m/s)
+- **Unit arithmetic**: Dimensions multiply, divide, and cancel properly
+- **Automatic simplification**: Recognizes derived units (kg⋅m/s² → N)
+- **Breaking change**: Removed old unit system in favor of dimensional analysis
+
+### v1.5.0 - Async & Integration Release (Future)
 - **Async evaluation**: Pending states, dependency tracking, debouncing
 - **Shell execution**: `shell(cmd, stdin?)` function
 - **File execution**: `exec(path, args?)` with caching
@@ -812,7 +807,7 @@ class FileCache {
 - **Advanced features**: Stale indicators, operation cancellation
 - **Performance**: Smart caching and lazy evaluation
 
-### v1.5.0 - Custom Functions Release
+### v1.6.0 - Custom Functions Release (Future)
 - **Custom JavaScript functions**: Load user-defined functions from `.mjs` files
 - **Full Node.js API access**: Use fs, fetch, crypto, etc. in custom functions
 - **Sync and async support**: Define both synchronous and asynchronous functions
@@ -820,3 +815,18 @@ class FileCache {
 - **Security**: Controlled execution environment
 
 This roadmap transforms the calculator into a powerful scripting environment while maintaining full backward compatibility and adding type safety through discriminated unions.
+
+## Next Steps
+
+### Immediate Priorities (v1.5.0)
+1. **Shell Integration**: The `shell()` function will enable powerful data processing pipelines
+2. **File Execution**: The `exec()` function will allow modular calculator scripts
+3. **Async UI**: Pending states and dependency tracking for better UX
+
+### Future Considerations
+1. **Vector/Matrix Operations**: Building on dimensional analysis for linear algebra
+2. **Uncertainty Propagation**: Error bars and confidence intervals
+3. **Data Visualization**: Simple charts in the terminal
+4. **Import/Export**: CSV, JSON, Excel integration
+
+The pivot to dimensional analysis in v1.4.0 opened up new possibilities for scientific computing that we should continue to explore alongside the scripting capabilities.

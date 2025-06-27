@@ -4,7 +4,7 @@ This file provides guidance to Gemini when working with code in this repository.
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, unit conversions, live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -155,21 +155,38 @@ The UI uses Ink (React for CLI) with a sophisticated state management system:
      - Uses tokenizer for syntax highlighting
      - Supports Unicode and special character rendering
 
-### Type System (v1.3.0, updated v1.3.1, extended v1.3.2)
+### Type System (v1.3.0, updated v1.3.1, extended v1.3.2, overhauled v1.4.0)
 
 **CalculatedValue** is now a discriminated union:
 ```typescript
 type CalculatedValue = 
-  | { type: 'number'; value: number; unit?: string }
+  | { type: 'number'; value: number }                    // Pure numbers only, no units
+  | { type: 'percentage'; value: number }                // Special type for percentages
+  | { type: 'quantity'; value: number; dimensions: DimensionMap }  // Numbers with dimensional analysis
   | { type: 'string'; value: string }
   | { type: 'date'; value: Date; timezone?: string }
   | { type: 'boolean'; value: boolean }
   | { type: 'null'; value: null }
-  | { type: 'array'; elements: CalculatedValue[] }
-  | { type: 'object'; properties: Map<string, CalculatedValue> };
+  | { type: 'array'; value: CalculatedValue[] }
+  | { type: 'object'; value: Map<string, CalculatedValue> };
 ```
 
-This allows the calculator to handle multiple data types while maintaining type safety.
+**DimensionMap** structure for dimensional analysis:
+```typescript
+type DimensionMap = {
+  length?: { exponent: number; unit?: LengthUnit };
+  mass?: { exponent: number; unit?: MassUnit };
+  time?: { exponent: number; unit?: TimeUnit };
+  current?: { exponent: number; unit?: CurrentUnit };
+  temperature?: { exponent: number; unit?: TemperatureUnit };
+  amount?: { exponent: number; unit?: AmountUnit };
+  luminosity?: { exponent: number; unit?: LuminosityUnit };
+  angle?: { exponent: number; unit?: AngleUnit };
+  currency?: { exponent: number; code: CurrencyCode };
+}
+```
+
+This allows the calculator to handle multiple data types while maintaining type safety and performing dimensional analysis.
 
 ### String Processing (v1.3.0)
 
@@ -280,13 +297,49 @@ This allows the calculator to handle multiple data types while maintaining type 
      - Functions (operate on array arguments)
    - Context-aware tokenization determines usage
 
+### Dimensional Analysis (v1.4.0)
+
+The calculator now supports full dimensional analysis for compound units and physics calculations:
+
+1. **Compound Unit Syntax**:
+   - Division notation: `m/s`, `kg/h`, `W/m²`
+   - Multiplication notation: `kg*m/s^2`, `N*m`
+   - Exponent notation: `m^2`, `s^-1`, `m³`
+   - Unicode support: `m²`, `s⁻¹`, `μA`
+
+2. **Dimensional Arithmetic**:
+   - Multiplication: Dimensions add exponents (`m * m = m²`)
+   - Division: Dimensions subtract exponents (`m³ / m = m²`)
+   - Power: Dimensions multiply by exponent (`m^3 = m³`)
+   - Addition/Subtraction: Requires compatible dimensions with automatic unit conversion
+
+3. **Derived Units** (automatically recognized):
+   - `Hz` (Hertz): `s⁻¹` - frequency
+   - `N` (Newton): `kg⋅m/s²` - force
+   - `Pa` (Pascal): `kg/(m⋅s²)` - pressure
+   - `J` (Joule): `kg⋅m²/s²` - energy
+   - `W` (Watt): `kg⋅m²/s³` - power
+
+4. **Smart Unit Display**:
+   - Simplifies to derived units when possible (`kg⋅m/s²` → `N`)
+   - Cancels dimensions automatically (`50 Hz * 2 s` → `100`)
+   - Formats compound units nicely (`m⋅s⁻¹` or `m/s`)
+
+5. **Implementation Files**:
+   - `src/evaluator/dimensions.ts`: Core dimensional system and conversion tables
+   - `src/evaluator/quantity-operations.ts`: Arithmetic operations for quantities
+   - `src/parser/unit-parser.ts`: Enhanced parser for compound unit expressions
+   - `src/evaluator/unit-formatter.ts`: Smart display and formatting
+
 ### Key Systems
 
-1. **Unit Conversion** (`src/evaluator/unit-converter.ts`)
-   - Dimensional analysis for unit compatibility
-   - Supports length, weight, temperature, time, volume, data units
+1. **Dimensional Analysis & Unit Conversion** (`src/evaluator/dimensions.ts`, `src/evaluator/unit-converter.ts`)
+   - Full dimensional analysis with exponent tracking
+   - Supports compound units (m/s, kg⋅m/s², etc.)
+   - Handles all SI base units and many derived units
+   - Automatic unit simplification and conversion
    - Special handling for temperature conversions (not linear)
-   - Uses decimal system for data units (1 GB = 1000 MB)
+   - Type-safe unit definitions for each dimension
 
 2. **Currency Manager** (`src/utils/currency-manager.ts`)
    - Fetches live rates from exchangerate-api.com
@@ -334,7 +387,11 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/evaluator.test.ts`: Core calculation logic
 - `tests/parser.test.ts`: AST generation and operator precedence
 - `tests/unit-conversion.test.ts`: Unit conversion accuracy
+- `tests/compound-units-slash.test.ts`: Compound unit parsing and operations
+- `tests/derived-units.test.ts`: Physics units (N, J, W, Hz, Pa)
 - `tests/boolean-operations.test.ts`: Boolean logic, comparisons, and ternary operator
+- `tests/env-arg-functions.test.ts`: Environment variable and argument functions
+- `tests/cli-env-arg.test.ts`: CLI integration tests for stdin, --arg, and -o flags
 
 ## Important Notes
 
@@ -366,3 +423,12 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - The `sum`, `avg`, and `average` functions can work as both aggregate keywords and array functions
 - Type casting supports parsing JSON strings to arrays/objects with `as array` and `as object`
 - Property access works with both dot notation and bracket notation for arrays and objects
+- Environment variables can be read with `env("VAR_NAME")` function (v1.3.6)
+- Command-line arguments with `arg()` function: reads stdin → --arg → null (v1.3.6)
+- Type conversions work with env/arg: `env("PORT") as number`, `arg() as object`
+- Output mode `-o/--output` flag executes files and outputs only the last result for pipelines
+- Dimensional analysis tracks exponents for all dimensions in compound units (v1.4.0)
+- Quantities with dimensions cannot be added to dimensionless numbers
+- Unit conversions work with compound units: `60 km/h to m/s`
+- Derived units are automatically recognized and displayed: `kg⋅m/s²` → `N`
+- The percentage type is separate from quantities and has special arithmetic rules

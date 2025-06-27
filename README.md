@@ -14,6 +14,14 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
 - **Hyperbolic**: `sinh`, `cosh`, `tanh`
 - **Unit conversions**: Length, weight, temperature, time, volume, data
   - Examples: `100 cm in meters`, `32 F in C`, `1 hour in minutes`
+- **Dimensional analysis & compound units** (v1.4.0):
+  - Velocity: `100m / 10s = 10 m/s`, `60 km/h to m/s`
+  - Acceleration: `10 m/s / 5s = 2 m/s²`
+  - Force: `5kg * 2 m/s² = 10 N`
+  - Energy: `10N * 5m = 50 J`, `100J to kWh`
+  - Power: `50J / 10s = 5 W`
+  - Pressure: `1000N / 0.1m² = 10000 Pa`
+  - Physics units: Hz (frequency), N (Newton), Pa (Pascal), J (Joule), W (Watt)
 - **Live currency conversion**: 300+ currencies updated daily from free API
 - **Variables**: `x = 10`, then use `x` in expressions
 - **Compound assignments**: `x += 5`, `text -= ".txt"`, `arr += [1,2,3]` - works for all types
@@ -70,6 +78,14 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Type conversions: `env("PORT") as number`, `arg() as object`
   - CLI flags: `--arg "value"` for passing arguments
   - Output mode: `-o/--output` flag for pipeline-friendly file execution
+
+## Breaking Changes
+
+### Version 1.4.0
+- Complete overhaul of the unit system to support dimensional analysis
+- Numbers with units now use the `quantity` type with dimensional tracking
+- Removed backward compatibility with the old unit system
+- All unit operations now perform dimensional analysis and validation
 
 ## Requirements
 
@@ -209,6 +225,27 @@ round(3.14159, 2)
 32 fahrenheit in celsius
 1 gb in mb
 20 ml in teaspoons
+
+# Dimensional analysis (v1.4.0)
+# Velocity calculations
+distance = 100m
+time = 10s
+velocity = distance / time       # 10 m/s
+velocity to km/h                 # 36 km/h
+
+# Physics calculations
+mass = 5kg
+acceleration = 2 m/s²
+force = mass * acceleration      # 10 N (Newton)
+
+# Energy and power
+work = force * 10m               # 100 J (Joule)
+power = work / 5s                # 20 W (Watt)
+
+# Compound unit conversions
+60 km/h to m/s                   # 16.667 m/s
+1 kWh to J                       # 3.6e6 J
+1000 Pa to bar                   # 0.01 bar
 
 # Currency conversions (live rates)
 100 USD in EUR
