@@ -510,7 +510,18 @@ export function convertUnit(
     return kelvin / toConv.coefficient;
   }
 
-  // For non-temperature units
+  // For currency, the coefficient represents the exchange rate (units per 1 USD)
+  // For other units, it represents the conversion factor to base unit
+  if (dimension === "currency") {
+    const fromCurrencyCoef = fromConv.coefficient;
+    const toCurrencyCoef = toConv.coefficient;
+    // Convert to USD (base currency) first
+    const usdValue = value / fromCurrencyCoef;
+    // Then convert from USD to target currency
+    return usdValue * toCurrencyCoef;
+  }
+
+  // For non-temperature, non-currency units
   const { coefficient: fromCoef, exponent: fromExp = 0 } = fromConv;
   const baseValue = value * fromCoef * 10 ** fromExp;
 

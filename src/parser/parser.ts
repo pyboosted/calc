@@ -373,7 +373,7 @@ export class Parser {
           type: "binary",
           operator: "convert",
           left: node,
-          right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
+          right: { type: "variable", name: targetUnit } as VariableNode,
         } as BinaryOpNode;
       } else if (
         nextToken.type === TokenType.UNIT ||
@@ -386,7 +386,7 @@ export class Parser {
           type: "binary",
           operator: "convert",
           left: node,
-          right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
+          right: { type: "variable", name: targetUnit } as VariableNode,
         } as BinaryOpNode;
       } else {
         // Check if this might be a timezone conversion
@@ -492,8 +492,15 @@ export class Parser {
         node.type === "datetime";
       const hasDate = isDateNode(left) || isDateTimeNode(left);
 
-      if (hasDate && right.type === "number" && (right as NumberNode).unit) {
-        const unit = (right as NumberNode).unit;
+      // Check if right is a number with a unit (wrapped in a binary "unit" operator)
+      if (
+        hasDate &&
+        right.type === "binary" &&
+        (right as BinaryOpNode).operator === "unit" &&
+        (right as BinaryOpNode).left.type === "number"
+      ) {
+        const unitNode = (right as BinaryOpNode).right;
+        const unit = unitNode.type === "variable" ? unitNode.name : undefined;
         if (
           unit &&
           [
@@ -526,7 +533,7 @@ export class Parser {
             type: "dateOperation",
             date: left,
             operation: operator === "+" ? "add" : "subtract",
-            value: right,
+            value: (right as BinaryOpNode).left, // Get the number value from the binary node
             unit,
           } as DateOperationNode;
           continue;
@@ -725,37 +732,25 @@ export class Parser {
             position: this.position,
           };
 
-          if (node.type === "number") {
-            (node as NumberNode).unit = unitExpression;
-          } else {
-            // Wrap in a conversion node if needed
-            node = {
-              type: "binary",
-              operator: "unit",
-              left: node,
-              right: {
-                type: "number",
-                value: 1,
-                unit: unitExpression,
-              } as NumberNode,
-            } as BinaryOpNode;
-          }
+          // Always wrap in a unit conversion node
+          node = {
+            type: "binary",
+            operator: "unit",
+            left: node,
+            right: { type: "variable", name: unitExpression } as VariableNode,
+          } as BinaryOpNode;
         } else {
           // Simple single unit
           const unit = this.current.value;
           this.advance();
 
-          if (node.type === "number") {
-            (node as NumberNode).unit = unit;
-          } else {
-            // Wrap in a conversion node if needed
-            node = {
-              type: "binary",
-              operator: "unit",
-              left: node,
-              right: { type: "number", value: 1, unit } as NumberNode,
-            } as BinaryOpNode;
-          }
+          // Always wrap in a unit conversion node
+          node = {
+            type: "binary",
+            operator: "unit",
+            left: node,
+            right: { type: "variable", name: unit } as VariableNode,
+          } as BinaryOpNode;
         }
       } else if (
         this.current.type === TokenType.OPERATOR &&

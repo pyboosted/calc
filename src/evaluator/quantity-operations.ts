@@ -12,39 +12,6 @@ import {
 } from "./dimensions";
 import { convertUnits } from "./unit-converter";
 
-// Convert a number with unit to a quantity - NO LONGER USED
-// Numbers no longer have units - keeping for reference during migration
-/*
-export function numberToQuantity(value: CalculatedValue): CalculatedValue {
-  if (value.type !== "number") {
-    return value;
-  }
-
-  if (!value.unit) {
-    // Dimensionless number
-    return { type: "number", value: value.value };
-  }
-
-  try {
-    const dimensions = createDimensionFromUnit(value.unit);
-    return {
-      type: "quantity",
-      value: value.value,
-      dimensions,
-    };
-  } catch {
-    // If we can't parse the unit, treat it as a legacy number with unit
-    return value;
-  }
-}
-*/
-
-// Ensure a value is converted to quantity if it has units
-export function ensureQuantity(value: CalculatedValue): CalculatedValue {
-  // Numbers no longer have units, so just return the value as-is
-  return value;
-}
-
 // Add two quantities
 export function addQuantities(
   left: CalculatedValue,
@@ -76,8 +43,8 @@ export function addQuantities(
   }
 
   // Convert to quantities for complex operations
-  const leftQuantity = ensureQuantity(left);
-  const rightQuantity = ensureQuantity(right);
+  const leftQuantity = left;
+  const rightQuantity = right;
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
@@ -171,8 +138,8 @@ export function subtractQuantities(
   }
 
   // Convert to quantities for complex operations
-  const leftQuantity = ensureQuantity(left);
-  const rightQuantity = ensureQuantity(right);
+  const leftQuantity = left;
+  const rightQuantity = right;
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
@@ -245,8 +212,8 @@ export function multiplyQuantities(
   right: CalculatedValue
 ): CalculatedValue {
   // Convert numbers with units to quantities
-  const leftQuantity = ensureQuantity(left);
-  const rightQuantity = ensureQuantity(right);
+  const leftQuantity = left;
+  const rightQuantity = right;
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
@@ -331,8 +298,8 @@ export function divideQuantities(
   right: CalculatedValue
 ): CalculatedValue {
   // Convert numbers with units to quantities
-  const leftQuantity = ensureQuantity(left);
-  const rightQuantity = ensureQuantity(right);
+  const leftQuantity = left;
+  const rightQuantity = right;
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
@@ -412,7 +379,7 @@ export function powerQuantity(
   exponent: CalculatedValue
 ): CalculatedValue {
   // Convert numbers with units to quantities
-  const baseQuantity = ensureQuantity(base);
+  const baseQuantity = base;
 
   // Exponent must be a dimensionless number
   if (exponent.type !== "number") {

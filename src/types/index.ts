@@ -83,7 +83,6 @@ export interface Token {
 export interface NumberNode {
   type: "number";
   value: number;
-  unit?: string;
 }
 
 export interface BinaryOpNode {

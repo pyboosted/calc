@@ -6,6 +6,7 @@ import type {
   BinaryOpNode,
   FunctionNode,
   NumberNode,
+  VariableNode,
 } from "../src/types";
 
 describe("Parser", () => {
@@ -80,16 +81,19 @@ describe("Parser", () => {
 
     const binaryAst = ast as BinaryOpNode;
     expect(binaryAst.operator).toBe("convert");
-    // Left side is a number with unit
-    expect(binaryAst.left.type).toBe("number");
-    const left = binaryAst.left as NumberNode;
-    expect(left.value).toBe(100);
-    expect(left.unit).toBe("cm");
-    // Right side is the target unit (as a number with unit)
-    expect(binaryAst.right.type).toBe("number");
-    const right = binaryAst.right as NumberNode;
-    expect(right.value).toBe(1);
-    expect(right.unit).toBe("meters");
+
+    // Left side is a binary operation applying unit to number
+    expect(binaryAst.left.type).toBe("binary");
+    const leftBinary = binaryAst.left as BinaryOpNode;
+    expect(leftBinary.operator).toBe("unit");
+    expect(leftBinary.left.type).toBe("number");
+    expect((leftBinary.left as NumberNode).value).toBe(100);
+    expect(leftBinary.right.type).toBe("variable");
+    expect((leftBinary.right as VariableNode).name).toBe("cm");
+
+    // Right side is the target unit as a variable
+    expect(binaryAst.right.type).toBe("variable");
+    expect((binaryAst.right as VariableNode).name).toBe("meters");
   });
 
   test("parses percentage operations", () => {

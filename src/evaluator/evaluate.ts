@@ -229,25 +229,7 @@ function processEscapeSequences(str: string): string {
 
 // Handler functions for each node type
 function evaluateNumberNode(node: NumberNode): CalculatedValue {
-  if (node.unit) {
-    // Special handling for percentage
-    if (node.unit === "%") {
-      return { type: "percentage", value: node.value };
-    }
-
-    const dimensions = parseUnit(node.unit);
-
-    // If dimensions are empty (dimensionless), return a plain number
-    if (isDimensionless(dimensions)) {
-      return { type: "number", value: node.value };
-    }
-
-    return {
-      type: "quantity",
-      value: node.value,
-      dimensions,
-    };
-  }
+  // Numbers are now always dimensionless
   return { type: "number", value: node.value };
 }
 
@@ -359,6 +341,10 @@ function evaluateTypeCastNode(
     }
     if (value.type === "number") {
       return value;
+    }
+    if (value.type === "quantity") {
+      // Convert quantity to dimensionless number, keeping the value
+      return { type: "number", value: value.value };
     }
     if (value.type === "percentage") {
       // Convert percentage to decimal
@@ -1094,37 +1080,38 @@ function evaluateBinaryNode(
     !isPercentageOperation &&
     (node.operator === "/" || node.operator === "*")
   ) {
-    // Case 1: number with unit / variable that is a unit (e.g., "10 m/s")
+    // Case 1: binary unit operation / variable that is a unit (e.g., "10 m" / "s")
     if (
-      node.left.type === "number" &&
-      (node.left as NumberNode).unit &&
+      node.left.type === "binary" &&
+      (node.left as BinaryOpNode).operator === "unit" &&
       node.right.type === "variable"
     ) {
       const rightVar = (node.right as VariableNode).name;
       if (getDimensionForUnit(rightVar)) {
-        const leftNum = node.left as NumberNode;
-        if (!leftNum.unit) {
-          throw new Error("Left operand must have a unit");
+        // Evaluate the left side to get the quantity
+        const leftResult = evaluateNode(node.left, variables, context);
+        if (leftResult.type !== "quantity") {
+          throw new Error("Expected quantity on left side");
         }
-        const leftDimensions = createDimensionFromUnit(leftNum.unit);
+
         const rightDimensions = createDimensionFromUnit(rightVar);
 
         const resultDimensions =
           node.operator === "/"
-            ? divideDimensions(leftDimensions, rightDimensions)
-            : multiplyDimensions(leftDimensions, rightDimensions);
+            ? divideDimensions(leftResult.dimensions, rightDimensions)
+            : multiplyDimensions(leftResult.dimensions, rightDimensions);
 
         // Check if result is dimensionless
         if (isDimensionless(resultDimensions)) {
           return {
             type: "number",
-            value: leftNum.value,
+            value: leftResult.value,
           };
         }
 
         return {
           type: "quantity",
-          value: leftNum.value,
+          value: leftResult.value,
           dimensions: resultDimensions,
         };
       }
@@ -1162,12 +1149,42 @@ function evaluateBinaryNode(
   // Special handling for unit conversion
   if (node.operator === "convert") {
     const leftResult = evaluateNode(node.left, variables, context);
-    const rightNode = node.right as NumberNode;
+    const rightNode = node.right as VariableNode;
+    const targetUnit = rightNode.name;
 
-    if (rightNode.unit) {
-      return convertQuantity(leftResult, rightNode.unit);
+    return convertQuantity(leftResult, targetUnit);
+  }
+
+  // Special handling for unit operator (e.g., 5 m, 10 kg)
+  if (node.operator === "unit") {
+    const leftResult = evaluateNode(node.left, variables, context);
+    const rightNode = node.right as VariableNode;
+    const unit = rightNode.name;
+
+    if (leftResult.type !== "number") {
+      throw new Error(`Cannot apply unit to ${leftResult.type}`);
     }
-    return leftResult;
+
+    // Create a quantity with the specified unit
+    // Check if this is a compound unit expression
+    const dimensions =
+      unit.includes("*") || unit.includes("^")
+        ? parseUnit(unit)
+        : createDimensionFromUnit(unit);
+
+    // If dimensions are empty (dimensionless), return a plain number
+    if (isDimensionless(dimensions)) {
+      return {
+        type: "number",
+        value: leftResult.value,
+      };
+    }
+
+    return {
+      type: "quantity",
+      value: leftResult.value,
+      dimensions,
+    };
   }
 
   // Special handling for timezone conversion
