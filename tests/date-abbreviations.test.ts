@@ -83,8 +83,11 @@ describe("Date Arithmetic with Abbreviations", () => {
 
     // In unit conversion context, 'm' should be meters
     const unitResult = evaluate("100 cm to m", vars);
-    expect(unitResult.value).toBe(1);
-    expect(unitResult.type === "number" && unitResult.unit).toBe("m");
+    expect(unitResult.type).toBe("quantity");
+    if (unitResult.type === "quantity") {
+      expect(unitResult.value).toBe(1);
+      expect(unitResult.dimensions.length?.unit).toBe("m");
+    }
   });
 
   test.each([

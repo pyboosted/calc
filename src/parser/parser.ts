@@ -1,3 +1,4 @@
+import { isUnit } from "../data/units";
 import {
   type AggregateNode,
   type ArrayNode,
@@ -26,6 +27,7 @@ import {
   type UnaryOpNode,
   type VariableNode,
 } from "../types";
+import { parseCompoundUnit, unitsToExpression } from "./unit-parser";
 
 export class Parser {
   private tokens: Token[];
@@ -293,6 +295,7 @@ export class Parser {
     return false;
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
   private parseConversionExpression(): ASTNode {
     let node = this.parseOf();
 
@@ -348,34 +351,77 @@ export class Parser {
 
       // Check if we're converting a time/date (which could be a timezone conversion)
       // But NOT if it's a duration (result of time subtraction)
-      const isDuration =
+      const _isDuration =
         node.type === "binary" &&
         (node as BinaryOpNode).operator === "-" &&
         this.isTimeNode((node as BinaryOpNode).left) &&
         this.isTimeNode((node as BinaryOpNode).right);
 
-      const isTimeOrDate =
-        !isDuration &&
-        (node.type === "time" ||
-          node.type === "datetime" ||
-          node.type === "date" ||
-          node.type === "variable" || // Any variable could contain a timestamp
-          node.type === "dateOperation" ||
-          (node.type === "binary" &&
-            (node as BinaryOpNode).operator === "timezone_convert") ||
-          // Also check if it's a timestamp result
-          (node.type === "binary" && this.isTimestampResult(node)));
+      // First, try to parse as a compound unit for conversion
+      const compoundUnit = parseCompoundUnit(this.tokens, this.position);
 
-      if (isTimeOrDate) {
-        // For time/date nodes, any identifier could be a timezone
+      if (compoundUnit) {
+        // We have a compound unit like "kg/h" or "kg*h^-1"
+        const targetUnit = unitsToExpression(compoundUnit.units);
+        this.position = compoundUnit.endPos;
+        this.current = this.tokens[this.position] || {
+          type: TokenType.EOF,
+          value: "",
+          position: this.position,
+        };
+        node = {
+          type: "binary",
+          operator: "convert",
+          left: node,
+          right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
+        } as BinaryOpNode;
+      } else if (
+        nextToken.type === TokenType.UNIT ||
+        nextToken.type === TokenType.CURRENCY
+      ) {
+        // For regular unit conversion of numeric results
+        const targetUnit = nextToken.value;
+        this.advance();
+        node = {
+          type: "binary",
+          operator: "convert",
+          left: node,
+          right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
+        } as BinaryOpNode;
+      } else {
+        // Check if this might be a timezone conversion
+        const isDuration =
+          node.type === "binary" &&
+          (node as BinaryOpNode).operator === "-" &&
+          this.isTimeNode((node as BinaryOpNode).left) &&
+          this.isTimeNode((node as BinaryOpNode).right);
+
+        const isTimeOrDate =
+          !isDuration &&
+          (node.type === "time" ||
+            node.type === "datetime" ||
+            node.type === "date" ||
+            // Only treat variables as potential dates if the target looks like a timezone
+            (node.type === "variable" &&
+              (nextToken.type === TokenType.TIMEZONE ||
+                (nextToken.type === TokenType.VARIABLE &&
+                  !isUnit(nextToken.value)))) ||
+            node.type === "dateOperation" ||
+            (node.type === "binary" &&
+              (node as BinaryOpNode).operator === "timezone_convert") ||
+            // Also check if it's a timestamp result
+            (node.type === "binary" && this.isTimestampResult(node)));
+
         if (
-          nextToken.type === TokenType.TIMEZONE ||
-          nextToken.type === TokenType.VARIABLE ||
-          nextToken.type === TokenType.UNIT ||
-          nextToken.type === TokenType.CURRENCY ||
-          nextToken.type === TokenType.KEYWORD ||
-          nextToken.type === TokenType.EOF
+          isTimeOrDate &&
+          (nextToken.type === TokenType.TIMEZONE ||
+            nextToken.type === TokenType.VARIABLE ||
+            (nextToken.type as string) === TokenType.UNIT ||
+            (nextToken.type as string) === TokenType.CURRENCY ||
+            nextToken.type === TokenType.KEYWORD ||
+            nextToken.type === TokenType.EOF)
         ) {
+          // For time/date nodes, any identifier could be a timezone
           if (nextToken.type === TokenType.EOF) {
             // Incomplete expression, just return the node as-is
             return node;
@@ -391,19 +437,6 @@ export class Parser {
             right: { type: "variable", name: targetTimezone } as VariableNode,
           } as BinaryOpNode;
         }
-      } else if (
-        nextToken.type === TokenType.UNIT ||
-        nextToken.type === TokenType.CURRENCY
-      ) {
-        // For regular unit conversion of numeric results
-        const targetUnit = nextToken.value;
-        this.advance();
-        node = {
-          type: "binary",
-          operator: "convert",
-          left: node,
-          right: { type: "number", value: 1, unit: targetUnit } as NumberNode,
-        } as BinaryOpNode;
       }
     }
 
@@ -679,19 +712,50 @@ export class Parser {
         this.current.type === TokenType.UNIT ||
         this.current.type === TokenType.CURRENCY
       ) {
-        const unit = this.current.value;
-        this.advance();
+        // Try to parse as a compound unit
+        const compoundUnit = parseCompoundUnit(this.tokens, this.position);
 
-        if (node.type === "number") {
-          (node as NumberNode).unit = unit;
+        if (compoundUnit) {
+          // We have a compound unit like "kg/s" or "m*s^-2"
+          const unitExpression = unitsToExpression(compoundUnit.units);
+          this.position = compoundUnit.endPos;
+          this.current = this.tokens[this.position] || {
+            type: TokenType.EOF,
+            value: "",
+            position: this.position,
+          };
+
+          if (node.type === "number") {
+            (node as NumberNode).unit = unitExpression;
+          } else {
+            // Wrap in a conversion node if needed
+            node = {
+              type: "binary",
+              operator: "unit",
+              left: node,
+              right: {
+                type: "number",
+                value: 1,
+                unit: unitExpression,
+              } as NumberNode,
+            } as BinaryOpNode;
+          }
         } else {
-          // Wrap in a conversion node if needed
-          node = {
-            type: "binary",
-            operator: "unit",
-            left: node,
-            right: { type: "number", value: 1, unit } as NumberNode,
-          } as BinaryOpNode;
+          // Simple single unit
+          const unit = this.current.value;
+          this.advance();
+
+          if (node.type === "number") {
+            (node as NumberNode).unit = unit;
+          } else {
+            // Wrap in a conversion node if needed
+            node = {
+              type: "binary",
+              operator: "unit",
+              left: node,
+              right: { type: "number", value: 1, unit } as NumberNode,
+            } as BinaryOpNode;
+          }
         }
       } else if (
         this.current.type === TokenType.OPERATOR &&
@@ -971,7 +1035,11 @@ export class Parser {
         return { type: "variable", name: "prev" } as VariableNode;
       }
       // Aggregate keywords
-      if (["total", "sum", "average", "avg"].includes(this.current.value)) {
+      if (
+        ["total", "sum", "average", "avg", "agg", "aggregate"].includes(
+          this.current.value
+        )
+      ) {
         let aggregateType = this.current.value;
         // Convert aliases to canonical names
         if (aggregateType === "sum") {
@@ -979,6 +1047,9 @@ export class Parser {
         }
         if (aggregateType === "avg") {
           aggregateType = "average";
+        }
+        if (aggregateType === "aggregate") {
+          aggregateType = "agg";
         }
         this.advance();
 

@@ -195,9 +195,7 @@ export function debugEvaluation(
       value: result.value,
     };
 
-    if (result.type === "number" && result.unit) {
-      details.unit = result.unit;
-    } else if (result.type === "date" && result.timezone) {
+    if (result.type === "date" && result.timezone) {
       details.timezone = result.timezone;
     }
 

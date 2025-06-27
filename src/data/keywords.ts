@@ -25,6 +25,8 @@ export const keywords = [
   "sum",
   "average",
   "avg",
+  "agg",
+  "aggregate",
   ...dateKeywords,
 ];
 

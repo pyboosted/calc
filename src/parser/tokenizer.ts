@@ -32,6 +32,7 @@ export class Tokenizer {
   private position = 0;
   private current = "";
   private lastToken: Token | null = null;
+  private processedTokens: Token[] = [];
 
   constructor(input: string) {
     this.input = input;
@@ -47,10 +48,26 @@ export class Tokenizer {
     return this.input[this.position + offset] || "";
   }
 
+  private getProcessedTokensCount(): number {
+    return this.processedTokens.length;
+  }
+
+  private getTokenAt(offset: number): Token | null {
+    // offset is negative, so -1 means last token, -2 means second last, etc.
+    const index = this.processedTokens.length + offset;
+    return index >= 0 ? this.processedTokens[index] || null : null;
+  }
+
   private skipWhitespace(): void {
     while (WHITESPACE_PATTERN.test(this.current)) {
       this.advance();
     }
+  }
+
+  private pushToken(tokens: Token[], token: Token): void {
+    tokens.push(token);
+    this.processedTokens.push(token);
+    this.lastToken = token;
   }
 
   private tryReadDate(): Token | null {
@@ -747,6 +764,43 @@ export class Tokenizer {
       return true;
     }
 
+    // Case 3: Unit follows another unit (for compound units)
+    if (this.lastToken && this.lastToken.type === TokenType.UNIT) {
+      return true;
+    }
+
+    // Case 4: Unit follows a "/" or "*" operator (for compound units like kg/s or m*s)
+    // But only in the context of unit expressions, not general arithmetic
+    if (
+      this.lastToken &&
+      this.lastToken.type === TokenType.OPERATOR &&
+      ["/", "*"].includes(this.lastToken.value)
+    ) {
+      // Check if we're in a unit context by looking back further
+      // We need at least 2 tokens before: should be either NUMBER UNIT or just UNIT
+      const tokensLength = this.getProcessedTokensCount();
+      if (tokensLength >= 2) {
+        const secondLastToken = this.getTokenAt(-2);
+        // If the token before the operator is a UNIT, then this is likely a compound unit
+        if (secondLastToken && secondLastToken.type === TokenType.UNIT) {
+          return true;
+        }
+        // If we have NUMBER UNIT OPERATOR, this is also a compound unit
+        if (tokensLength >= 3) {
+          const thirdLastToken = this.getTokenAt(-3);
+          if (
+            thirdLastToken &&
+            thirdLastToken.type === TokenType.NUMBER &&
+            secondLastToken &&
+            secondLastToken.type === TokenType.UNIT
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
     return false;
   }
 
@@ -767,8 +821,7 @@ export class Tokenizer {
       if (this.current === "`") {
         const token = this.tryReadStringLiteral();
         if (token) {
-          tokens.push(token);
-          this.lastToken = token;
+          this.pushToken(tokens, token);
           continue;
         }
       }
@@ -777,8 +830,7 @@ export class Tokenizer {
       if (this.current === "'") {
         const token = this.tryReadSingleQuoteString();
         if (token) {
-          tokens.push(token);
-          this.lastToken = token;
+          this.pushToken(tokens, token);
           continue;
         }
       }
@@ -787,8 +839,7 @@ export class Tokenizer {
       if (this.current === '"') {
         const token = this.tryReadDoubleQuoteString();
         if (token) {
-          tokens.push(token);
-          this.lastToken = token;
+          this.pushToken(tokens, token);
           continue;
         }
       }
@@ -799,8 +850,7 @@ export class Tokenizer {
         (this.current === "." && DIGIT_PATTERN.test(this.peek()))
       ) {
         const token = this.readNumber();
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         continue;
       }
 
@@ -814,8 +864,7 @@ export class Tokenizer {
           token = { ...token, type: TokenType.UNIT };
         }
 
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         continue;
       }
 
@@ -835,8 +884,7 @@ export class Tokenizer {
           value: "+=",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -848,8 +896,7 @@ export class Tokenizer {
           value: "-=",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -858,8 +905,7 @@ export class Tokenizer {
       // Check for comparison operators first (==, !=, <=, >=)
       if (this.current === "=" && this.peek() === "=") {
         const token = { type: TokenType.EQUAL, value: "==", position: start };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -871,8 +917,7 @@ export class Tokenizer {
           value: "!=",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -884,8 +929,7 @@ export class Tokenizer {
           value: "<=",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -897,8 +941,7 @@ export class Tokenizer {
           value: ">=",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -911,8 +954,7 @@ export class Tokenizer {
           value: "<",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         continue;
       }
@@ -923,8 +965,7 @@ export class Tokenizer {
           value: ">",
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         continue;
       }
@@ -938,8 +979,7 @@ export class Tokenizer {
           value: twoCharConfig.value,
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         this.advance();
         continue;
@@ -972,8 +1012,7 @@ export class Tokenizer {
           };
         }
 
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         continue;
       }
 
@@ -984,8 +1023,7 @@ export class Tokenizer {
           value: this.current,
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         continue;
       }
@@ -997,8 +1035,7 @@ export class Tokenizer {
           value: this.current,
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         continue;
       }
@@ -1010,8 +1047,7 @@ export class Tokenizer {
           value: this.current,
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         continue;
       }
@@ -1024,8 +1060,7 @@ export class Tokenizer {
           value: this.current,
           position: start,
         };
-        tokens.push(token);
-        this.lastToken = token;
+        this.pushToken(tokens, token);
         this.advance();
         continue;
       }

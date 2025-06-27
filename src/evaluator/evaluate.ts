@@ -31,7 +31,6 @@ import type {
   UnaryOpNode,
   VariableNode,
 } from "../types";
-import { CurrencyManager } from "../utils/currency-manager";
 import { DateManager } from "../utils/date-manager";
 import {
   debugAST,
@@ -44,9 +43,31 @@ import {
   evaluateArrayFunction,
   evaluateObjectFunction,
 } from "./array-object-functions";
+import {
+  areDimensionsCompatible,
+  convertCompoundUnit,
+  createDimensionFromUnit,
+  type DimensionMap,
+  divideDimensions,
+  getDimensionForUnit,
+  isDimensionless,
+  multiplyDimensions,
+  parseUnit,
+} from "./dimensions";
 import { evaluateArgFunction, evaluateEnvFunction } from "./env-arg-functions";
 import { mathFunctions } from "./math-functions";
+import {
+  addQuantities,
+  convertQuantity,
+  divideQuantities,
+  hasUnitDifference,
+  multiplyQuantities,
+  powerQuantity,
+  subtractQuantities,
+} from "./quantity-operations";
 import { convertUnits } from "./unit-converter";
+import { createUnitExpression, isKnownUnit } from "./unit-expression";
+import { formatQuantity } from "./unit-formatter";
 
 // Regex patterns
 const DATE_PATTERN = /(\d{1,2})[./](\d{1,2})[./](\d{4})/;
@@ -88,7 +109,7 @@ function isTimePeriodUnit(unit: string | undefined): boolean {
   ].includes(unit);
 }
 
-function isUnitInCategory(unit: string, category: string): boolean {
+function _isUnitInCategory(unit: string, category: string): boolean {
   const unitLower = unit.toLowerCase();
   const unitDef = unitDefinitions[unitLower];
 
@@ -166,7 +187,11 @@ function formatValue(value: CalculatedValue): string {
     case "string":
       return value.value;
     case "number":
-      return value.unit ? `${value.value} ${value.unit}` : String(value.value);
+      return String(value.value);
+    case "percentage":
+      return `${value.value}%`;
+    case "quantity":
+      return formatQuantity(value.value, value.dimensions);
     case "date":
       return value.value.toISOString();
     case "boolean":
@@ -204,7 +229,26 @@ function processEscapeSequences(str: string): string {
 
 // Handler functions for each node type
 function evaluateNumberNode(node: NumberNode): CalculatedValue {
-  return { type: "number", value: node.value, unit: node.unit };
+  if (node.unit) {
+    // Special handling for percentage
+    if (node.unit === "%") {
+      return { type: "percentage", value: node.value };
+    }
+
+    const dimensions = parseUnit(node.unit);
+
+    // If dimensions are empty (dimensionless), return a plain number
+    if (isDimensionless(dimensions)) {
+      return { type: "number", value: node.value };
+    }
+
+    return {
+      type: "quantity",
+      value: node.value,
+      dimensions,
+    };
+  }
+  return { type: "number", value: node.value };
 }
 
 function evaluateVariableNode(
@@ -213,6 +257,10 @@ function evaluateVariableNode(
 ): CalculatedValue {
   const value = variables.get(node.name);
   if (value === undefined) {
+    // Check if this is a unit name
+    if (isKnownUnit(node.name)) {
+      return createUnitExpression(node.name);
+    }
     throw new Error(`Unknown variable: ${node.name}`);
   }
   return value;
@@ -263,6 +311,8 @@ function isTruthy(value: CalculatedValue): boolean {
       return value.value;
     case "number":
       return value.value !== 0;
+    case "percentage":
+      return value.value !== 0;
     case "string":
       return value.value !== "";
     case "null":
@@ -273,6 +323,8 @@ function isTruthy(value: CalculatedValue): boolean {
       return value.value.length > 0;
     case "object":
       return value.value.size > 0;
+    case "quantity":
+      return value.value !== 0; // Quantities are truthy if non-zero
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;
@@ -307,6 +359,10 @@ function evaluateTypeCastNode(
     }
     if (value.type === "number") {
       return value;
+    }
+    if (value.type === "percentage") {
+      // Convert percentage to decimal
+      return { type: "number", value: value.value / 100 };
     }
     if (value.type === "boolean") {
       return { type: "number", value: value.value ? 1 : 0 };
@@ -411,6 +467,9 @@ function valueToJSON(value: CalculatedValue): JSONValue {
   switch (value.type) {
     case "number":
       return value.value;
+    case "percentage":
+      // Convert percentage to its numeric value
+      return value.value;
     case "string":
       return value.value;
     case "boolean":
@@ -428,6 +487,13 @@ function valueToJSON(value: CalculatedValue): JSONValue {
       }
       return obj;
     }
+    case "quantity":
+      // Convert quantity to object representation
+      return {
+        type: "quantity",
+        value: value.value,
+        dimensions: value.dimensions,
+      };
     default: {
       const _exhaustiveCheck: never = value;
       return _exhaustiveCheck;
@@ -475,7 +541,14 @@ function evaluateUnaryNode(
       return operand;
     case "-":
       if (operand.type === "number") {
-        return { type: "number", value: -operand.value, unit: operand.unit };
+        return { type: "number", value: -operand.value };
+      }
+      if (operand.type === "quantity") {
+        return {
+          type: "quantity",
+          value: -operand.value,
+          dimensions: operand.dimensions,
+        };
       }
       throw new Error(`Cannot negate ${operand.type}`);
     default:
@@ -606,6 +679,7 @@ function evaluateStringFunction(
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
 function evaluateFunctionNode(
   node: FunctionNode,
   variables: Map<string, CalculatedValue>,
@@ -638,8 +712,24 @@ function evaluateFunctionNode(
       throw new Error("unit() requires an argument");
     }
     const value = evaluateNode(arg, variables, context);
-    if (value.type === "number" && value.unit) {
-      return { type: "string", value: value.unit.toLowerCase() };
+    if (value.type === "quantity") {
+      // Special handling for currency dimensions
+      if (value.dimensions.currency) {
+        const currencyDim = value.dimensions.currency as {
+          exponent: number;
+          code: string;
+        };
+        return { type: "string", value: currencyDim.code.toLowerCase() };
+      }
+
+      // Find the first dimension with a unit
+      for (const dim of Object.keys(value.dimensions)) {
+        const dimension =
+          value.dimensions[dim as keyof typeof value.dimensions];
+        if (dimension && "unit" in dimension && dimension.unit) {
+          return { type: "string", value: dimension.unit.toLowerCase() };
+        }
+      }
     }
     return { type: "null", value: null };
   }
@@ -940,11 +1030,36 @@ function evaluateDateOperationNode(
       throw new Error("Date operation requires value and unit");
     }
     const valueResult = evaluateNode(node.value, variables, context);
-    if (valueResult.type !== "number") {
-      throw new Error("Date operation requires a numeric value");
-    }
-    const value = valueResult.value;
+
+    let value: number;
     const unit = node.unit;
+
+    if (valueResult.type === "number") {
+      // Legacy support for plain numbers
+      value = valueResult.value;
+    } else if (valueResult.type === "quantity") {
+      // Handle quantities with time dimensions
+      if (valueResult.dimensions.time) {
+        // Convert the quantity to the target unit
+        const quantityUnit = valueResult.dimensions.time.unit;
+        if (quantityUnit && quantityUnit !== unit) {
+          // Convert from quantity's unit to the operation's unit
+          value = convertUnits(valueResult.value, quantityUnit, unit);
+        } else {
+          value = valueResult.value;
+        }
+      } else if (unit === "m" && valueResult.dimensions.length?.unit === "m") {
+        // Special case: "m" can mean meters or minutes
+        // In date context, if we have a length quantity with unit "m", treat it as minutes
+        value = valueResult.value; // Use the value directly as minutes
+      } else {
+        throw new Error("Date operation requires a time quantity");
+      }
+    } else {
+      throw new Error(
+        "Date operation requires a numeric or time quantity value"
+      );
+    }
 
     const newDate =
       node.operation === "add"
@@ -962,23 +1077,95 @@ function evaluateDateOperationNode(
   throw new Error(`Unknown date operation: ${node.operation}`);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
 function evaluateBinaryNode(
   node: BinaryOpNode,
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
 ): CalculatedValue {
+  // Check if right side is a percentage - if so, skip unit combination logic
+  const isPercentageOperation =
+    node.operator === "-" &&
+    node.right.type === "binary" &&
+    (node.right as BinaryOpNode).operator === "percent";
+
+  // Special handling for unit arithmetic - check if this is units being combined
+  if (
+    !isPercentageOperation &&
+    (node.operator === "/" || node.operator === "*")
+  ) {
+    // Case 1: number with unit / variable that is a unit (e.g., "10 m/s")
+    if (
+      node.left.type === "number" &&
+      (node.left as NumberNode).unit &&
+      node.right.type === "variable"
+    ) {
+      const rightVar = (node.right as VariableNode).name;
+      if (getDimensionForUnit(rightVar)) {
+        const leftNum = node.left as NumberNode;
+        if (!leftNum.unit) {
+          throw new Error("Left operand must have a unit");
+        }
+        const leftDimensions = createDimensionFromUnit(leftNum.unit);
+        const rightDimensions = createDimensionFromUnit(rightVar);
+
+        const resultDimensions =
+          node.operator === "/"
+            ? divideDimensions(leftDimensions, rightDimensions)
+            : multiplyDimensions(leftDimensions, rightDimensions);
+
+        // Check if result is dimensionless
+        if (isDimensionless(resultDimensions)) {
+          return {
+            type: "number",
+            value: leftNum.value,
+          };
+        }
+
+        return {
+          type: "quantity",
+          value: leftNum.value,
+          dimensions: resultDimensions,
+        };
+      }
+    }
+
+    // Case 2: quantity / variable that is a unit (e.g., "velocity / s")
+    const leftResult = evaluateNode(node.left, variables, context);
+    if (leftResult.type === "quantity" && node.right.type === "variable") {
+      const rightVar = (node.right as VariableNode).name;
+      if (getDimensionForUnit(rightVar)) {
+        const rightDimensions = createDimensionFromUnit(rightVar);
+
+        const resultDimensions =
+          node.operator === "/"
+            ? divideDimensions(leftResult.dimensions, rightDimensions)
+            : multiplyDimensions(leftResult.dimensions, rightDimensions);
+
+        // Check if result is dimensionless
+        if (isDimensionless(resultDimensions)) {
+          return {
+            type: "number",
+            value: leftResult.value,
+          };
+        }
+
+        return {
+          type: "quantity",
+          value: leftResult.value,
+          dimensions: resultDimensions,
+        };
+      }
+    }
+  }
+
   // Special handling for unit conversion
   if (node.operator === "convert") {
     const leftResult = evaluateNode(node.left, variables, context);
     const rightNode = node.right as NumberNode;
 
-    if (leftResult.type === "number" && leftResult.unit && rightNode.unit) {
-      const convertedValue = convertUnits(
-        leftResult.value,
-        leftResult.unit,
-        rightNode.unit
-      );
-      return { type: "number", value: convertedValue, unit: rightNode.unit };
+    if (rightNode.unit) {
+      return convertQuantity(leftResult, rightNode.unit);
     }
     return leftResult;
   }
@@ -1006,14 +1193,9 @@ function evaluateBinaryNode(
     }
 
     // Not a timestamp - try regular unit conversion instead
-    if (leftResult.type === "number" && leftResult.unit && targetTimezone) {
+    if (leftResult.type === "quantity") {
       try {
-        const convertedValue = convertUnits(
-          leftResult.value,
-          leftResult.unit,
-          targetTimezone
-        );
-        return { type: "number", value: convertedValue, unit: targetTimezone };
+        return convertQuantity(leftResult, targetTimezone);
       } catch (_error) {
         // If unit conversion also fails, throw the original error
         throw new Error("Timezone conversion requires a timestamp value");
@@ -1030,6 +1212,7 @@ function evaluateBinaryNode(
   return evaluateBinaryOperation(node.operator, left, right);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
 function evaluateBinaryOperation(
   operator: string,
   left: CalculatedValue,
@@ -1050,15 +1233,68 @@ function evaluateBinaryOperation(
     return evaluateStringOperation(operator, left, right);
   }
 
+  // Special handling for dates
+  if (
+    (left.type === "date" || right.type === "date") &&
+    (operator === "+" || operator === "-")
+  ) {
+    return evaluateAddSubtract(operator, left, right);
+  }
+
+  // Special handling for percentages
+  if ((operator === "+" || operator === "-") && right.type === "percentage") {
+    if (left.type === "number") {
+      const percentageAmount = left.value * (right.value / 100);
+      return {
+        type: "number",
+        value:
+          operator === "+"
+            ? left.value + percentageAmount
+            : left.value - percentageAmount,
+      };
+    }
+    if (left.type === "quantity") {
+      const percentageAmount = left.value * (right.value / 100);
+      return {
+        type: "quantity",
+        value:
+          operator === "+"
+            ? left.value + percentageAmount
+            : left.value - percentageAmount,
+        dimensions: left.dimensions,
+      };
+    }
+    throw new Error(`Cannot ${operator} ${left.type} with percentage`);
+  }
+
+  // Special handling for date arithmetic with quantities
+  if (
+    (operator === "+" || operator === "-") &&
+    (left.type === "date" || right.type === "date")
+  ) {
+    return evaluateDateArithmetic(operator, left, right);
+  }
+
+  // Handle quantity operations
+  if (left.type === "quantity" || right.type === "quantity") {
+    switch (operator) {
+      case "+":
+        return addQuantities(left, right);
+      case "-":
+        return subtractQuantities(left, right);
+      case "*":
+        return multiplyQuantities(left, right);
+      case "/":
+        return divideQuantities(left, right);
+      case "^":
+        return powerQuantity(left, right);
+      default:
+        throw new Error(`Cannot perform ${operator} on quantities`);
+    }
+  }
+
   // Ensure we have numbers for numeric operations
   if (left.type !== "number" || right.type !== "number") {
-    // Special handling for dates
-    if (
-      (left.type === "date" || right.type === "date") &&
-      (operator === "+" || operator === "-")
-    ) {
-      return evaluateAddSubtract(operator, left, right);
-    }
     throw new Error(
       `Cannot perform ${operator} on ${left.type} and ${right.type}`
     );
@@ -1079,8 +1315,8 @@ function evaluateBinaryOperation(
       return { type: "number", value: left.value % right.value };
 
     case "percent":
-      // Keep percentage as a unit instead of converting immediately
-      return { type: "number", value: left.value, unit: "%" };
+      // Return percentage as its own type
+      return { type: "percentage", value: left.value };
 
     case "^":
       return { type: "number", value: left.value ** right.value };
@@ -1213,20 +1449,10 @@ function evaluateAddSubtract(
     );
   }
 
-  // Special handling for percentage units
-  if (right.unit === "%") {
-    return evaluatePercentageOperation(operator, left, right);
-  }
-
-  // Regular unit conversion for non-date arithmetic
-  if (left.unit && right.unit && left.unit !== right.unit) {
-    return evaluateWithUnitConversion(operator, left, right);
-  }
-
-  // Simple arithmetic
+  // Simple arithmetic (no units)
   const result =
     operator === "+" ? left.value + right.value : left.value - right.value;
-  return { type: "number", value: result, unit: left.unit || right.unit };
+  return { type: "number", value: result };
 }
 
 function evaluateDateArithmetic(
@@ -1243,20 +1469,38 @@ function evaluateDateArithmetic(
   const leftTimezone = left.type === "date" ? left.timezone : undefined;
   const rightTimezone = right.type === "date" ? right.timezone : undefined;
 
-  // Handle: date - date (returns difference in seconds)
+  // Handle: date - date (returns difference as a quantity with time dimension)
   if (leftDate && rightDate) {
     if (operator === "-") {
       const diffMs = leftDate.getTime() - rightDate.getTime();
       // Convert to seconds for easier unit conversion
       const diffSeconds = diffMs / 1000;
-      return { type: "number", value: diffSeconds, unit: "seconds" };
+      return {
+        type: "quantity",
+        value: diffSeconds,
+        dimensions: {
+          time: { exponent: 1, unit: "s" },
+        },
+      };
     }
     throw new Error("Cannot add two dates");
   }
 
   // Get numeric value and unit from right side
-  const rightValue = right.type === "number" ? right.value : 0;
-  const rightUnit = right.type === "number" ? right.unit : undefined;
+  let rightValue = 0;
+  let rightUnit: string | undefined;
+
+  if (right.type === "quantity") {
+    if (right.dimensions.time) {
+      rightValue = right.value;
+      rightUnit = right.dimensions.time.unit;
+    } else if (right.dimensions.length?.unit === "m") {
+      // Special case: "m" can mean meters or minutes
+      // In date arithmetic context, treat it as minutes
+      rightValue = right.value;
+      rightUnit = "m"; // minutes
+    }
+  }
 
   // Handle: date + time period
   if (leftDate && rightUnit && isTimePeriodUnit(rightUnit)) {
@@ -1273,8 +1517,20 @@ function evaluateDateArithmetic(
   }
 
   // Get numeric value and unit from left side
-  const leftValue = left.type === "number" ? left.value : 0;
-  const leftUnit = left.type === "number" ? left.unit : undefined;
+  let leftValue = 0;
+  let leftUnit: string | undefined;
+
+  if (left.type === "quantity") {
+    if (left.dimensions.time) {
+      leftValue = left.value;
+      leftUnit = left.dimensions.time.unit;
+    } else if (left.dimensions.length?.unit === "m") {
+      // Special case: "m" can mean meters or minutes
+      // In date arithmetic context, treat it as minutes
+      leftValue = left.value;
+      leftUnit = "m"; // minutes
+    }
+  }
 
   // Handle: time period + date
   if (rightDate && leftUnit && isTimePeriodUnit(leftUnit)) {
@@ -1294,79 +1550,34 @@ function evaluateDateArithmetic(
   throw new Error("Invalid date arithmetic operation");
 }
 
-function evaluatePercentageOperation(
-  operator: string,
-  left: CalculatedValue,
-  right: CalculatedValue
-): CalculatedValue {
-  if (left.type !== "number" || right.type !== "number") {
-    throw new Error("Percentage operations require numeric values");
-  }
-  const percentageAmount = left.value * (right.value / 100);
-  const result =
-    operator === "+"
-      ? left.value + percentageAmount
-      : left.value - percentageAmount;
-  return { type: "number", value: result, unit: left.unit };
-}
-
-function evaluateWithUnitConversion(
-  operator: string,
-  left: CalculatedValue,
-  right: CalculatedValue
-): CalculatedValue {
-  if (left.type !== "number" || right.type !== "number") {
-    throw new Error("Unit conversion requires numeric values");
-  }
-
-  if (!(left.unit && right.unit)) {
-    throw new Error("Unit conversion requires both values to have units");
-  }
-
-  try {
-    const convertedRight = convertUnits(right.value, right.unit, left.unit);
-    const result =
-      operator === "+"
-        ? left.value + convertedRight
-        : left.value - convertedRight;
-    return { type: "number", value: result, unit: left.unit };
-  } catch {
-    throw new Error(
-      `Cannot ${operator === "+" ? "add" : "subtract"} ${left.unit} and ${right.unit}`
-    );
-  }
-}
+// Note: Unit conversion and percentage operations are now handled through the quantity system
 
 function evaluateMultiply(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  // This function is now only called for dimensionless numbers
   if (left.type !== "number" || right.type !== "number") {
     throw new Error("Multiplication requires numeric values");
   }
-  const result = left.value * right.value;
-  // For now, keep the unit from the side that has one
-  const unit = left.unit || right.unit;
-  return { type: "number", value: result, unit };
+  return { type: "number", value: left.value * right.value };
 }
 
 function evaluateDivide(
   left: CalculatedValue,
   right: CalculatedValue
 ): CalculatedValue {
+  // This function is now only called for dimensionless numbers
   if (left.type !== "number" || right.type !== "number") {
     throw new Error("Division requires numeric values");
   }
   if (right.value === 0) {
     throw new Error("Division by zero");
   }
-  const result = left.value / right.value;
-  // Division cancels units if they're the same
-  const unit =
-    left.unit && right.unit && left.unit === right.unit ? undefined : left.unit;
-  return { type: "number", value: result, unit };
+  return { type: "number", value: left.value / right.value };
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
 function evaluateAggregateNode(
   node: AggregateNode,
   context?: EvaluationContext
@@ -1375,13 +1586,25 @@ function evaluateAggregateNode(
     throw new Error(`No values to ${node.operation}`);
   }
 
+  // Handle the new "agg" operation - collect values into an array
+  if (node.operation === "agg") {
+    // Filter out comments, errors, and empty lines by looking for valid values
+    const validResults = context.previousResults.filter(
+      (result) => result !== null && result !== undefined
+    );
+
+    return {
+      type: "array",
+      value: validResults,
+    };
+  }
+
   // Check if we have a date/timestamp and time periods for smart date arithmetic
   const dateResults = context.previousResults.filter(
     (result) => result && result.type === "date"
   );
   const timePeriodResults = context.previousResults.filter(
-    (result) =>
-      result && result.type === "number" && isTimePeriodUnit(result.unit)
+    (result) => result && result.type === "quantity" && result.dimensions.time
   );
 
   // If we have exactly one date and one or more time periods, add them together
@@ -1397,19 +1620,12 @@ function evaluateAggregateNode(
     let totalSeconds = 0;
     for (const period of timePeriodResults) {
       try {
-        let value: number;
-        let unit: string | undefined;
-
-        if (period.type === "number") {
-          value = period.value;
-          unit = period.unit;
-        } else {
-          continue;
-        }
-
-        if (unit) {
-          const seconds = convertUnits(value, unit, "seconds");
-          totalSeconds += seconds;
+        if (period.type === "quantity" && period.dimensions.time) {
+          const unit = period.dimensions.time.unit;
+          if (unit) {
+            const seconds = convertUnits(period.value, unit, "seconds");
+            totalSeconds += seconds;
+          }
         }
       } catch (_error) {
         // If conversion fails, skip this period
@@ -1459,170 +1675,162 @@ function evaluateAggregateNode(
     return { type: "string", value: concatenated };
   }
 
-  // Filter for numeric values with their units (original behavior)
-  const valuesWithUnits = context.previousResults
-    .filter((result) => {
-      if (!result) {
-        return false;
-      }
-      return result.type === "number" && !Number.isNaN(result.value);
-    })
-    .map((result) => {
-      if (result.type === "number") {
-        return { value: result.value, unit: result.unit };
-      }
-      // This shouldn't happen due to filter above
-      return { value: 0 };
-    });
+  // Filter for numeric values (numbers and quantities)
+  const numericResults = context.previousResults.filter((result) => {
+    if (!result) {
+      return false;
+    }
+    return (
+      (result.type === "number" || result.type === "quantity") &&
+      !Number.isNaN(
+        result.type === "number" || result.type === "quantity"
+          ? result.value
+          : Number.NaN
+      )
+    );
+  });
 
-  if (valuesWithUnits.length === 0) {
+  if (numericResults.length === 0) {
     throw new Error(`No numeric values to ${node.operation}`);
   }
 
-  const totalValue = calculateAggregateValue(valuesWithUnits, node.targetUnit);
-  const resultUnit = determineResultUnit(valuesWithUnits, node.targetUnit);
+  // Calculate the aggregate
+  const { value: totalValue, dimensions } = calculateAggregateQuantity(
+    numericResults,
+    node.targetUnit
+  );
 
   if (node.operation === "total") {
-    return { type: "number", value: totalValue, unit: resultUnit };
+    // If we have dimensions, return a quantity
+    if (dimensions && !isDimensionless(dimensions)) {
+      return {
+        type: "quantity",
+        value: totalValue,
+        dimensions,
+      };
+    }
+    // Otherwise return a plain number
+    return { type: "number", value: totalValue };
   }
+
   // average
-  const avg = totalValue / valuesWithUnits.length;
-  return { type: "number", value: avg, unit: resultUnit };
+  const avg = totalValue / numericResults.length;
+  if (dimensions && !isDimensionless(dimensions)) {
+    return {
+      type: "quantity",
+      value: avg,
+      dimensions,
+    };
+  }
+  return { type: "number", value: avg };
 }
 
-function calculateAggregateValue(
-  valuesWithUnits: Array<{ value: number; unit?: string }>,
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
+function calculateAggregateQuantity(
+  values: CalculatedValue[],
   targetUnit?: string
-): number {
+): { value: number; dimensions?: DimensionMap } {
+  // If we have a target unit, convert all compatible values to that unit
   if (targetUnit) {
-    return calculateWithTargetUnit(valuesWithUnits, targetUnit);
-  }
+    let totalValue = 0;
+    const targetDimensions = createDimensionFromUnit(targetUnit);
 
-  return calculateWithoutTargetUnit(valuesWithUnits);
-}
-
-function calculateWithTargetUnit(
-  valuesWithUnits: Array<{ value: number; unit?: string }>,
-  targetUnit: string
-): number {
-  let totalValue = 0;
-
-  for (const item of valuesWithUnits) {
-    totalValue += convertItemToUnit(item, targetUnit);
-  }
-
-  return totalValue;
-}
-
-function calculateWithoutTargetUnit(
-  valuesWithUnits: Array<{ value: number; unit?: string }>
-): number {
-  const commonUnit = findCommonUnit(valuesWithUnits);
-
-  if (!commonUnit) {
-    // No common unit - just sum raw values
-    return valuesWithUnits.reduce((sum, item) => sum + item.value, 0);
-  }
-
-  let totalValue = 0;
-  for (const item of valuesWithUnits) {
-    if (item.unit && item.unit !== commonUnit) {
-      try {
-        const converted = convertUnits(item.value, item.unit, commonUnit);
-        totalValue += converted;
-      } catch (_error) {
-        // Not compatible - just add raw value
+    for (const item of values) {
+      if (item.type === "number") {
         totalValue += item.value;
+      } else if (item.type === "quantity") {
+        try {
+          // Try to convert to target unit
+          const converted = convertQuantity(item, targetUnit);
+          if (converted.type === "quantity") {
+            totalValue += converted.value;
+          }
+        } catch (_error) {
+          // If conversion fails, skip this value
+        }
       }
-    } else {
+    }
+
+    return { value: totalValue, dimensions: targetDimensions };
+  }
+
+  // Without target unit, find the first quantity with dimensions
+  let firstDimensions: DimensionMap | undefined;
+  let firstUnit: string | undefined;
+  let hasIncompatibleUnits = false;
+
+  for (const item of values) {
+    if (item.type === "quantity" && !isDimensionless(item.dimensions)) {
+      if (firstDimensions) {
+        // Check if this quantity is compatible with the first one
+        if (!areDimensionsCompatible(item.dimensions, firstDimensions)) {
+          hasIncompatibleUnits = true;
+        }
+      } else {
+        firstDimensions = item.dimensions;
+        // Find the first unit in the dimensions
+        for (const dim of Object.keys(
+          item.dimensions
+        ) as (keyof DimensionMap)[]) {
+          const dimInfo = item.dimensions[dim];
+          if (dimInfo && "unit" in dimInfo && dimInfo.unit) {
+            firstUnit = dimInfo.unit;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Sum all compatible values
+  let totalValue = 0;
+
+  for (const item of values) {
+    if (item.type === "number") {
       totalValue += item.value;
-    }
-  }
-
-  return totalValue;
-}
-
-function convertItemToUnit(
-  item: { value: number; unit?: string },
-  targetUnit: string
-): number {
-  if (!item.unit) {
-    // No unit - just return the value
-    return item.value;
-  }
-
-  if (item.unit === targetUnit) {
-    return item.value;
-  }
-
-  try {
-    return convertUnits(item.value, item.unit, targetUnit);
-  } catch (_error) {
-    // Conversion failed - skip this value
-    return 0;
-  }
-}
-
-function findCommonUnit(
-  valuesWithUnits: Array<{ value: number; unit?: string }>
-): string | undefined {
-  const unitGroups = new Map<string, number>();
-
-  // Count occurrences of each unit
-  for (const item of valuesWithUnits) {
-    if (item.unit) {
-      unitGroups.set(item.unit, (unitGroups.get(item.unit) || 0) + 1);
-    }
-  }
-
-  if (unitGroups.size === 0) {
-    return;
-  }
-
-  if (unitGroups.size === 1) {
-    return Array.from(unitGroups.keys())[0];
-  }
-
-  // Multiple units - use the most common one
-  let maxCount = 0;
-  let commonUnit: string | undefined;
-  for (const [unit, count] of unitGroups) {
-    if (count > maxCount) {
-      maxCount = count;
-      commonUnit = unit;
-    }
-  }
-
-  return commonUnit;
-}
-
-function determineResultUnit(
-  valuesWithUnits: Array<{ value: number; unit?: string }>,
-  targetUnit?: string
-): string | undefined {
-  if (targetUnit) {
-    return targetUnit;
-  }
-
-  const commonUnit = findCommonUnit(valuesWithUnits);
-  if (!commonUnit) {
-    return;
-  }
-
-  // Check if all units are compatible with the common unit
-  for (const item of valuesWithUnits) {
-    if (item.unit && item.unit !== commonUnit) {
-      try {
-        convertUnits(1, item.unit, commonUnit);
-      } catch (_error) {
-        // Not compatible - return undefined
-        return;
+    } else if (item.type === "quantity") {
+      if (!firstDimensions || isDimensionless(item.dimensions)) {
+        // No dimensions or dimensionless - just add the value
+        totalValue += item.value;
+      } else {
+        // Try to convert to the first unit's dimensions
+        try {
+          if (areDimensionsCompatible(item.dimensions, firstDimensions)) {
+            if (
+              firstUnit &&
+              hasUnitDifference(item.dimensions, firstDimensions)
+            ) {
+              // Convert to the first unit
+              const converted = convertCompoundUnit(
+                item.value,
+                item.dimensions,
+                firstDimensions
+              );
+              totalValue += converted;
+            } else {
+              totalValue += item.value;
+            }
+          } else {
+            // Incompatible dimensions - just add raw value
+            totalValue += item.value;
+          }
+        } catch (_error) {
+          // If conversion fails, just add raw value
+          totalValue += item.value;
+        }
       }
     }
   }
 
-  return commonUnit;
+  // If we have incompatible units, return a plain number
+  if (hasIncompatibleUnits) {
+    return { value: totalValue };
+  }
+
+  return { value: totalValue, dimensions: firstDimensions };
 }
+
+// Using hasUnitDifference from quantity-operations.ts
 
 function evaluateConstantNode(
   node: ConstantNode,
@@ -1691,14 +1899,9 @@ function evaluateTypeCheckNode(
       return { type: "boolean", value: false };
 
     case "currency":
-      // Check if it's a number with a currency unit
-      if (value.type === "number" && value.unit) {
-        const currencyManager = CurrencyManager.getInstance();
-        // Currency manager needs the unit in the right case
-        return {
-          type: "boolean",
-          value: currencyManager.getRate(value.unit) !== undefined,
-        };
+      // Check if it's a quantity with currency dimension
+      if (value.type === "quantity" && value.dimensions.currency) {
+        return { type: "boolean", value: true };
       }
       return { type: "boolean", value: false };
 
@@ -1709,12 +1912,35 @@ function evaluateTypeCheckNode(
     case "data":
     case "area":
     case "time":
-      // Check if it's a number with a unit in the specified category
-      if (value.type === "number" && value.unit) {
-        return {
-          type: "boolean",
-          value: isUnitInCategory(value.unit, checkType),
+      // Check if it's a quantity with the appropriate dimension
+      if (value.type === "quantity") {
+        // Map checkType to dimension name
+        const dimensionMap: Record<string, keyof DimensionMap> = {
+          length: "length",
+          weight: "mass",
+          volume: "volume", // volume has its own dimension
+          temperature: "temperature",
+          data: "data",
+          area: "length", // area is length^2
+          time: "time",
         };
+
+        const dimension = dimensionMap[checkType];
+        if (dimension && value.dimensions[dimension]) {
+          // For area, check if it's length^2
+          if (checkType === "area") {
+            return {
+              type: "boolean",
+              value: value.dimensions.length?.exponent === 2,
+            };
+          }
+          return { type: "boolean", value: true };
+        }
+
+        // Special check for volume as length^3 (for cubic units)
+        if (checkType === "volume" && value.dimensions.length?.exponent === 3) {
+          return { type: "boolean", value: true };
+        }
       }
       return { type: "boolean", value: false };
 
@@ -1757,30 +1983,8 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
 
   switch (left.type) {
     case "number":
-      // If both have units and they're different, try to convert
-      if (
-        left.unit &&
-        (right as typeof left).unit &&
-        left.unit !== (right as typeof left).unit
-      ) {
-        try {
-          const rightUnit = (right as typeof left).unit;
-          if (rightUnit) {
-            const convertedRight = convertUnits(
-              (right as typeof left).value,
-              rightUnit,
-              left.unit
-            );
-            return Math.abs(left.value - convertedRight) < 1e-10; // Allow for floating point errors
-          }
-        } catch {
-          return false; // Units not compatible
-        }
-      }
-      return (
-        left.value === (right as typeof left).value &&
-        left.unit === (right as typeof left).unit
-      );
+      // Plain numbers without units
+      return left.value === (right as typeof left).value;
     case "string":
       return left.value === (right as typeof left).value;
     case "boolean":
@@ -1816,6 +2020,26 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
       }
       return true;
     }
+    case "quantity": {
+      const rightQuantity = right as typeof left;
+      // Check if values are equal after unit conversion
+      if (!areDimensionsCompatible(left.dimensions, rightQuantity.dimensions)) {
+        return false;
+      }
+      // Convert right to left's units and compare
+      try {
+        const convertedRight = convertCompoundUnit(
+          rightQuantity.value,
+          rightQuantity.dimensions,
+          left.dimensions
+        );
+        return Math.abs(left.value - convertedRight) < 1e-10; // Allow for floating point errors
+      } catch {
+        return false;
+      }
+    }
+    case "percentage":
+      return left.value === (right as typeof left).value;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -1832,28 +2056,7 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
 
   switch (left.type) {
     case "number":
-      // Handle unit conversion if needed
-      if (
-        left.unit &&
-        (right as typeof left).unit &&
-        left.unit !== (right as typeof left).unit
-      ) {
-        try {
-          const rightUnit = (right as typeof left).unit;
-          if (rightUnit) {
-            const convertedRight = convertUnits(
-              (right as typeof left).value,
-              rightUnit,
-              left.unit
-            );
-            return left.value < convertedRight;
-          }
-        } catch {
-          throw new Error(
-            `Cannot compare ${left.unit} with ${(right as typeof left).unit}`
-          );
-        }
-      }
+      // Plain numbers without units
       return left.value < (right as typeof left).value;
     case "string":
       return left.value < (right as typeof left).value;
@@ -1866,6 +2069,28 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
     case "array":
     case "object":
       throw new Error(`Cannot compare ${left.type} values with < operator`);
+    case "quantity": {
+      const rightQuantity = right as typeof left;
+      // Check if dimensions are compatible
+      if (!areDimensionsCompatible(left.dimensions, rightQuantity.dimensions)) {
+        throw new Error(
+          "Cannot compare quantities with incompatible dimensions"
+        );
+      }
+      // Convert right to left's units and compare
+      try {
+        const convertedRight = convertCompoundUnit(
+          rightQuantity.value,
+          rightQuantity.dimensions,
+          left.dimensions
+        );
+        return left.value < convertedRight;
+      } catch {
+        throw new Error("Cannot compare quantities with different units");
+      }
+    }
+    case "percentage":
+      return left.value < (right as typeof left).value;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;

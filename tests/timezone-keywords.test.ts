@@ -147,9 +147,9 @@ describe("Timezone Keywords", () => {
       const variables = new Map<string, CalculatedValue>();
 
       const result = evaluate("12:00@tokyo - 12:00@utc", variables);
-      expect(result.type).toBe("number");
-      if (result.type === "number") {
-        expect(result.unit).toBe("seconds");
+      expect(result.type).toBe("quantity");
+      if (result.type === "quantity") {
+        expect(result.dimensions.time?.unit).toBe("s");
         // Tokyo is ahead of UTC, so 12:00 Tokyo is earlier than 12:00 UTC
         expect(result.value).toBeLessThan(0);
       }
@@ -159,10 +159,10 @@ describe("Timezone Keywords", () => {
       const variables = new Map<string, CalculatedValue>();
 
       const result = evaluate("now@tokyo - now@moscow", variables);
-      expect(result.type).toBe("number");
-      if (result.type === "number") {
+      expect(result.type).toBe("quantity");
+      if (result.type === "quantity") {
         expect(result.value).toBe(0);
-        expect(result.unit).toBe("seconds");
+        expect(result.dimensions.time?.unit).toBe("s");
       }
     });
 
@@ -170,9 +170,9 @@ describe("Timezone Keywords", () => {
       const variables = new Map<string, CalculatedValue>();
 
       const result = evaluate("(12:00@tokyo - 12:00@utc) in hours", variables);
-      expect(result.type).toBe("number");
-      if (result.type === "number") {
-        expect(result.unit).toBe("hours");
+      expect(result.type).toBe("quantity");
+      if (result.type === "quantity") {
+        expect(result.dimensions.time?.unit).toBe("hours");
         // Tokyo is UTC+9, so 12:00 Tokyo is 9 hours before 12:00 UTC
         expect(result.value).toBe(-9);
       }

@@ -54,8 +54,11 @@ describe("Cyrillic Variable Names", () => {
 
     evaluate("расстояние = 100", vars);
     const result = evaluate("расстояние * 1 km in meters", vars);
-    expect(result.value).toBe(100_000);
-    expect(result.type === "number" && result.unit).toBe("meters");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.value).toBe(100_000);
+      expect(result.dimensions.length?.unit).toBe("meters");
+    }
   });
 
   test("Cyrillic variables with date arithmetic", () => {

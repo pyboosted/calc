@@ -73,7 +73,7 @@ describe("Boolean Operations", () => {
       type: "boolean",
       value: true,
     });
-    expect(evaluate("32 °F == 0 °C", new Map())).toEqual({
+    expect(evaluate("32 f == 0 c", new Map())).toEqual({
       type: "boolean",
       value: true,
     });

@@ -330,7 +330,7 @@ export class CalculatorEngine {
 
     switch (a.type) {
       case "number":
-        return a.value === b.value && a.unit === (b as typeof a).unit;
+        return a.value === b.value;
       case "string":
         return a.value === (b as typeof a).value;
       case "date":
@@ -369,6 +369,17 @@ export class CalculatorEngine {
         }
         return true;
       }
+      case "quantity": {
+        const bQuantity = b as typeof a;
+        // For simplicity, quantities are equal if values and dimensions match exactly
+        // A more sophisticated check would consider unit conversions
+        return (
+          a.value === bQuantity.value &&
+          JSON.stringify(a.dimensions) === JSON.stringify(bQuantity.dimensions)
+        );
+      }
+      case "percentage":
+        return a.value === (b as typeof a).value;
       default: {
         // Exhaustive check
         const _exhaustiveCheck: never = a;

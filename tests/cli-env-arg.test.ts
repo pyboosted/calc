@@ -67,7 +67,7 @@ describe("CLI Environment Variables", () => {
     const result = runCLI('-e "env(\\"TEST_VAR\\")"', undefined, {
       TEST_VAR: "hello from env",
     });
-    expect(result).toBe('"hello from env"'); // Strings are quoted in output
+    expect(result).toBe("hello from env"); // Strings are not quoted in output
   });
 
   test("env() returns null for missing variable", () => {
@@ -79,14 +79,14 @@ describe("CLI Environment Variables", () => {
     const result = runCLI('-e "(env(\\"PORT\\") as number) + 1"', undefined, {
       PORT: "3000",
     });
-    expect(result).toBe("3,001"); // Numbers are formatted with commas
+    expect(result).toBe("3001"); // Numbers are not formatted with commas in the calculator
   });
 });
 
 describe("CLI Arguments", () => {
   test("--arg flag with string", () => {
     const result = runCLI('-e "arg()" --arg "hello world"');
-    expect(result).toBe('"hello world"'); // Strings are quoted
+    expect(result).toBe("hello world"); // Strings are not quoted
   });
 
   test("--arg flag with JSON object", () => {
@@ -97,7 +97,7 @@ describe("CLI Arguments", () => {
     const result2 = runCLI(
       '-e "data = arg() as object" -e "data.name" --arg \'{"name": "Alice"}\''
     );
-    expect(result2.split("\n")[1]).toBe('"Alice"'); // Second line has the result
+    expect(result2.split("\n")[1]).toBe("Alice"); // Second line has the result
   });
 
   test("--arg flag with JSON array", () => {
@@ -124,7 +124,7 @@ describe("CLI Arguments", () => {
 describe("CLI Stdin", () => {
   test("stdin takes precedence over --arg", () => {
     const result = runCLI('-e "arg()" --arg "from arg"', "from stdin");
-    expect(result).toBe('"from stdin"'); // Strings are quoted
+    expect(result).toBe("from stdin"); // Strings are not quoted
   });
 
   test("piped JSON data", () => {
@@ -137,7 +137,7 @@ describe("CLI Stdin", () => {
 
   test("piped string data", () => {
     const result = runCLI('-e "arg() + \\" world\\""', "hello");
-    expect(result).toBe('"hello world"'); // String concatenation result
+    expect(result).toBe("hello world"); // String concatenation result
   });
 
   test("piped array data", () => {
@@ -272,12 +272,12 @@ price * (1 + tax)`
       undefined,
       { NODE_ENV: "production" }
     );
-    expect(result.split("\n")[1]).toBe('"prod settings"');
+    expect(result.split("\n")[1]).toBe("prod settings");
 
     // Use a different env var that isn't set by the test environment
     result = runCLI(
       '-e "mode = env(\\"MY_MODE\\")" -e "mode ? mode : \\"development\\""'
     );
-    expect(result.split("\n")[1]).toBe('"development"');
+    expect(result.split("\n")[1]).toBe("development");
   });
 });

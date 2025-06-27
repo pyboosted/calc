@@ -11,7 +11,10 @@ describe("Date Arithmetic with Variables", () => {
     // test * 1 day should be 2 days
     const result1 = evaluate("test * 1 day", vars);
     expect(result1.value).toBe(2);
-    expect(result1.type === "number" && result1.unit).toBe("day");
+    expect(result1.type).toBe("quantity");
+    if (result1.type === "quantity") {
+      expect(result1.dimensions.time?.unit).toBe("day");
+    }
 
     // test * 1 day + today should add 2 days to today
     const result2 = evaluate("test * 1 day + today", vars);
@@ -87,6 +90,9 @@ describe("Date Arithmetic with Variables", () => {
     // x * 1 hour + 30 minutes should be 2.5 hours
     const result = evaluate("x * 1 hour + 30 minutes", vars);
     expect(result.value).toBe(2.5);
-    expect(result.type === "number" && result.unit).toBe("hour");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("hour");
+    }
   });
 });

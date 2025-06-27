@@ -57,13 +57,19 @@ describe("Variable Reassignment", () => {
     const variables = new Map();
 
     evaluate("dist = 100 m", variables);
-    expect(evaluate("dist", variables).value).toBe(100);
     const distResult1 = evaluate("dist", variables);
-    expect(distResult1.type === "number" && distResult1.unit).toBe("m");
+    expect(distResult1.type).toBe("quantity");
+    if (distResult1.type === "quantity") {
+      expect(distResult1.value).toBe(100);
+      expect(distResult1.dimensions.length?.unit).toBe("m");
+    }
 
     evaluate("dist = 5 km", variables);
-    expect(evaluate("dist", variables).value).toBe(5);
     const distResult2 = evaluate("dist", variables);
-    expect(distResult2.type === "number" && distResult2.unit).toBe("km");
+    expect(distResult2.type).toBe("quantity");
+    if (distResult2.type === "quantity") {
+      expect(distResult2.value).toBe(5);
+      expect(distResult2.dimensions.length?.unit).toBe("km");
+    }
   });
 });

@@ -88,72 +88,144 @@ describe("Aggregate Operations", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100, unit: "meters" },
-      { type: "number" as const, value: 200, unit: "meters" },
-      { type: "number" as const, value: 300, unit: "meters" },
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "meters" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 200,
+        dimensions: { length: { exponent: 1, unit: "meters" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 300,
+        dimensions: { length: { exponent: 1, unit: "meters" } },
+      },
     ];
 
     const result = evaluate("total", vars, { previousResults });
     expect(result.value).toBe(600);
-    expect(result.type === "number" && result.unit).toBe("meters");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("meters");
+    }
   });
 
   test("total with target unit conversion", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 1, unit: "km" },
-      { type: "number" as const, value: 500, unit: "m" },
-      { type: "number" as const, value: 100, unit: "cm" },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 500,
+        dimensions: { length: { exponent: 1, unit: "m" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "cm" } },
+      },
     ];
 
     const result = evaluate("total in m", vars, { previousResults });
     expect(result.value).toBe(1501); // 1000m + 500m + 1m
-    expect(result.type === "number" && result.unit).toBe("m");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("m");
+    }
   });
 
   test("average with target unit conversion", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100, unit: "km" },
-      { type: "number" as const, value: 50, unit: "km" },
-      { type: "number" as const, value: 30, unit: "km" },
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 50,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 30,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
     ];
 
     const result = evaluate("average in miles", vars, { previousResults });
     expect(result.value).toBeCloseTo(37.282, 2); // Average of 60 km in miles
-    expect(result.type === "number" && result.unit).toBe("miles");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("miles");
+    }
   });
 
   test("handles mixed compatible units without target", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100, unit: "km" },
-      { type: "number" as const, value: 50, unit: "miles" },
-      { type: "number" as const, value: 30, unit: "km" },
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 50,
+        dimensions: { length: { exponent: 1, unit: "miles" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 30,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
     ];
 
     // With mixed compatible units and no target, converts to first unit
     const result = evaluate("total", vars, { previousResults });
     expect(result.value).toBeCloseTo(210.47, 1); // 100km + 80.47km + 30km
-    expect(result.type === "number" && result.unit).toBe("km");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("km");
+    }
   });
 
   test("handles incompatible units without target", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100, unit: "km" },
-      { type: "number" as const, value: 50, unit: "kg" }, // Weight - incompatible with length
-      { type: "number" as const, value: 30, unit: "seconds" }, // Time - incompatible with both
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 50,
+        dimensions: { mass: { exponent: 1, unit: "kg" } },
+      }, // Weight - incompatible with length
+      {
+        type: "quantity" as const,
+        value: 30,
+        dimensions: { time: { exponent: 1, unit: "seconds" } },
+      }, // Time - incompatible with both
     ];
 
     // With incompatible units and no target, just sums raw values
     const result = evaluate("total", vars, { previousResults });
     expect(result.value).toBe(180);
-    expect(result.type === "number" && result.unit).toBeUndefined();
+    expect(result.type).toBe("number");
   });
 
   test("handles values with and without units", () => {
@@ -161,49 +233,88 @@ describe("Aggregate Operations", () => {
 
     const previousResults: CalculatedValue[] = [
       { type: "number" as const, value: 100 },
-      { type: "number" as const, value: 50, unit: "km" },
+      {
+        type: "quantity" as const,
+        value: 50,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
       { type: "number" as const, value: 25 },
     ];
 
     const result = evaluate("total", vars, { previousResults });
     expect(result.value).toBe(175);
-    expect(result.type === "number" && result.unit).toBe("km"); // Takes the first unit found
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("km");
+    } // Takes the first unit found
   });
 
   test("ignores incompatible units in conversion", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100, unit: "km" },
-      { type: "number" as const, value: 50, unit: "kg" }, // Weight - can't convert to km
-      { type: "number" as const, value: 30, unit: "km" },
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 50,
+        dimensions: { mass: { exponent: 1, unit: "kg" } },
+      }, // Weight - can't convert to km
+      {
+        type: "quantity" as const,
+        value: 30,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
     ];
 
     const result = evaluate("total in km", vars, { previousResults });
     expect(result.value).toBe(130); // Only sums compatible units
-    expect(result.type === "number" && result.unit).toBe("km");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("km");
+    }
   });
 
   test("parses total in unit syntax", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100, unit: "cm" },
-      { type: "number" as const, value: 200, unit: "cm" },
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { length: { exponent: 1, unit: "cm" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 200,
+        dimensions: { length: { exponent: 1, unit: "cm" } },
+      },
     ];
 
     // Test different syntax variations
     const result1 = evaluate("total in m", vars, { previousResults });
-    expect(result1.value).toBe(3);
-    expect(result1.type === "number" && result1.unit).toBe("m");
+    expect(result1.type).toBe("quantity");
+    if (result1.type === "quantity") {
+      expect(result1.value).toBe(3);
+      expect(result1.dimensions.length?.unit).toBe("m");
+    }
 
     const result2 = evaluate("total to m", vars, { previousResults });
-    expect(result2.value).toBe(3);
-    expect(result2.type === "number" && result2.unit).toBe("m");
+    expect(result2.type).toBe("quantity");
+    if (result2.type === "quantity") {
+      expect(result2.value).toBe(3);
+      expect(result2.dimensions.length?.unit).toBe("m");
+    }
 
     const result3 = evaluate("total as m", vars, { previousResults });
-    expect(result3.value).toBe(3);
-    expect(result3.type === "number" && result3.unit).toBe("m");
+    expect(result3.type).toBe("quantity");
+    if (result3.type === "quantity") {
+      expect(result3.value).toBe(3);
+      expect(result3.dimensions.length?.unit).toBe("m");
+    }
   });
 
   test("smart total adds time periods to dates", () => {
@@ -214,9 +325,21 @@ describe("Aggregate Operations", () => {
 
     const previousResults: CalculatedValue[] = [
       { type: "date" as const, value: testDate },
-      { type: "number" as const, value: 2, unit: "days" },
-      { type: "number" as const, value: 1, unit: "day" },
-      { type: "number" as const, value: 1, unit: "hour" },
+      {
+        type: "quantity" as const,
+        value: 2,
+        dimensions: { time: { exponent: 1, unit: "days" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { time: { exponent: 1, unit: "day" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { time: { exponent: 1, unit: "hour" } },
+      },
     ];
 
     const result = evaluate("total", vars, { previousResults });
@@ -237,10 +360,26 @@ describe("Aggregate Operations", () => {
 
     const previousResults: CalculatedValue[] = [
       { type: "date" as const, value: testDate },
-      { type: "number" as const, value: 1, unit: "week" },
-      { type: "number" as const, value: 3, unit: "hours" },
-      { type: "number" as const, value: 30, unit: "minutes" },
-      { type: "number" as const, value: 45, unit: "seconds" },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { time: { exponent: 1, unit: "week" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 3,
+        dimensions: { time: { exponent: 1, unit: "hours" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 30,
+        dimensions: { time: { exponent: 1, unit: "minutes" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 45,
+        dimensions: { time: { exponent: 1, unit: "seconds" } },
+      },
     ];
 
     const result = evaluate("total", vars, { previousResults });
@@ -259,16 +398,31 @@ describe("Aggregate Operations", () => {
 
     // Only time periods, no date
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 2, unit: "days" },
-      { type: "number" as const, value: 1, unit: "day" },
-      { type: "number" as const, value: 24, unit: "hours" },
+      {
+        type: "quantity" as const,
+        value: 2,
+        dimensions: { time: { exponent: 1, unit: "days" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { time: { exponent: 1, unit: "day" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 24,
+        dimensions: { time: { exponent: 1, unit: "hours" } },
+      },
     ];
 
     const result = evaluate("total", vars, { previousResults });
 
     // Should sum to 4 days total (2 + 1 + 1)
     expect(result.value).toBe(4);
-    expect(result.type === "number" && result.unit).toBe("days");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("days");
+    }
   });
 
   test("smart total requires exactly one date", () => {
@@ -281,14 +435,21 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       { type: "date" as const, value: date1 },
       { type: "date" as const, value: date2 },
-      { type: "number" as const, value: 1, unit: "day" },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { time: { exponent: 1, unit: "day" } },
+      },
     ];
 
     const result = evaluate("total", vars, { previousResults });
 
     // Should only sum the numeric values (1 day), ignoring the dates
     expect(result.value).toBe(1);
-    expect(result.type === "number" && result.unit).toBe("day");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("day");
+    }
   });
 
   test("smart total respects target unit specification", () => {
@@ -298,8 +459,16 @@ describe("Aggregate Operations", () => {
 
     const previousResults: CalculatedValue[] = [
       { type: "date" as const, value: testDate },
-      { type: "number" as const, value: 1, unit: "day" },
-      { type: "number" as const, value: 24, unit: "hours" },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { time: { exponent: 1, unit: "day" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 24,
+        dimensions: { time: { exponent: 1, unit: "hours" } },
+      },
     ];
 
     // When target unit is specified, use regular behavior
@@ -307,6 +476,63 @@ describe("Aggregate Operations", () => {
 
     // Should convert everything to hours
     expect(result.value).toBe(48); // 1 day + 24 hours = 48 hours
-    expect(result.type === "number" && result.unit).toBe("hours");
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("hours");
+    }
+  });
+
+  test("agg collects values into array", () => {
+    const vars = new Map();
+
+    const previousResults: CalculatedValue[] = [
+      {
+        type: "quantity" as const,
+        value: 100,
+        dimensions: { currency: { exponent: 1, code: "EUR" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 200,
+        dimensions: { currency: { exponent: 1, code: "RUB" } },
+      },
+      {
+        type: "quantity" as const,
+        value: 1,
+        dimensions: { length: { exponent: 1, unit: "km" } },
+      },
+      { type: "string" as const, value: "hello" },
+      { type: "number" as const, value: 42 },
+    ];
+
+    const result = evaluate("agg", vars, { previousResults });
+    expect(result.type).toBe("array");
+    if (result.type === "array") {
+      expect(result.value).toHaveLength(5);
+      expect(result.value[0]?.type).toBe("quantity");
+      expect(result.value[3]?.type).toBe("string");
+      expect(result.value[4]?.type).toBe("number");
+    }
+  });
+
+  test("aggregate is alias for agg", () => {
+    const vars = new Map();
+
+    const previousResults: CalculatedValue[] = [
+      { type: "number" as const, value: 1 },
+      { type: "number" as const, value: 2 },
+      { type: "number" as const, value: 3 },
+    ];
+
+    const result = evaluate("aggregate", vars, { previousResults });
+    expect(result.type).toBe("array");
+    if (result.type === "array") {
+      expect(result.value).toHaveLength(3);
+      expect(
+        result.value.map((el: CalculatedValue) =>
+          el.type === "number" ? el.value : null
+        )
+      ).toEqual([1, 2, 3]);
+    }
   });
 });

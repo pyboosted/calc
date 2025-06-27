@@ -50,14 +50,20 @@ describe("Timezone Support", () => {
       "12:15@moscow - 10:00@moscow in minutes",
       new Map()
     );
-    expect(result.type === "number" && result.unit).toBe("minutes");
-    expect(result.value).toBe(135); // 2 hours 15 minutes = 135 minutes
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("minutes");
+      expect(result.value).toBe(135); // 2 hours 15 minutes = 135 minutes
+    }
   });
 
   test("time subtraction returns seconds by default", () => {
     const result = evaluate("12:15 - 10:00", new Map());
-    expect(result.type === "number" && result.unit).toBe("seconds");
-    expect(result.value).toBe(8100); // 2 hours 15 minutes = 8100 seconds
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("s");
+      expect(result.value).toBe(8100); // 2 hours 15 minutes = 8100 seconds
+    }
   });
 
   test("datetime with timezone", () => {
@@ -143,8 +149,9 @@ describe("Timezone Support", () => {
 
   test("time conversion with single letter timezone", () => {
     // Should reject invalid single letter timezones
+    // "m" is treated as a unit (meters), not a timezone, so we get a conversion error
     expect(() => evaluate("10:00 to m", new Map())).toThrow(
-      "Invalid timezone: m"
+      "Cannot convert date to m"
     );
 
     // But valid timezones should work
@@ -158,8 +165,11 @@ describe("Timezone Support", () => {
   test("unit conversion still works for non-time values", () => {
     // Regular unit conversion should still work
     const result = evaluate("100 cm to m", new Map());
-    expect(result.type === "number" && result.unit).toBe("m");
-    expect(result.value).toBe(1);
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("m");
+      expect(result.value).toBe(1);
+    }
   });
 
   test("incomplete timezone conversion does not crash", () => {
@@ -214,7 +224,10 @@ describe("Timezone Support", () => {
     // Variable with unit should still do unit conversion
     evaluate("distance = 100 km", variables);
     const result3 = evaluate("distance in miles", variables);
-    expect(result3.type === "number" && result3.unit).toBe("miles");
-    expect(result3.value).toBeCloseTo(62.137, 2);
+    expect(result3.type).toBe("quantity");
+    if (result3.type === "quantity") {
+      expect(result3.dimensions.length?.unit).toBe("miles");
+      expect(result3.value).toBeCloseTo(62.137, 2);
+    }
   });
 });

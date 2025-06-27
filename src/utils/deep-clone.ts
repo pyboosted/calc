@@ -8,7 +8,7 @@ export function deepCloneCalculatedValue(
 ): CalculatedValue {
   switch (value.type) {
     case "number":
-      return { type: "number", value: value.value, unit: value.unit };
+      return { type: "number", value: value.value };
 
     case "string":
       return { type: "string", value: value.value };
@@ -39,6 +39,16 @@ export function deepCloneCalculatedValue(
       });
       return { type: "object", value: clonedMap };
     }
+
+    case "quantity":
+      return {
+        type: "quantity",
+        value: value.value,
+        dimensions: { ...value.dimensions }, // Shallow clone of dimensions is sufficient
+      };
+
+    case "percentage":
+      return { type: "percentage", value: value.value };
 
     default: {
       // This should never happen if all cases are covered

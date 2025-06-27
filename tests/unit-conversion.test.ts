@@ -21,8 +21,8 @@ describe("Unit Conversions", () => {
     [
       "Temperature",
       [
-        ["0 celsius in fahrenheit", 32, "fahrenheit", 0],
-        ["32 fahrenheit in celsius", 0, "celsius", 0],
+        ["0 celsius in fahrenheit", 32, "fahrenheit", 10], // Use precision for floating point
+        ["32 fahrenheit in celsius", 0, "celsius", 10], // Use precision for floating point
       ],
     ],
     [
@@ -51,7 +51,21 @@ describe("Unit Conversions", () => {
           expect(result.value).toBe(expectedValue);
         }
 
-        expect(result.type === "number" && result.unit).toBe(expectedUnit);
+        expect(result.type).toBe("quantity");
+        if (result.type === "quantity") {
+          // Find which dimension has the unit
+          for (const [_dim, info] of Object.entries(result.dimensions)) {
+            if (info && "unit" in info && info.unit === expectedUnit) {
+              expect(info.unit).toBe(expectedUnit);
+              return;
+            }
+            if (info && "code" in info && info.code === expectedUnit) {
+              expect(info.code).toBe(expectedUnit);
+              return;
+            }
+          }
+          throw new Error(`Expected unit ${expectedUnit} not found in result`);
+        }
       }
     );
   });

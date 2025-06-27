@@ -12,9 +12,14 @@ export interface HistoryEntry {
   result: CalculatedValue;
 }
 
+// Import dimension types
+import type { DimensionMap } from "../evaluator/dimensions";
+
 // Discriminated union type for all calculated values
 export type CalculatedValue =
-  | { type: "number"; value: number; unit?: string }
+  | { type: "number"; value: number } // Pure numbers only, no units
+  | { type: "percentage"; value: number } // Special type for percentages
+  | { type: "quantity"; value: number; dimensions: DimensionMap }
   | { type: "string"; value: string }
   | { type: "date"; value: Date; timezone?: string }
   | { type: "boolean"; value: boolean }
@@ -118,7 +123,7 @@ export interface AssignmentNode {
 
 export interface AggregateNode {
   type: "aggregate";
-  operation: "total" | "average";
+  operation: "total" | "average" | "agg";
   targetUnit?: string;
 }
 

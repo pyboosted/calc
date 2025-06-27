@@ -92,12 +92,18 @@ describe("Calculator Engine Variable Reassignment", () => {
     engine.updateLine(1, "dist");
 
     let lines = engine.getLines();
-    expect(lines[0]?.result?.value).toBe(100);
     const result0 = lines[0]?.result;
-    expect(result0?.type === "number" && result0?.unit).toBe("m");
-    expect(lines[1]?.result?.value).toBe(100);
+    expect(result0?.type).toBe("quantity");
+    if (result0?.type === "quantity") {
+      expect(result0.value).toBe(100);
+      expect(result0.dimensions.length?.unit).toBe("m");
+    }
     const result1 = lines[1]?.result;
-    expect(result1?.type === "number" && result1?.unit).toBe("m");
+    expect(result1?.type).toBe("quantity");
+    if (result1?.type === "quantity") {
+      expect(result1.value).toBe(100);
+      expect(result1.dimensions.length?.unit).toBe("m");
+    }
 
     // Reassign with different unit
     engine.insertLine(2);
@@ -106,11 +112,17 @@ describe("Calculator Engine Variable Reassignment", () => {
     engine.updateLine(3, "dist");
 
     lines = engine.getLines();
-    expect(lines[2]?.result?.value).toBe(5);
     const result2 = lines[2]?.result;
-    expect(result2?.type === "number" && result2?.unit).toBe("km");
-    expect(lines[3]?.result?.value).toBe(5);
+    expect(result2?.type).toBe("quantity");
+    if (result2?.type === "quantity") {
+      expect(result2.value).toBe(5);
+      expect(result2.dimensions.length?.unit).toBe("km");
+    }
     const result3 = lines[3]?.result;
-    expect(result3?.type === "number" && result3?.unit).toBe("km");
+    expect(result3?.type).toBe("quantity");
+    if (result3?.type === "quantity") {
+      expect(result3.value).toBe(5);
+      expect(result3.dimensions.length?.unit).toBe("km");
+    }
   });
 });

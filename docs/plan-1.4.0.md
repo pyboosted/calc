@@ -1,4 +1,6 @@
-# Plan for Version 1.3.9: Dimensional Analysis and Compound Units
+# Plan for Version 1.4.0: Dimensional Analysis and Compound Units
+
+## Status: COMPLETED ✅
 
 ## Overview
 
@@ -674,4 +676,4 @@ e = 1.602e-19 C  # Elementary charge
 
 ## Version Notes
 
-This will be version 1.3.9, building on the type checking features from 1.3.1 and preparing the calculator for scientific and engineering use cases.
+This will be version 1.4.0, building on the type checking features from 1.3.9 and preparing the calculator for scientific and engineering use cases.

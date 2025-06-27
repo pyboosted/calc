@@ -105,7 +105,11 @@ describe("Type Checking with 'is' keyword", () => {
     vars.set("num", { type: "number", value: 100 });
     vars.set("str", { type: "string", value: "hello" });
     vars.set("date", { type: "date", value: new Date() });
-    vars.set("currency", { type: "number", value: 50, unit: "usd" });
+    vars.set("currency", {
+      type: "quantity",
+      value: 50,
+      dimensions: { currency: { exponent: 1, code: "usd" } },
+    });
 
     expect(evaluate("num is number", vars).value).toBe(true);
     expect(evaluate("str is string", vars).value).toBe(true);
@@ -164,19 +168,27 @@ describe("Type inspection functions", () => {
   test("type functions with variables", () => {
     const vars = new Map();
 
-    vars.set("price", { type: "number", value: 99.99, unit: "usd" });
+    vars.set("price", {
+      type: "quantity",
+      value: 99.99,
+      dimensions: { currency: { exponent: 1, code: "usd" } },
+    });
     vars.set("meeting", { type: "date", value: new Date(), timezone: "ny" });
 
     expect(evaluate("unit(price)", vars).value).toBe("usd");
     expect(evaluate("timezone(meeting)", vars).value).toBe("ny");
-    expect(evaluate("type(price)", vars).value).toBe("number");
+    expect(evaluate("type(price)", vars).value).toBe("quantity");
   });
 });
 
 describe("Type checking in expressions", () => {
   test("type checking in conditional expressions", () => {
     const vars = new Map();
-    vars.set("value", { type: "number", value: 100, unit: "usd" });
+    vars.set("value", {
+      type: "quantity",
+      value: 100,
+      dimensions: { currency: { exponent: 1, code: "usd" } },
+    });
 
     // Using type checks in ternary
     const result = evaluate(
@@ -186,7 +198,7 @@ describe("Type checking in expressions", () => {
     expect(result.value).toBe("It's money!");
 
     // Using type checks with logical operators
-    const result2 = evaluate("value is number and value is currency", vars);
+    const result2 = evaluate("value is quantity and value is currency", vars);
     expect(result2.value).toBe(true);
   });
 

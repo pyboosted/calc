@@ -82,6 +82,7 @@ export const unitDefinitions: Record<string, UnitDefinition> = {
   liter: { baseUnit: "liter", factor: 1 },
   liters: { baseUnit: "liter", factor: 1 },
   l: { baseUnit: "liter", factor: 1 },
+  L: { baseUnit: "liter", factor: 1 },
   milliliter: { baseUnit: "liter", factor: 0.001 },
   milliliters: { baseUnit: "liter", factor: 0.001 },
   ml: { baseUnit: "liter", factor: 0.001 },
@@ -135,22 +136,85 @@ export const unitDefinitions: Record<string, UnitDefinition> = {
   gibibyte: { baseUnit: "byte", factor: 1_073_741_824 },
   gibibytes: { baseUnit: "byte", factor: 1_073_741_824 },
   gib: { baseUnit: "byte", factor: 1_073_741_824 },
+
+  // Electric current - base unit: ampere
+  ampere: { baseUnit: "ampere", factor: 1 },
+  amperes: { baseUnit: "ampere", factor: 1 },
+  amp: { baseUnit: "ampere", factor: 1 },
+  amps: { baseUnit: "ampere", factor: 1 },
+  A: { baseUnit: "ampere", factor: 1 },
+  milliampere: { baseUnit: "ampere", factor: 0.001 },
+  milliamperes: { baseUnit: "ampere", factor: 0.001 },
+  milliamp: { baseUnit: "ampere", factor: 0.001 },
+  milliamps: { baseUnit: "ampere", factor: 0.001 },
+  mA: { baseUnit: "ampere", factor: 0.001 },
 };
 
 // Temperature units (special handling required)
 export const temperatureUnits = [
   "celsius",
   "c",
+  "C",
   "fahrenheit",
   "f",
+  "F",
   "kelvin",
   "k",
+  "K",
 ];
+
+// Derived units that map to compound units
+export const derivedUnits: Record<string, string> = {
+  // Frequency
+  Hz: "s^-1",
+  hz: "s^-1",
+  hertz: "s^-1",
+
+  // Force
+  N: "kg*m*s^-2",
+  newton: "kg*m*s^-2",
+  newtons: "kg*m*s^-2",
+
+  // Pressure
+  Pa: "kg*m^-1*s^-2",
+  pa: "kg*m^-1*s^-2",
+  pascal: "kg*m^-1*s^-2",
+  pascals: "kg*m^-1*s^-2",
+
+  // Energy
+  J: "kg*m^2*s^-2",
+  joule: "kg*m^2*s^-2",
+  joules: "kg*m^2*s^-2",
+
+  // Power
+  W: "kg*m^2*s^-3",
+  watt: "kg*m^2*s^-3",
+  watts: "kg*m^2*s^-3",
+
+  // Electric charge
+  C: "A*s",
+  coulomb: "A*s",
+  coulombs: "A*s",
+
+  // Voltage
+  V: "kg*m^2*s^-3*A^-1",
+  volt: "kg*m^2*s^-3*A^-1",
+  volts: "kg*m^2*s^-3*A^-1",
+
+  // Resistance (using Ohm instead of Ω for input)
+  Ohm: "kg*m^2*s^-3*A^-2",
+  ohm: "kg*m^2*s^-3*A^-2",
+  ohms: "kg*m^2*s^-3*A^-2",
+};
 
 // Helper functions
 export function isUnit(value: string): boolean {
   const lower = value.toLowerCase();
-  return lower in unitDefinitions || temperatureUnits.includes(lower);
+  return (
+    lower in unitDefinitions ||
+    temperatureUnits.includes(lower) ||
+    value in derivedUnits
+  );
 }
 
 export function isTemperature(unit: string): boolean {

@@ -1,7 +1,86 @@
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { Box, Text } from "ink";
 import type React from "react";
-import { formatUnit } from "../evaluator/unit-formatter";
 import type { CalculatedValue } from "../types";
+import { TimezoneManager } from "../utils/timezone-manager";
+
+// Performance optimization: Move regex to module level
+const UTC_OFFSET_PATTERN = /^utc([+-]\d+)$/i;
+const ISO_DATE_TIME_PATTERN =
+  /(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})/;
+
+function formatDate(date: Date, timezone?: string): string {
+  // Helper to get the appropriate timezone name for formatting
+  const getTimezoneForFormatting = (tz: string | undefined): string => {
+    if (!tz || tz === "local") {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+
+    if (tz === "utc") {
+      return "UTC";
+    }
+
+    // Handle UTC offset formats
+    const utcOffsetMatch = tz.match(UTC_OFFSET_PATTERN);
+    if (utcOffsetMatch) {
+      const offset = Number.parseInt(utcOffsetMatch[1] || "0", 10);
+      const absOffset = Math.abs(offset);
+      // Note: Etc/GMT zones have inverted signs
+      return `Etc/GMT${offset > 0 ? "-" : "+"}${absOffset}`;
+    }
+
+    // Try to get the IANA timezone name
+    const timezoneManager = TimezoneManager.getInstance();
+    const ianaTimezone = timezoneManager.getTimezone(tz);
+    return ianaTimezone || tz;
+  };
+
+  try {
+    const tzName = getTimezoneForFormatting(timezone);
+
+    // Format with full precision first to check components
+    const fullFormatted =
+      timezone && timezone !== "local"
+        ? formatInTimeZone(date, tzName, "yyyy-MM-dd'T'HH:mm:ss.SSS")
+        : format(date, "yyyy-MM-dd'T'HH:mm:ss.SSS");
+
+    // Parse the formatted string to check time components
+    const match = fullFormatted.match(ISO_DATE_TIME_PATTERN);
+
+    if (match) {
+      const [, datePart, h, m, s, ms] = match;
+      const hours = Number.parseInt(h || "0", 10);
+      const minutes = Number.parseInt(m || "0", 10);
+      const seconds = Number.parseInt(s || "0", 10);
+      const milliseconds = Number.parseInt(ms || "0", 10);
+
+      let formattedDate: string;
+      if (hours === 0 && minutes === 0 && seconds === 0 && milliseconds === 0) {
+        formattedDate = datePart || "";
+      } else if (seconds === 0 && milliseconds === 0) {
+        formattedDate = `${datePart}T${h}:${m}`;
+      } else if (milliseconds === 0) {
+        formattedDate = `${datePart}T${h}:${m}:${s}`;
+      } else {
+        formattedDate = fullFormatted;
+      }
+
+      // Add timezone suffix
+      const displayTz = timezone || "local";
+      return `${formattedDate}@${displayTz}`;
+    }
+
+    // Fallback
+    const displayTz = timezone || "local";
+    return `${fullFormatted}@${displayTz}`;
+  } catch {
+    // Error fallback
+    const formatted = format(date, "yyyy-MM-dd'T'HH:mm:ss.SSS");
+    const displayTz = timezone || "local";
+    return `${formatted}@${displayTz}`;
+  }
+}
 
 interface DisplayProps {
   result: CalculatedValue | null;
@@ -38,13 +117,10 @@ function formatResult(result: CalculatedValue): string {
       return `"${result.value}"`;
     case "number": {
       const formattedNumber = formatNumber(result.value);
-      if (result.unit) {
-        return `${formattedNumber} ${formatUnit(result.unit)}`;
-      }
       return formattedNumber;
     }
     case "date":
-      return result.value.toISOString();
+      return formatDate(result.value, result.timezone);
     case "boolean":
       return result.value ? "true" : "false";
     case "null":
@@ -53,6 +129,12 @@ function formatResult(result: CalculatedValue): string {
       return formatArray(result.value);
     case "object":
       return formatObject(result.value);
+    case "quantity": {
+      const { formatQuantity } = require("../evaluator/unit-formatter");
+      return formatQuantity(result.value, result.dimensions);
+    }
+    case "percentage":
+      return `${formatNumber(result.value)}%`;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = result;

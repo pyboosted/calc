@@ -30,16 +30,14 @@ describe("Mathematical Functions", () => {
 
 describe("Percentage Calculations", () => {
   test.each([
-    ["20%", 20, "%"],
-    ["100 + 10%", 110, undefined],
-    ["100 - 10%", 90, undefined],
-    ["20% of 100", 20, undefined],
-  ])("%s", (expression, expectedValue, expectedUnit) => {
+    ["20%", 20, "percentage" as const],
+    ["100 + 10%", 110, "number" as const],
+    ["100 - 10%", 90, "number" as const],
+    ["20% of 100", 20, "number" as const],
+  ])("%s", (expression, expectedValue, expectedType) => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBe(expectedValue);
-    if (expectedUnit !== undefined) {
-      expect(result.type === "number" && result.unit).toBe(expectedUnit);
-    }
+    expect(result.type).toBe(expectedType);
   });
 });
 
@@ -67,18 +65,23 @@ describe("Variables", () => {
 
 describe("Inline Comments", () => {
   test.each([
-    ["2 + 3 # this is a comment", 5, undefined],
-    ["5 * 4 # multiply five by four", 20, undefined],
-    ["10 + 5 # 10 + 5 = 15", 15, undefined],
-    ["100 - 10% # apply discount", 90, undefined],
-    ["sqrt(16) # square root of 16", 4, undefined],
-    ["2 * 3 # result: 6! (factorial notation in comment)", 6, undefined],
-    ["5 m # five meters", 5, "m"],
-  ])("%s", (expression, expectedValue, expectedUnit) => {
+    ["2 + 3 # this is a comment", 5, "number" as const],
+    ["5 * 4 # multiply five by four", 20, "number" as const],
+    ["10 + 5 # 10 + 5 = 15", 15, "number" as const],
+    ["100 - 10% # apply discount", 90, "number" as const],
+    ["sqrt(16) # square root of 16", 4, "number" as const],
+    [
+      "2 * 3 # result: 6! (factorial notation in comment)",
+      6,
+      "number" as const,
+    ],
+    ["5 m # five meters", 5, "quantity" as const],
+  ])("%s", (expression, expectedValue, expectedType) => {
     const result = evaluate(expression, new Map());
     expect(result.value).toBe(expectedValue);
-    if (expectedUnit !== undefined) {
-      expect(result.type === "number" && result.unit).toBe(expectedUnit);
+    expect(result.type).toBe(expectedType);
+    if (expectedType === "quantity" && result.type === "quantity") {
+      expect(result.dimensions.length?.unit).toBe("m");
     }
   });
 

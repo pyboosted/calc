@@ -30,8 +30,9 @@ describe("Date Literals", () => {
     );
 
     const result = evaluate("25/07/2025 - today in days", new Map());
-    expect(result.type === "number" && result.unit).toBe("days");
-    if (result.type === "number") {
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("days");
       // Allow for a day difference due to time zones and execution time
       expect(Math.abs(result.value - expectedDays)).toBeLessThanOrEqual(1);
     }
@@ -50,8 +51,10 @@ describe("Date Literals", () => {
   test("decimal number is not parsed as date", () => {
     // This should be parsed as a decimal number, not a date
     const result = evaluate("25.13", new Map());
-    expect(result.type === "number" && result.unit).toBeUndefined();
-    expect(result.value).toBeCloseTo(25.13);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(result.value).toBeCloseTo(25.13);
+    }
   });
 
   test("date with single digit day and month", () => {
@@ -66,15 +69,21 @@ describe("Date Literals", () => {
 
   test("complex date expression", () => {
     const result = evaluate("(25.07.2025 - 01.01.2025) in days", new Map());
-    expect(result.type === "number" && result.unit).toBe("days");
-    expect(result.value).toBe(205); // Days between Jan 1 and July 25
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("days");
+      expect(result.value).toBe(205); // Days between Jan 1 and July 25
+    }
   });
 
   test("date literal with variables", () => {
     const variables = new Map();
     evaluate("birthday = 25.10.1988", variables);
     const result = evaluate("today - birthday in days", variables);
-    expect(result.type === "number" && result.unit).toBe("days");
-    expect(result.value).toBeGreaterThan(12_000); // At least 12000 days old
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.dimensions.time?.unit).toBe("days");
+      expect(result.value).toBeGreaterThan(12_000); // At least 12000 days old
+    }
   });
 });

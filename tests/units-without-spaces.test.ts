@@ -18,8 +18,25 @@ describe("Units Without Spaces", () => {
     ["10eur", 10, "EUR"],
   ])("parses %s correctly", (expression, expectedValue, expectedUnit) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBe(expectedValue);
-    expect(result.type === "number" && result.unit).toBe(expectedUnit);
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.value).toBe(expectedValue);
+
+      // Determine the dimension based on the unit
+      if (
+        expectedUnit === "USD" ||
+        expectedUnit === "EUR" ||
+        expectedUnit === "GBP"
+      ) {
+        expect(result.dimensions.currency?.code).toBe(expectedUnit);
+      } else if (expectedUnit === "kg" || expectedUnit === "kilograms") {
+        expect(result.dimensions.mass?.unit).toBe(expectedUnit);
+      } else if (expectedUnit === "m" || expectedUnit === "meters") {
+        expect(result.dimensions.length?.unit).toBe(expectedUnit);
+      } else if (expectedUnit === "l") {
+        expect(result.dimensions.volume?.unit).toBe(expectedUnit);
+      }
+    }
   });
 
   test.each([
@@ -28,21 +45,30 @@ describe("Units Without Spaces", () => {
     ["5m+20cm", 5.2, "m"],
   ])("compound expression: %s", (expression, expectedValue, expectedUnit) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBeCloseTo(expectedValue);
-    expect(result.type === "number" && result.unit).toBe(expectedUnit);
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(result.value).toBeCloseTo(expectedValue);
+
+      // Determine the dimension based on the unit
+      if (expectedUnit === "d") {
+        expect(result.dimensions.time?.unit).toBe(expectedUnit);
+      } else if (expectedUnit === "kg") {
+        expect(result.dimensions.mass?.unit).toBe(expectedUnit);
+      } else if (expectedUnit === "m") {
+        expect(result.dimensions.length?.unit).toBe(expectedUnit);
+      }
+    }
   });
 
   test.each([
     ["1e5", 100_000, undefined],
     ["1.5e10", 15_000_000_000, undefined],
     ["2e-3", 0.002, undefined],
-  ])("scientific notation: %s", (expression, expectedValue, expectedUnit) => {
+  ])("scientific notation: %s", (expression, expectedValue, _expectedUnit) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBe(expectedValue);
-    if (expectedUnit !== undefined) {
-      expect(result.type === "number" && result.unit).toBe(expectedUnit);
-    } else {
-      expect(result.type === "number" && result.unit).toBeUndefined();
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(result.value).toBe(expectedValue);
     }
   });
 });
