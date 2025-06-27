@@ -380,6 +380,9 @@ export class CalculatorEngine {
       }
       case "percentage":
         return a.value === (b as typeof a).value;
+      case "function":
+        // Functions are considered equal if they have the same name
+        return a.value.name === (b as typeof a).value.name;
       default: {
         // Exhaustive check
         const _exhaustiveCheck: never = a;

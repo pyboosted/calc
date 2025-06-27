@@ -135,6 +135,8 @@ function formatResult(result: CalculatedValue): string {
     }
     case "percentage":
       return `${formatNumber(result.value)}%`;
+    case "function":
+      return `<function ${result.value.name}(${result.value.parameters.join(", ")})>`;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = result;

@@ -488,6 +488,9 @@ export function formatResultWithUnit(
     case "percentage":
       return `${value.value}%`;
 
+    case "function":
+      return `<function ${value.value.name}(${value.value.parameters.join(", ")})>`;
+
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;

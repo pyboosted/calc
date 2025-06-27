@@ -15,6 +15,7 @@ import type {
   DateNode,
   DateOperationNode,
   DateTimeNode,
+  FunctionInfo,
   FunctionNode,
   IndexAccessNode,
   LogicalNode,
@@ -78,6 +79,9 @@ const MATH_CONSTANTS_VALUES: Record<string, number> = {
   e: Math.E,
 };
 
+// Maximum recursion depth for user-defined functions
+const MAX_RECURSION_DEPTH = 1000;
+
 function isTimePeriodUnit(unit: string | undefined): boolean {
   if (!unit) {
     return false;
@@ -140,6 +144,7 @@ export interface EvaluationContext {
   debugMode?: boolean;
   stdinData?: string;
   cliArg?: string;
+  callStack?: Map<string, number>; // Track recursion depth per function
 }
 
 export function evaluate(
@@ -307,6 +312,8 @@ function isTruthy(value: CalculatedValue): boolean {
       return value.value.size > 0;
     case "quantity":
       return value.value !== 0; // Quantities are truthy if non-zero
+    case "function":
+      return true; // Functions are always truthy
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;
@@ -479,6 +486,13 @@ function valueToJSON(value: CalculatedValue): JSONValue {
         type: "quantity",
         value: value.value,
         dimensions: value.dimensions,
+      };
+    case "function":
+      // Convert function to object representation
+      return {
+        type: "function",
+        name: value.value.name,
+        parameters: value.value.parameters,
       };
     default: {
       const _exhaustiveCheck: never = value;
@@ -665,12 +679,71 @@ function evaluateStringFunction(
   }
 }
 
+function evaluateUserFunction(
+  funcDef: { type: "function"; value: FunctionInfo },
+  args: ASTNode[],
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const func = funcDef.value;
+
+  // Evaluate arguments
+  const evaluatedArgs = args.map((arg) =>
+    evaluateNode(arg, variables, context)
+  );
+
+  // Check parameter count
+  if (evaluatedArgs.length !== func.parameters.length) {
+    throw new Error(
+      `Function ${func.name} expects ${func.parameters.length} arguments, got ${evaluatedArgs.length}`
+    );
+  }
+
+  // Create new scope with parameter bindings
+  const functionScope = new Map(variables);
+  func.parameters.forEach((param, index) => {
+    const argValue = evaluatedArgs[index];
+    if (argValue !== undefined) {
+      functionScope.set(param, argValue);
+    }
+  });
+
+  // Check recursion depth
+  const callStack = context?.callStack || new Map<string, number>();
+  const currentDepth = callStack.get(func.name) || 0;
+  const newDepth = currentDepth + 1;
+
+  if (newDepth > MAX_RECURSION_DEPTH) {
+    throw new Error(
+      `Maximum recursion depth exceeded for function ${func.name}`
+    );
+  }
+
+  // Update call stack for recursion tracking
+  const newCallStack = new Map(callStack);
+  newCallStack.set(func.name, newDepth);
+
+  // Evaluate function body with new scope and context
+  const result = evaluateNode(func.body, functionScope, {
+    ...context,
+    callStack: newCallStack,
+  });
+
+  return result;
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
 function evaluateFunctionNode(
   node: FunctionNode,
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
 ): CalculatedValue {
+  // Check if it's a user-defined function
+  const funcDef = variables.get(node.name);
+  if (funcDef && funcDef.type === "function") {
+    return evaluateUserFunction(funcDef, node.args, variables, context);
+  }
+
   // Handle env() function
   if (node.name === "env") {
     const args = node.args.map((arg) => evaluateNode(arg, variables, context));
@@ -2057,6 +2130,9 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
     }
     case "percentage":
       return left.value === (right as typeof left).value;
+    case "function":
+      // Functions are equal if they have the same name
+      return left.value.name === (right as typeof left).value.name;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -2108,6 +2184,8 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
     }
     case "percentage":
       return left.value < (right as typeof left).value;
+    case "function":
+      throw new Error("Cannot compare functions");
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -2383,6 +2461,21 @@ function evaluateNode(
 
     case "propertyAssignment":
       return evaluatePropertyAssignmentNode(node, variables, context);
+
+    case "functionDefinition": {
+      // Store the function definition in variables
+      const functionValue: CalculatedValue = {
+        type: "function",
+        value: {
+          name: node.name,
+          parameters: node.parameters,
+          body: node.body,
+          isBuiltin: false,
+        },
+      };
+      variables.set(node.name, functionValue);
+      return functionValue;
+    }
 
     default: {
       // This ensures exhaustiveness - TypeScript will error if we miss a case

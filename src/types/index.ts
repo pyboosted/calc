@@ -15,6 +15,14 @@ export interface HistoryEntry {
 // Import dimension types
 import type { DimensionMap } from "../evaluator/dimensions";
 
+// Function information for user-defined functions
+export interface FunctionInfo {
+  name: string;
+  parameters: string[];
+  body: ASTNode;
+  isBuiltin: false;
+}
+
 // Discriminated union type for all calculated values
 export type CalculatedValue =
   | { type: "number"; value: number } // Pure numbers only, no units
@@ -25,7 +33,8 @@ export type CalculatedValue =
   | { type: "boolean"; value: boolean }
   | { type: "null"; value: null }
   | { type: "array"; value: CalculatedValue[] }
-  | { type: "object"; value: Map<string, CalculatedValue> };
+  | { type: "object"; value: Map<string, CalculatedValue> }
+  | { type: "function"; value: FunctionInfo };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -231,6 +240,13 @@ export interface TypeCheckNode {
   checkType: string;
 }
 
+export interface FunctionDefinitionNode {
+  type: "functionDefinition";
+  name: string;
+  parameters: string[];
+  body: ASTNode;
+}
+
 // ASTNode is now a discriminated union type
 export type ASTNode =
   | NumberNode
@@ -257,4 +273,5 @@ export type ASTNode =
   | PropertyAccessNode
   | IndexAccessNode
   | PropertyAssignmentNode
-  | TypeCheckNode;
+  | TypeCheckNode
+  | FunctionDefinitionNode;

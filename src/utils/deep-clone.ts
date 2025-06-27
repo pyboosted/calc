@@ -50,6 +50,10 @@ export function deepCloneCalculatedValue(
     case "percentage":
       return { type: "percentage", value: value.value };
 
+    case "function":
+      // Functions are immutable, so we can return the same reference
+      return value;
+
     default: {
       // This should never happen if all cases are covered
       const _exhaustive: never = value;

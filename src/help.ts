@@ -39,6 +39,8 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan('-e "env(\\"HOME\\")"')}        Read environment variable
   ${chalk.green("calc")} ${chalk.cyan('-e "arg()"')} ${chalk.cyan('--arg "42"')}     Pass command-line argument
   ${chalk.green("echo 100 | calc")} ${chalk.cyan('-e "arg() * 2"')}  Read from stdin
+  ${chalk.green("calc")} ${chalk.cyan('-e "square(x) = x * x; square(5)"')} User-defined function
+  ${chalk.green("calc")} ${chalk.cyan('-e "fact(n) = n <= 1 ? 1 : n * fact(n-1); fact(5)"')} Recursion
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
@@ -55,7 +57,8 @@ ${chalk.bold.yellow("KEYBOARD SHORTCUTS:")}
 ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Basic arithmetic: ${chalk.cyan("+, -, *, /, ^, %")}
   ${chalk.gray("•")} Compound assignments: ${chalk.cyan("+=, -=")} for all types
-  ${chalk.gray("•")} Functions: ${chalk.cyan("sqrt, sin, cos, log, round, etc.")}
+  ${chalk.gray("•")} Built-in functions: ${chalk.cyan("sqrt, sin, cos, log, round, etc.")}
+  ${chalk.gray("•")} User-defined functions: ${chalk.cyan("name(params) = expression")} with recursion
   ${chalk.gray("•")} Variables: ${chalk.cyan("x = 10")}, then use ${chalk.cyan("x")}
   ${chalk.gray("•")} Previous result: use ${chalk.cyan("'prev'")}
   ${chalk.gray("•")} Aggregates: ${chalk.cyan("'total'")} and ${chalk.cyan("'average'")}

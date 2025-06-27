@@ -310,6 +310,10 @@ function convertToJSON(value: CalculatedValue): JSONValue {
   if (value.type === "date") {
     return value.value.toISOString();
   }
+  if (value.type === "function") {
+    // Functions cannot be serialized to JSON
+    return `<function ${value.value.name}>`;
+  }
   return value.value;
 }
 

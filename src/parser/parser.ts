@@ -11,6 +11,7 @@ import {
   type DateNode,
   type DateOperationNode,
   type DateTimeNode,
+  type FunctionDefinitionNode,
   type FunctionNode,
   type LogicalNode,
   type NullNode,
@@ -90,14 +91,38 @@ export class Parser {
   private parseAssignment(): ASTNode {
     const expr = this.parseExpression();
 
-    if (this.current.type === TokenType.EQUALS && expr.type === "variable") {
-      this.advance(); // consume =
-      const value = this.parseExpression();
-      return {
-        type: "assignment",
-        variable: (expr as VariableNode).name,
-        value,
-      } as AssignmentNode;
+    if (this.current.type === TokenType.EQUALS) {
+      // Check if it's a function definition: func(params) = expression
+      if (expr.type === "function") {
+        const funcCall = expr as FunctionNode;
+        // Validate all arguments are variables (parameter names)
+        for (const arg of funcCall.args) {
+          if (arg.type !== "variable") {
+            throw new Error("Function parameters must be simple variables");
+          }
+        }
+
+        this.advance(); // consume =
+        const body = this.parseExpression();
+
+        return {
+          type: "functionDefinition",
+          name: funcCall.name,
+          parameters: funcCall.args.map((arg) => (arg as VariableNode).name),
+          body,
+        } as FunctionDefinitionNode;
+      }
+
+      // Regular variable assignment
+      if (expr.type === "variable") {
+        this.advance(); // consume =
+        const value = this.parseExpression();
+        return {
+          type: "assignment",
+          variable: (expr as VariableNode).name,
+          value,
+        } as AssignmentNode;
+      }
     }
 
     // Handle compound assignments (+=, -=)
@@ -926,6 +951,26 @@ export class Parser {
       const name = this.current.value;
       const isConstantToken = this.current.type === TokenType.CONSTANT;
       this.advance();
+
+      // Check if it's a function call (identifier followed by '(')
+      if ((this.current as Token).type === TokenType.LPAREN) {
+        // Parse as function call
+        this.advance(); // consume (
+        const args: ASTNode[] = [];
+
+        // Parse function arguments
+        if ((this.current as Token).type !== TokenType.RPAREN) {
+          args.push(this.parseExpression());
+
+          while ((this.current as Token).type === TokenType.COMMA) {
+            this.advance(); // consume ,
+            args.push(this.parseExpression());
+          }
+        }
+
+        this.consume(TokenType.RPAREN, "Expected )");
+        return { type: "function", name, args } as FunctionNode;
+      }
 
       // First try as variable, then as constant
       // This is handled in the evaluator

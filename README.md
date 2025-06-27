@@ -24,6 +24,10 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Physics units: Hz (frequency), N (Newton), Pa (Pascal), J (Joule), W (Watt)
 - **Live currency conversion**: 300+ currencies updated daily from free API
 - **Variables**: `x = 10`, then use `x` in expressions
+- **User-defined functions** (v1.4.1): Function definitions with recursion support
+  - Simple functions: `double(x) = x * 2`, `max(a, b) = a > b ? a : b`
+  - Recursive functions: `fact(n) = n <= 1 ? 1 : n * fact(n-1)`
+  - Functions are first-class values that can be stored and referenced
 - **Compound assignments**: `x += 5`, `text -= ".txt"`, `arr += [1,2,3]` - works for all types
 - **Previous result**: Use `prev` to reference the previous line's result (skips empty lines and comments)
 - **Aggregate operations**: `total` and `average` calculate sum/mean of previous numeric values (stops at empty line or comment)
@@ -579,6 +583,53 @@ text = "file"
 text += ".txt"                         # "file.txt"
 arr = [1, 2]
 arr += [3, 4]                          # [1, 2, 3, 4]
+
+# User-defined functions (v1.4.1)
+# Simple function definitions
+double(x) = x * 2
+square(x) = x * x
+max(a, b) = a > b ? a : b
+
+double(5)                              # 10
+square(4)                              # 16
+max(10, 7)                             # 10
+
+# Recursive functions
+fact(n) = n <= 1 ? 1 : n * fact(n-1)
+fib(n) = n <= 1 ? n : fib(n-1) + fib(n-2)
+
+fact(5)                                # 120
+fib(10)                                # 55
+
+# Functions with units
+to_meters(value) = value to m
+velocity(dist, time) = dist / time
+
+to_meters(100 cm)                      # 1 m
+velocity(100m, 10s)                    # 10 m/s
+
+# Type checking functions
+is_positive(n) = n > 0
+is_even(n) = n % 2 == 0
+
+is_positive(-5)                        # false
+is_even(42)                            # true
+
+# Function composition
+double_square(x) = double(square(x))
+double_square(3)                       # 18 (3² * 2)
+
+# Mutual recursion
+is_even_num(n) = n == 0 ? true : is_odd_num(n - 1)
+is_odd_num(n) = n == 0 ? false : is_even_num(n - 1)
+
+is_even_num(4)                         # true
+is_odd_num(7)                          # true
+
+# Function references
+square                                 # <function square(x)>
+my_func = square                       # Store function in variable
+my_func(5)                             # 25
 ```
 
 ## Architecture

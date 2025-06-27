@@ -9,8 +9,10 @@ The original roadmap planned async features for v1.4.0, but we pivoted to implem
 ### Completed Releases:
 - **v1.3.0-v1.3.9**: Foundation - Strings, objects, booleans, type system, env/args, type checking
 - **v1.4.0**: Dimensional Analysis - Complete overhaul to support compound units and physics calculations
+- **v1.4.1**: User-Defined Functions - Functions with recursion, making the calculator Turing-complete
 
 ### Future Releases:
+- **v1.4.2**: Pipe Syntax - Pipe operator and partial application
 - **v1.5.0**: Async & Integration - Shell execution, file execution, async evaluation
 - **v1.6.0**: Custom Functions - User-defined functions from .mjs files
 
@@ -35,7 +37,7 @@ echo '{"price": 100}' | calc tax.calc -o | calc format.calc -o
 calc process.calc --output > result.json
 ```
 
-## Current Capabilities (v1.4.0)
+## Current Capabilities (v1.4.1)
 ```calc
 # String operations
 separator = "=" * 50
@@ -54,6 +56,17 @@ force = 5kg * 2 m/s²                    # 10 N
 energy = force * 10m                    # 100 J
 power = energy / 5s                     # 20 W
 
+# User-defined functions (v1.4.1)
+square(x) = x * x
+fact(n) = n <= 1 ? 1 : n * fact(n-1)
+velocity_calc(dist, time) = dist / time
+is_positive(n) = n > 0
+
+square(5)                               # 25
+fact(5)                                 # 120
+velocity_calc(100m, 10s)                # 10 m/s
+is_positive(-5)                         # false
+
 # Environment and arguments
 port = env("PORT") as number
 config = arg() as object
@@ -62,6 +75,7 @@ config = arg() as object
 100 is number                           # true
 velocity is quantity                    # true
 10 N is force                          # true
+square is function                      # true
 ```
 
 ## Future Capabilities (v1.5.0+)
@@ -798,6 +812,14 @@ class FileCache {
 - **Unit arithmetic**: Dimensions multiply, divide, and cancel properly
 - **Automatic simplification**: Recognizes derived units (kg⋅m/s² → N)
 - **Breaking change**: Removed old unit system in favor of dimensional analysis
+
+### v1.4.1 - User-Defined Functions Release ✅ COMPLETED
+- **Function definitions**: Simple syntax `name(params) = expression`
+- **Recursion support**: Functions can call themselves with depth limit of 1000
+- **First-class functions**: Functions can be stored and referenced as values
+- **Scope isolation**: Parameters create new scope that shadows outer variables
+- **Type integration**: Functions work with all types including units
+- **Known issue**: Parameter names matching unit names cause conflicts
 
 ### v1.5.0 - Async & Integration Release (Future)
 - **Async evaluation**: Pending states, dependency tracking, debouncing

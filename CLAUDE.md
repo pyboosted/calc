@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -325,6 +325,50 @@ The calculator supports type checking with the `is` keyword and helper functions
      - `currency` - numbers with currency units
    - Unit categories: `length`, `weight`, `volume`, `temperature`, `data`, `area`, `time`
 
+### User-Defined Functions (v1.4.1)
+
+The calculator supports user-defined functions with recursion, making it Turing-complete:
+
+1. **Function Definition Syntax**:
+   ```calc
+   # Basic function
+   double(x) = x * 2
+   max(a, b) = a > b ? a : b
+   
+   # Recursive function
+   fact(n) = n <= 1 ? 1 : n * fact(n-1)
+   fib(n) = n <= 1 ? n : fib(n-1) + fib(n-2)
+   
+   # Functions with units
+   to_meters(value) = value to m
+   velocity(dist, time) = dist / time
+   ```
+
+2. **Function Features**:
+   - Parameters create a new scope that shadows outer variables
+   - Functions can call themselves (recursion) with a depth limit of 1000
+   - Functions are first-class values (can be stored and referenced)
+   - Clear error messages for parameter count mismatches
+
+3. **Known Issues**:
+   - Parameter names that match unit names cause incorrect behavior
+   - Avoid using 't', 's', 'm', 'g', 'd', 'h', 'A' as parameter names
+   - Use descriptive names like 'time', 'dist', 'mass' instead
+
+4. **Examples**:
+   ```calc
+   # Define and use functions
+   square(x) = x * x
+   square(5)  # Returns 25
+   
+   # Mutual recursion
+   is_even(n) = n == 0 ? true : is_odd(n - 1)
+   is_odd(n) = n == 0 ? false : is_even(n - 1)
+   
+   # Function reference
+   square  # Returns <function square(x)>
+   ```
+
 ### Dimensional Analysis (v1.4.0)
 
 The calculator now supports full dimensional analysis for compound units and physics calculations:
@@ -420,6 +464,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/boolean-operations.test.ts`: Boolean logic, comparisons, and ternary operator
 - `tests/env-arg-functions.test.ts`: Environment variable and argument functions
 - `tests/cli-env-arg.test.ts`: CLI integration tests for stdin, --arg, and -o flags
+- `tests/user-functions.test.ts`: User-defined functions with recursion (v1.4.1)
 
 ## Important Notes
 
@@ -460,3 +505,8 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Unit conversions work with compound units: `60 km/h to m/s`
 - Derived units are automatically recognized and displayed: `kg⋅m/s²` → `N`
 - The percentage type is separate from quantities and has special arithmetic rules
+- User-defined functions are supported with recursion (v1.4.1): `fact(n) = n <= 1 ? 1 : n * fact(n-1)`
+- Function parameters create a new scope that shadows outer variables
+- Functions are stored as first-class values and can be referenced without calling
+- Recursion depth is limited to 1000 to prevent stack overflow
+- Known issue: function parameter names that match unit names (like 't', 's', 'm') cause incorrect behavior
