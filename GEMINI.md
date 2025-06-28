@@ -4,7 +4,7 @@ This file provides guidance to Gemini when working with code in this repository.
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -297,6 +297,59 @@ This allows the calculator to handle multiple data types while maintaining type 
      - Functions (operate on array arguments)
    - Context-aware tokenization determines usage
 
+### Lambda Functions (v1.4.3)
+
+The calculator supports lambda expressions (anonymous functions) and higher-order functions:
+
+1. **Lambda Syntax**:
+   ```calc
+   # Single parameter (no parentheses needed)
+   x => x * 2
+   
+   # Multiple parameters (parentheses required)
+   (a, b) => a + b
+   (acc, item) => acc + item
+   ```
+
+2. **Built-in Higher-Order Functions**:
+   - `filter(array, predicate)`: Returns elements where predicate is truthy
+   - `map(array, transform)`: Transforms each element
+   - `reduce(array, reducer, initial)`: Reduces array to single value
+   - `sort(array, comparator)`: Sorts with custom comparator (-1/0/1 style)
+   - `groupBy(array, keyFunction)`: Groups elements by key
+
+3. **Lambda Features**:
+   - Full closure support (access to outer scope)
+   - Can be stored in variables
+   - Can be passed as arguments to functions
+   - Can be returned from functions
+
+4. **Examples**:
+   ```calc
+   # Filter positive numbers
+   filter([1, -2, 3, -4, 5], x => x > 0)  # [1, 3, 5]
+   
+   # Map transformation
+   map([1, 2, 3], x => x * x)  # [1, 4, 9]
+   
+   # Reduce to sum
+   reduce([1, 2, 3, 4], (acc, x) => acc + x, 0)  # 10
+   
+   # Sort ascending
+   sort([3, 1, 4, 1, 5], (a, b) => a - b)  # [1, 1, 3, 4, 5]
+   
+   # Group by property
+   groupBy([1, 2, 3, 4, 5], x => x % 2 == 0)  # {"true": [2, 4], "false": [1, 3, 5]}
+   
+   # Lambda in variable
+   double = x => x * 2
+   map([1, 2, 3], double)  # [2, 4, 6]
+   
+   # Lambda in user function
+   any(arr, pred) = reduce(arr, (acc, x) => acc or pred(x), false)
+   any([1, 2, 3], x => x > 2)  # true
+   ```
+
 ### User-Defined Functions (v1.4.1)
 
 The calculator supports user-defined functions with recursion, making it Turing-complete:
@@ -436,6 +489,8 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/boolean-operations.test.ts`: Boolean logic, comparisons, and ternary operator
 - `tests/env-arg-functions.test.ts`: Environment variable and argument functions
 - `tests/cli-env-arg.test.ts`: CLI integration tests for stdin, --arg, and -o flags
+- `tests/user-functions.test.ts`: User-defined functions with recursion (v1.4.1)
+- `tests/lambda-functions.test.ts`: Lambda expressions and higher-order functions (v1.4.3)
 
 ## Important Notes
 
@@ -481,3 +536,6 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Functions are stored as first-class values and can be referenced without calling
 - Recursion depth is limited to 1000 to prevent stack overflow
 - Known issue: function parameter names that match unit names (like 't', 's', 'm') cause incorrect behavior
+- Lambda functions are supported with arrow syntax (v1.4.3): `x => x * 2`
+- Higher-order functions available: `filter`, `map`, `reduce`, `sort`, `groupBy`
+- Lambdas have full closure support and can access outer scope variables

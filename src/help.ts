@@ -41,6 +41,9 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("echo 100 | calc")} ${chalk.cyan('-e "arg() * 2"')}  Read from stdin
   ${chalk.green("calc")} ${chalk.cyan('-e "square(x) = x * x; square(5)"')} User-defined function
   ${chalk.green("calc")} ${chalk.cyan('-e "fact(n) = n <= 1 ? 1 : n * fact(n-1); fact(5)"')} Recursion
+  ${chalk.green("calc")} ${chalk.cyan('-e "filter([1, -2, 3], x => x > 0)"')} Lambda filter
+  ${chalk.green("calc")} ${chalk.cyan('-e "map([1, 2, 3], x => x * x)"')}    Lambda map
+  ${chalk.green("calc")} ${chalk.cyan('-e "sort([3, 1, 4], (a, b) => a - b)"')} Lambda sort
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 
@@ -59,6 +62,8 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Compound assignments: ${chalk.cyan("+=, -=")} for all types
   ${chalk.gray("•")} Built-in functions: ${chalk.cyan("sqrt, sin, cos, log, round, etc.")}
   ${chalk.gray("•")} User-defined functions: ${chalk.cyan("name(params) = expression")} with recursion
+  ${chalk.gray("•")} Lambda functions: ${chalk.cyan("x => x * 2, (a, b) => a + b")}
+  ${chalk.gray("•")} Higher-order functions: ${chalk.cyan("filter, map, reduce, sort, groupBy")}
   ${chalk.gray("•")} Variables: ${chalk.cyan("x = 10")}, then use ${chalk.cyan("x")}
   ${chalk.gray("•")} Previous result: use ${chalk.cyan("'prev'")}
   ${chalk.gray("•")} Aggregates: ${chalk.cyan("'total'")} and ${chalk.cyan("'average'")}

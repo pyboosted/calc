@@ -806,7 +806,7 @@ function evaluateFunctionNode(
     }
     const firstArg = node.args[0];
     const secondArg = node.args[1];
-    if (!firstArg || !secondArg) {
+    if (!(firstArg && secondArg)) {
       throw new Error("filter requires exactly 2 arguments");
     }
     const arr = evaluateNode(firstArg, variables, context);
@@ -820,7 +820,7 @@ function evaluateFunctionNode(
     }
     const firstArg = node.args[0];
     const secondArg = node.args[1];
-    if (!firstArg || !secondArg) {
+    if (!(firstArg && secondArg)) {
       throw new Error("map requires exactly 2 arguments");
     }
     const arr = evaluateNode(firstArg, variables, context);
@@ -835,7 +835,7 @@ function evaluateFunctionNode(
     const firstArg = node.args[0];
     const secondArg = node.args[1];
     const thirdArg = node.args[2];
-    if (!firstArg || !secondArg || !thirdArg) {
+    if (!(firstArg && secondArg && thirdArg)) {
       throw new Error("reduce requires exactly 3 arguments");
     }
     const arr = evaluateNode(firstArg, variables, context);
@@ -850,7 +850,7 @@ function evaluateFunctionNode(
     }
     const firstArg = node.args[0];
     const secondArg = node.args[1];
-    if (!firstArg || !secondArg) {
+    if (!(firstArg && secondArg)) {
       throw new Error("sort requires exactly 2 arguments");
     }
     const arr = evaluateNode(firstArg, variables, context);
@@ -864,7 +864,7 @@ function evaluateFunctionNode(
     }
     const firstArg = node.args[0];
     const secondArg = node.args[1];
-    if (!firstArg || !secondArg) {
+    if (!(firstArg && secondArg)) {
       throw new Error("groupBy requires exactly 2 arguments");
     }
     const arr = evaluateNode(firstArg, variables, context);

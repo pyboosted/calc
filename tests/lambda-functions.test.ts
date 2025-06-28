@@ -4,7 +4,7 @@ import type { CalculatedValue } from "../src/types";
 
 describe("Lambda Functions", () => {
   const variables = new Map<string, CalculatedValue>();
-  
+
   function evaluateExpression(expr: string): CalculatedValue {
     return evaluate(expr, variables);
   }
@@ -22,7 +22,9 @@ describe("Lambda Functions", () => {
     });
 
     test("multiple parameter lambda with parentheses", () => {
-      const result = evaluateExpression("sort([3, 1, 4, 1, 5], (a, b) => a - b)");
+      const result = evaluateExpression(
+        "sort([3, 1, 4, 1, 5], (a, b) => a - b)"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(5);
@@ -35,7 +37,9 @@ describe("Lambda Functions", () => {
     });
 
     test("lambda with property access", () => {
-      evaluateExpression('data = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]');
+      evaluateExpression(
+        'data = [{name: "Alice", age: 30}, {name: "Bob", age: 25}]'
+      );
       const result = evaluateExpression("map(data, p => p.age)");
       expect(result.type).toBe("array");
       if (result.type === "array") {
@@ -60,7 +64,9 @@ describe("Lambda Functions", () => {
 
   describe("filter function", () => {
     test("filter positive numbers", () => {
-      const result = evaluateExpression("filter([1, -2, 3, -4, 5], n => n > 0)");
+      const result = evaluateExpression(
+        "filter([1, -2, 3, -4, 5], n => n > 0)"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
@@ -71,7 +77,9 @@ describe("Lambda Functions", () => {
     });
 
     test("filter with boolean expression", () => {
-      const result = evaluateExpression('filter(["", "hello", "", "world"], s => s)');
+      const result = evaluateExpression(
+        'filter(["", "hello", "", "world"], s => s)'
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(2);
@@ -81,7 +89,9 @@ describe("Lambda Functions", () => {
     });
 
     test("filter objects by property", () => {
-      evaluateExpression('people = [{name: "Alice", age: 30}, {name: "Bob", age: 17}, {name: "Charlie", age: 25}]');
+      evaluateExpression(
+        'people = [{name: "Alice", age: 30}, {name: "Bob", age: 17}, {name: "Charlie", age: 25}]'
+      );
       const result = evaluateExpression("filter(people, p => p.age >= 18)");
       expect(result.type).toBe("array");
       if (result.type === "array") {
@@ -113,7 +123,7 @@ describe("Lambda Functions", () => {
     });
 
     test("map with type conversion", () => {
-      const result = evaluateExpression('map([1, 2, 3], n => n as string)');
+      const result = evaluateExpression("map([1, 2, 3], n => n as string)");
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
@@ -126,34 +136,46 @@ describe("Lambda Functions", () => {
 
   describe("reduce function", () => {
     test("sum numbers", () => {
-      const result = evaluateExpression("reduce([1, 2, 3, 4], (acc, n) => acc + n, 0)");
+      const result = evaluateExpression(
+        "reduce([1, 2, 3, 4], (acc, n) => acc + n, 0)"
+      );
       expect(result).toEqual({ type: "number", value: 10 });
     });
 
     test("product of numbers", () => {
-      const result = evaluateExpression("reduce([2, 3, 4], (acc, n) => acc * n, 1)");
+      const result = evaluateExpression(
+        "reduce([2, 3, 4], (acc, n) => acc * n, 1)"
+      );
       expect(result).toEqual({ type: "number", value: 24 });
     });
 
     test("concatenate strings", () => {
-      const result = evaluateExpression('reduce(["a", "b", "c"], (acc, s) => acc + s, "")');
+      const result = evaluateExpression(
+        'reduce(["a", "b", "c"], (acc, s) => acc + s, "")'
+      );
       expect(result).toEqual({ type: "string", value: "abc" });
     });
 
     test("find maximum", () => {
-      const result = evaluateExpression("reduce([3, 7, 2, 9, 1], (acc, n) => n > acc ? n : acc, 0)");
+      const result = evaluateExpression(
+        "reduce([3, 7, 2, 9, 1], (acc, n) => n > acc ? n : acc, 0)"
+      );
       expect(result).toEqual({ type: "number", value: 9 });
     });
 
     test("count true values", () => {
-      const result = evaluateExpression("reduce([true, false, true, true], (acc, b) => b ? acc + 1 : acc, 0)");
+      const result = evaluateExpression(
+        "reduce([true, false, true, true], (acc, b) => b ? acc + 1 : acc, 0)"
+      );
       expect(result).toEqual({ type: "number", value: 3 });
     });
   });
 
   describe("sort function", () => {
     test("sort numbers ascending", () => {
-      const result = evaluateExpression("sort([3, 1, 4, 1, 5, 9], (a, b) => a - b)");
+      const result = evaluateExpression(
+        "sort([3, 1, 4, 1, 5, 9], (a, b) => a - b)"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(6);
@@ -167,7 +189,9 @@ describe("Lambda Functions", () => {
     });
 
     test("sort numbers descending", () => {
-      const result = evaluateExpression("sort([3, 1, 4, 1, 5], (a, b) => b - a)");
+      const result = evaluateExpression(
+        "sort([3, 1, 4, 1, 5], (a, b) => b - a)"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(5);
@@ -180,7 +204,9 @@ describe("Lambda Functions", () => {
     });
 
     test("sort strings", () => {
-      const result = evaluateExpression('sort(["banana", "apple", "cherry"], (a, b) => a > b ? 1 : a < b ? -1 : 0)');
+      const result = evaluateExpression(
+        'sort(["banana", "apple", "cherry"], (a, b) => a > b ? 1 : a < b ? -1 : 0)'
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
@@ -191,7 +217,9 @@ describe("Lambda Functions", () => {
     });
 
     test("sort by absolute value", () => {
-      const result = evaluateExpression("sort([-3, 1, -4, 2], (a, b) => abs(a) - abs(b))");
+      const result = evaluateExpression(
+        "sort([-3, 1, -4, 2], (a, b) => abs(a) - abs(b))"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(4);
@@ -203,31 +231,44 @@ describe("Lambda Functions", () => {
     });
 
     test("sort objects by property", () => {
-      evaluateExpression('people = [{name: "Bob", age: 30}, {name: "Alice", age: 25}, {name: "Charlie", age: 35}]');
-      const result = evaluateExpression("sort(people, (a, b) => a.age - b.age)");
+      evaluateExpression(
+        'people = [{name: "Bob", age: 30}, {name: "Alice", age: 25}, {name: "Charlie", age: 35}]'
+      );
+      const result = evaluateExpression(
+        "sort(people, (a, b) => a.age - b.age)"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array" && result.value[0]?.type === "object") {
-        expect(result.value[0].value.get("age")).toEqual({ type: "number", value: 25 });
-        expect(result.value[1]?.type === "object" && result.value[1].value.get("age")).toEqual({ type: "number", value: 30 });
-        expect(result.value[2]?.type === "object" && result.value[2].value.get("age")).toEqual({ type: "number", value: 35 });
+        expect(result.value[0].value.get("age")).toEqual({
+          type: "number",
+          value: 25,
+        });
+        expect(
+          result.value[1]?.type === "object" && result.value[1].value.get("age")
+        ).toEqual({ type: "number", value: 30 });
+        expect(
+          result.value[2]?.type === "object" && result.value[2].value.get("age")
+        ).toEqual({ type: "number", value: 35 });
       }
     });
   });
 
   describe("groupBy function", () => {
     test("group by string property", () => {
-      evaluateExpression('items = [{cat: "A", val: 1}, {cat: "B", val: 2}, {cat: "A", val: 3}]');
+      evaluateExpression(
+        'items = [{cat: "A", val: 1}, {cat: "B", val: 2}, {cat: "A", val: 3}]'
+      );
       const result = evaluateExpression("groupBy(items, item => item.cat)");
       expect(result.type).toBe("object");
       if (result.type === "object") {
         expect(result.value.size).toBe(2);
-        
+
         const groupA = result.value.get("A");
         expect(groupA?.type).toBe("array");
         if (groupA?.type === "array") {
           expect(groupA.value).toHaveLength(2);
         }
-        
+
         const groupB = result.value.get("B");
         expect(groupB?.type).toBe("array");
         if (groupB?.type === "array") {
@@ -237,7 +278,9 @@ describe("Lambda Functions", () => {
     });
 
     test("group by numeric property", () => {
-      evaluateExpression('scores = [{team: 1, score: 10}, {team: 2, score: 20}, {team: 1, score: 15}]');
+      evaluateExpression(
+        "scores = [{team: 1, score: 10}, {team: 2, score: 20}, {team: 1, score: 15}]"
+      );
       const result = evaluateExpression("groupBy(scores, s => s.team)");
       expect(result.type).toBe("object");
       if (result.type === "object") {
@@ -248,7 +291,9 @@ describe("Lambda Functions", () => {
     });
 
     test("group by boolean result", () => {
-      const result = evaluateExpression("groupBy([1, 2, 3, 4, 5], n => n % 2 == 0)");
+      const result = evaluateExpression(
+        "groupBy([1, 2, 3, 4, 5], n => n % 2 == 0)"
+      );
       expect(result.type).toBe("object");
       if (result.type === "object") {
         expect(result.value.size).toBe(2);
@@ -279,16 +324,20 @@ describe("Lambda Functions", () => {
     });
 
     test("user function with lambda parameter", () => {
-      evaluateExpression("any(arr, pred) = reduce(arr, (acc, i) => acc or pred(i), false)");
+      evaluateExpression(
+        "any(arr, pred) = reduce(arr, (acc, i) => acc or pred(i), false)"
+      );
       const result = evaluateExpression("any([1, 2, 3], n => n > 2)");
       expect(result).toEqual({ type: "boolean", value: true });
     });
 
     test("all function implementation", () => {
-      evaluateExpression("all(arr, pred) = reduce(arr, (acc, i) => acc and pred(i), true)");
+      evaluateExpression(
+        "all(arr, pred) = reduce(arr, (acc, i) => acc and pred(i), true)"
+      );
       const result1 = evaluateExpression("all([2, 4, 6], n => n % 2 == 0)");
       expect(result1).toEqual({ type: "boolean", value: true });
-      
+
       const result2 = evaluateExpression("all([2, 3, 6], n => n % 2 == 0)");
       expect(result2).toEqual({ type: "boolean", value: false });
     });
@@ -312,7 +361,9 @@ describe("Lambda Functions", () => {
 
   describe("Complex lambda expressions", () => {
     test("nested property access", () => {
-      evaluateExpression('data = [{user: {name: "Alice", age: 30}}, {user: {name: "Bob", age: 25}}]');
+      evaluateExpression(
+        'data = [{user: {name: "Alice", age: 30}}, {user: {name: "Bob", age: 25}}]'
+      );
       const result = evaluateExpression("map(data, d => d.user.name)");
       expect(result.type).toBe("array");
       if (result.type === "array") {
@@ -322,7 +373,9 @@ describe("Lambda Functions", () => {
     });
 
     test("lambda with ternary operator", () => {
-      const result = evaluateExpression('map([1, 2, 3, 4], n => n % 2 == 0 ? "even" : "odd")');
+      const result = evaluateExpression(
+        'map([1, 2, 3, 4], n => n % 2 == 0 ? "even" : "odd")'
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value[0]).toEqual({ type: "string", value: "odd" });
@@ -333,7 +386,9 @@ describe("Lambda Functions", () => {
     });
 
     test("lambda with math functions", () => {
-      const result = evaluateExpression("map([0, 30, 45, 60, 90], angle => sin(angle))");
+      const result = evaluateExpression(
+        "map([0, 30, 45, 60, 90], angle => sin(angle))"
+      );
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(5);
@@ -369,16 +424,16 @@ describe("Lambda Functions", () => {
     });
 
     test("sort comparator returning non-number", () => {
-      expect(() => evaluateExpression('sort([1, 2, 3], (a, b) => "hello")')).toThrow(
-        "Sort comparator must return a number"
-      );
+      expect(() =>
+        evaluateExpression('sort([1, 2, 3], (a, b) => "hello")')
+      ).toThrow("Sort comparator must return a number");
     });
 
     test("groupBy with invalid key type", () => {
-      evaluateExpression('items = [{data: [1, 2]}, {data: [3, 4]}]');
-      expect(() => evaluateExpression("groupBy(items, item => item.data)")).toThrow(
-        "Cannot use array as groupBy key"
-      );
+      evaluateExpression("items = [{data: [1, 2]}, {data: [3, 4]}]");
+      expect(() =>
+        evaluateExpression("groupBy(items, item => item.data)")
+      ).toThrow("Cannot use array as groupBy key");
     });
   });
 });

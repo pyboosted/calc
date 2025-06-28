@@ -28,6 +28,11 @@ A powerful terminal-based calculator inspired by Numi, built with Bun, TypeScrip
   - Simple functions: `double(x) = x * 2`, `max(a, b) = a > b ? a : b`
   - Recursive functions: `fact(n) = n <= 1 ? 1 : n * fact(n-1)`
   - Functions are first-class values that can be stored and referenced
+- **Lambda functions** (v1.4.3): Anonymous functions with higher-order function support
+  - Lambda syntax: `x => x * 2`, `(a, b) => a + b`
+  - Higher-order functions: `filter`, `map`, `reduce`, `sort`, `groupBy`
+  - Lambdas can be stored in variables and passed as arguments
+  - Full closure support for accessing outer scope
 - **Compound assignments**: `x += 5`, `text -= ".txt"`, `arr += [1,2,3]` - works for all types
 - **Previous result**: Use `prev` to reference the previous line's result (skips empty lines and comments)
 - **Aggregate operations**: `total` and `average` calculate sum/mean of previous numeric values (stops at empty line or comment)
@@ -630,6 +635,40 @@ is_odd_num(7)                          # true
 square                                 # <function square(x)>
 my_func = square                       # Store function in variable
 my_func(5)                             # 25
+
+# Lambda functions (v1.4.3)
+# Filter array elements
+filter([1, -2, 3, -4, 5], x => x > 0)  # [1, 3, 5]
+filter(["a", "", "b"], s => s)         # ["a", "b"] (truthy values)
+
+# Transform array elements
+map([1, 2, 3], x => x * x)             # [1, 4, 9]
+map(["hello", "world"], s => len(s))   # [5, 5]
+
+# Reduce array to single value
+reduce([1, 2, 3, 4], (acc, x) => acc + x, 0)  # 10
+reduce(["a", "b", "c"], (acc, s) => acc + s, "")  # "abc"
+
+# Sort array with custom comparator
+sort([3, 1, 4, 1, 5], (a, b) => a - b) # [1, 1, 3, 4, 5]
+sort(["banana", "apple"], (a, b) => a > b ? 1 : -1)  # ["apple", "banana"]
+
+# Group array by key
+groupBy([1, 2, 3, 4, 5], x => x % 2 == 0)  # {"true": [2, 4], "false": [1, 3, 5]}
+items = [{type: "A", val: 1}, {type: "B", val: 2}, {type: "A", val: 3}]
+groupBy(items, item => item.type)     # {"A": [{...}, {...}], "B": [{...}]}
+
+# Lambda stored in variable
+double = x => x * 2
+add = (a, b) => a + b
+map([1, 2, 3], double)                 # [2, 4, 6]
+
+# Lambda in user-defined functions
+any(arr, pred) = reduce(arr, (acc, x) => acc or pred(x), false)
+any([1, 2, 3], x => x > 2)             # true
+
+all(arr, pred) = reduce(arr, (acc, x) => acc and pred(x), true)
+all([2, 4, 6], x => x % 2 == 0)       # true
 ```
 
 ## Architecture

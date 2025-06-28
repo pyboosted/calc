@@ -1,5 +1,5 @@
 import type { CalculatedValue, LambdaInfo } from "../types";
-import { evaluateNode, type EvaluationContext } from "./evaluate";
+import { type EvaluationContext, evaluateNode } from "./evaluate";
 
 /**
  * Evaluate a lambda function with given arguments
