@@ -82,6 +82,7 @@ export const TokenType = {
   AND: "AND",
   OR: "OR",
   NOT: "NOT",
+  PIPE: "PIPE",
   LBRACE: "LBRACE",
   RBRACE: "RBRACE",
   LBRACKET: "LBRACKET",

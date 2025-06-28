@@ -40,6 +40,13 @@
 - Lambdas can be stored in variables and passed as arguments
 - Full closure support for accessing outer scope
 
+### Pipe Operator (v1.4.5)
+- Pipe values through functions: `[1, 2, 3] | sum` → `6`
+- Chain operations: `"  hello  " | trim | len` → `5`
+- Works with user functions: `5 | double` → `10`
+- Partial application: `[1, 2, 3] | filter(x => x > 1)` → `[2, 3]`
+- Unit preservation: `[10m, 20m] | sum` → `30m`
+
 ### Compound Assignments
 - Works for all types: `x += 5`, `text -= ".txt"`, `arr += [1,2,3]`
 
@@ -49,8 +56,9 @@
 - Use `prev` to reference the previous line's result (skips empty lines and comments)
 
 ### Aggregate Operations
-- `total` and `average` calculate sum/mean of previous numeric values (stops at empty line or comment)
+- `total`, `sum`, `average`/`avg` calculate sum/mean of previous numeric values (stops at empty line or comment)
 - String concatenation: `total` concatenates strings when previous results contain strings
+- `agg` keyword: Returns array of previous results for piping (e.g., `agg | sum`)
 
 ### Smart Percentage Calculations
 - Basic: `20%` = 0.2
@@ -82,8 +90,9 @@
 - **Array literals**: `[1, 2, 3]`, nested arrays, mixed types
 - **Object literals**: `{a: 1, b: 2}`, nested objects, string keys
 - **Array functions**: 
-  - Non-mutating: `push`, `pop`, `shift`, `unshift`, `append`, `prepend`, `first`, `last`, `slice`, `length`, `sum`, `avg`/`average`, `find`, `findIndex`
+  - Non-mutating: `push`, `pop`, `shift`, `unshift`, `append`, `prepend`, `first`, `last`, `slice`, `length`, `find`, `findIndex`
   - Mutating (with `!` suffix): `push!`, `pop!`, `shift!`, `unshift!`, `append!`, `prepend!`, `slice!`, `filter!`, `map!`
+  - Aggregation: `sum`, `avg`/`average` (work with numbers and quantities with units)
 - **Object functions**: `keys`, `values`, `has`
 - **Property access**: 
   - Dot notation: `obj.property`

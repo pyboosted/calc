@@ -168,13 +168,30 @@ export function evaluateArrayFunction(
       if (!arr || arr.type !== "array") {
         throw new Error("Argument to sum must be an array");
       }
-      let total = 0;
+
+      // Import necessary functions for quantity operations
+      const { addQuantities } = require("./quantity-operations");
+
+      let result: CalculatedValue | null = null;
+
       for (const element of arr.value) {
-        if (element.type === "number") {
-          total += element.value;
+        if (element.type === "number" || element.type === "quantity") {
+          if (result) {
+            // Add to existing result
+            if (result.type === "number" && element.type === "number") {
+              result = { type: "number", value: result.value + element.value };
+            } else {
+              // Use quantity operations for mixed or quantity types
+              result = addQuantities(result, element);
+            }
+          } else {
+            // First element
+            result = element;
+          }
         }
       }
-      return { type: "number", value: total };
+
+      return result || { type: "number", value: 0 };
     }
 
     case "avg":
@@ -186,18 +203,48 @@ export function evaluateArrayFunction(
       if (!arr || arr.type !== "array") {
         throw new Error(`Argument to ${name} must be an array`);
       }
-      let total = 0;
+
+      // Import necessary functions for quantity operations
+      const { addQuantities } = require("./quantity-operations");
+
+      let result: CalculatedValue | null = null;
       let count = 0;
+
       for (const element of arr.value) {
-        if (element.type === "number") {
-          total += element.value;
+        if (element.type === "number" || element.type === "quantity") {
+          if (result) {
+            // Add to existing result
+            if (result.type === "number" && element.type === "number") {
+              result = { type: "number", value: result.value + element.value };
+            } else {
+              // Use quantity operations for mixed or quantity types
+              result = addQuantities(result, element);
+            }
+          } else {
+            // First element
+            result = element;
+          }
           count++;
         }
       }
-      if (count === 0) {
+
+      if (count === 0 || !result) {
         return { type: "null", value: null };
       }
-      return { type: "number", value: total / count };
+
+      // Divide by count
+      if (result.type === "number") {
+        return { type: "number", value: result.value / count };
+      }
+      if (result.type === "quantity") {
+        return {
+          type: "quantity",
+          value: result.value / count,
+          dimensions: result.dimensions,
+        };
+      }
+
+      return { type: "null", value: null };
     }
 
     case "slice": {

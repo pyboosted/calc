@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), pipe operator for functional composition (v1.4.5), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -382,6 +382,48 @@ The calculator supports lambda expressions (anonymous functions) and higher-orde
    # Lambda in user function
    any(arr, pred) = reduce(arr, (acc, x) => acc or pred(x), false)
    any([1, 2, 3], x => x > 2)  # true
+   ```
+
+### Pipe Operator (v1.4.5)
+
+The pipe operator (`|`) enables functional composition by passing values through a chain of functions:
+
+1. **Basic Syntax**:
+   ```calc
+   # Pipe value to function
+   [1, 2, 3] | sum  # 6
+   
+   # Chain multiple operations
+   "  hello  " | trim | len  # 5
+   ```
+
+2. **Features**:
+   - Left-to-right data flow
+   - Works with built-in functions, user-defined functions, and lambdas
+   - Preserves units through operations
+   - Enables partial application with additional arguments
+
+3. **Examples**:
+   ```calc
+   # Basic piping
+   [1, 2, 3, 4, 5] | sum                  # 15
+   [10, 20, 30] | avg                     # 20
+   
+   # With user functions
+   double(x) = x * 2
+   5 | double                             # 10
+   
+   # With higher-order functions
+   [1, -2, 3, -4, 5] | filter(x => x > 0) | sum  # 9
+   
+   # Unit preservation
+   [10m, 20m, 30m] | sum                  # 60 m
+   
+   # Multi-line aggregates
+   100
+   200
+   300
+   agg | sum                              # 600
    ```
 
 ### User-Defined Functions (v1.4.1)

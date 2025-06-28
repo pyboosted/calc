@@ -348,6 +348,35 @@ export function divideQuantities(
       throw new Error("Division by zero");
     }
 
+    // Before dividing, we need to handle unit conversions for matching dimensions
+    const leftValue = leftQuantity.value;
+    let rightValue = rightQuantity.value;
+
+    // Check each dimension that appears in both quantities
+    const allDims = new Set([
+      ...Object.keys(leftQuantity.dimensions),
+      ...Object.keys(rightQuantity.dimensions),
+    ]) as Set<keyof DimensionMap>;
+
+    for (const dim of allDims) {
+      const leftDim = leftQuantity.dimensions[dim];
+      const rightDim = rightQuantity.dimensions[dim];
+
+      if (
+        leftDim &&
+        rightDim &&
+        "unit" in leftDim &&
+        "unit" in rightDim &&
+        leftDim.unit &&
+        rightDim.unit &&
+        leftDim.unit !== rightDim.unit
+      ) {
+        // Same dimension with different units - convert right to left's unit
+        const conversionFactor = convertUnits(1, rightDim.unit, leftDim.unit);
+        rightValue *= conversionFactor ** rightDim.exponent;
+      }
+    }
+
     const newDimensions = divideDimensions(
       leftQuantity.dimensions,
       rightQuantity.dimensions
@@ -357,13 +386,13 @@ export function divideQuantities(
     if (isDimensionless(newDimensions)) {
       return {
         type: "number",
-        value: leftQuantity.value / rightQuantity.value,
+        value: leftValue / rightValue,
       };
     }
 
     return {
       type: "quantity",
-      value: leftQuantity.value / rightQuantity.value,
+      value: leftValue / rightValue,
       dimensions: newDimensions,
     };
   }

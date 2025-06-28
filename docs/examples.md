@@ -561,3 +561,58 @@ any([1, 2, 3], x => x > 2)             # true
 all(arr, pred) = reduce(arr, (acc, x) => acc and pred(x), true)
 all([2, 4, 6], x => x % 2 == 0)       # true
 ```
+
+## Pipe Operator (v1.4.5)
+```
+# Basic piping
+[1, 2, 3, 4, 5] | sum                  # 15
+[10, 20, 30] | avg                     # 20
+
+# Chain operations
+"  hello world  " | trim | len         # 11
+[1, 2, 3] | map(x => x * x) | sum      # 14
+
+# With user-defined functions
+double(x) = x * 2
+5 | double                             # 10
+[1, 2, 3] | map(double) | sum          # 12
+
+# With higher-order functions
+numbers = [1, -2, 3, -4, 5]
+numbers | filter(x => x > 0) | sum     # 9
+numbers | filter(x => x > 0) | map(x => x * x) | sum  # 35
+
+# String processing
+text = "  HELLO WORLD  "
+text | trim | substr(0, 5)             # "HELLO"
+
+# Unit preservation
+distances = [10m, 20m, 30m]
+distances | sum                        # 60 m
+distances | avg                        # 20 m
+
+# Mixed units
+weights = [1000g, 2kg, 500g]
+weights | sum                          # 3500 g
+
+# Multi-line with aggregates
+100
+200
+300
+agg | sum                              # 600
+agg | filter(x => x > 150) | sum       # 500
+
+# Complex pipelines
+orders = [
+  {price: 100, qty: 2},
+  {price: 50, qty: 3},
+  {price: 25, qty: 4}
+]
+orders | map(o => o.price * o.qty) | sum  # 450
+
+# Practical examples
+expenses = [120, 80, 200, 150, 90]
+expenses | filter(x => x > 100)        # [120, 200, 150]
+expenses | filter(x => x > 100) | avg  # 156.67
+expenses | map(x => x * 1.1) | sum     # 704 (with 10% increase)
+```

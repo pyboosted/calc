@@ -556,7 +556,7 @@ export class Parser {
   }
 
   private parseOf(): ASTNode {
-    const node = this.parseAdditive();
+    const node = this.parsePipe();
 
     // Handle "of" for percentage calculations (e.g., "20% of 100")
     if (
@@ -584,6 +584,74 @@ export class Parser {
     }
 
     return node;
+  }
+
+  private parsePipe(): ASTNode {
+    let left = this.parseAdditive();
+
+    while (this.current.type === TokenType.PIPE) {
+      this.advance(); // consume |
+
+      // Check what comes after the pipe
+      if (
+        (this.current as Token).type === TokenType.FUNCTION ||
+        (this.current as Token).type === TokenType.VARIABLE ||
+        (this.current as Token).type === TokenType.KEYWORD
+      ) {
+        // Simple function/variable/keyword name: arr | sum or arr | double
+        const name = this.current.value;
+        this.advance();
+
+        // Check if there are arguments following
+        if ((this.current as Token).type === TokenType.LPAREN) {
+          // Function with arguments: arr | filter(...)
+          this.advance(); // consume (
+          const args: ASTNode[] = [left]; // left is the first argument
+
+          if ((this.current as Token).type !== TokenType.RPAREN) {
+            // Parse additional arguments
+            args.push(this.parseExpression());
+
+            while ((this.current as Token).type === TokenType.COMMA) {
+              this.advance(); // consume ,
+              args.push(this.parseExpression());
+            }
+          }
+
+          this.consume(TokenType.RPAREN, "Expected )");
+          left = { type: "function", name, args } as FunctionNode;
+        } else {
+          // No parentheses: arr | sum
+          left = {
+            type: "function",
+            name,
+            args: [left],
+          } as FunctionNode;
+        }
+      } else if ((this.current as Token).type === TokenType.LPAREN) {
+        // Could be a lambda: arr | (x => x * 2)
+        const _savedPos = this.position;
+        const _savedCurrent = this.current;
+
+        // Try to parse as an expression
+        const expr = this.parseAdditive();
+
+        if (expr.type === "lambda") {
+          // Direct lambda - not supported yet
+          throw new Error(
+            "Piping to lambda expressions directly is not yet supported. Store the lambda in a variable first."
+          );
+        }
+        // Some other expression in parentheses
+        throw new Error(`Cannot pipe to expression of type ${expr.type}`);
+      } else {
+        throw new Error(
+          `Expected function name after |, got ${this.current.type}`
+        );
+      }
+    }
+
+    return left;
   }
 
   private parseAdditive(): ASTNode {
