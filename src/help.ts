@@ -47,6 +47,9 @@ ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan('-e "sort([3, 1, 4], (a, b) => a - b)"')} Lambda sort
   ${chalk.green("calc")} ${chalk.cyan('-e "[1, 2, 3] | sum"')}               Pipe operator
   ${chalk.green("calc")} ${chalk.cyan('-e "\\"hello\\" | trim | len"')}       Chain operations
+  ${chalk.green("calc")} ${chalk.cyan('-e "255 to hex"')}                    Decimal to hexadecimal
+  ${chalk.green("calc")} ${chalk.cyan('-e "10 to binary"')}                  Decimal to binary
+  ${chalk.green("calc")} ${chalk.cyan('-e "0xFF + 0b1010"')}                 Hex and binary literals
   ${chalk.green("calc")} ${chalk.cyan("budget.calc")}            Open existing file
   ${chalk.green("calc")} ${chalk.cyan("new-file.calc")}         Create new file
 

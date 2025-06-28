@@ -41,11 +41,11 @@ describe("Compound unit division bug", () => {
 
     // Calculate 1km/speed
     const kmExpr = "1km/speed";
-    const kmResult = evaluate(kmExpr, state);
+    const _kmResult = evaluate(kmExpr, state);
 
     // Calculate 1000m/speed
     const mExpr = "1000m/speed";
-    const mResult = evaluate(mExpr, state);
+    const _mResult = evaluate(mExpr, state);
 
     // Direct results should be proportional
   });

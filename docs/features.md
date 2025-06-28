@@ -14,6 +14,19 @@
 - **Trigonometry**: `sin`, `cos`, `tan`, `arcsin`, `arccos`, `arctan`
 - **Hyperbolic**: `sinh`, `cosh`, `tanh`
 
+## Number Formats (v1.5.1)
+- **Binary literals**: `0b1010` (10 in decimal), `0b11111111` (255)
+- **Hexadecimal literals**: `0xFF` (255), `0x10` (16), `0xDEADBEEF`
+- **Format preservation**: Numbers display in their original format until converted
+- **Base conversions**:
+  - To binary: `10 to binary` → `0b1010`, `255 to bin` → `0b11111111`
+  - To hex: `255 to hex` → `0xff`, `16 to hexadecimal` → `0x10`
+  - To decimal: `0xFF to decimal` → `255`, `0b1010 to dec` → `10`
+  - **Integer-only**: Only integers can be converted to binary/hex (e.g., `3.14 to binary` throws an error)
+- **Mixed operations**: `0xFF + 10` → `265`, `0b1010 * 5` → `50`
+- **Negative numbers**: `-10 to binary` → `-0b1010`, `-255 to hex` → `-0xff`
+- **Note**: Format is lost when combined with units (`0xFF m` → `255 m`)
+
 ## Unit Conversions
 - **Length, weight, temperature, time, volume, data**
   - Examples: `100 cm in meters`, `32 F in C`, `1 hour in minutes`

@@ -570,6 +570,7 @@ export function formatUnit(unit: string): string {
 }
 
 // Format a result with its unit (for legacy compatibility)
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: This function handles many cases and refactoring would reduce readability
 export function formatResultWithUnit(
   value: CalculatedValue | number,
   unit?: string,
@@ -585,6 +586,23 @@ export function formatResultWithUnit(
   // Handle CalculatedValue
   switch (value.type) {
     case "number": {
+      // Check if the number has a format specified
+      if (value.format === "binary") {
+        const intValue = value.value.floor();
+        const isNegative = intValue.isNegative();
+        const absValue = intValue.abs();
+        const binaryStr = absValue.toBinary();
+        return isNegative ? `-${binaryStr}` : binaryStr;
+      }
+      if (value.format === "hex") {
+        const intValue = value.value.floor();
+        const isNegative = intValue.isNegative();
+        const absValue = intValue.abs();
+        const hexStr = absValue.toHexadecimal();
+        return isNegative ? `-${hexStr}` : hexStr;
+      }
+
+      // Default decimal formatting
       const num = fromDecimal(value.value);
       let formattedNum: string;
 

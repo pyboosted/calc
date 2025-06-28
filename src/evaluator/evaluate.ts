@@ -2,6 +2,11 @@ import { format } from "date-fns";
 import { isTemperature, unitDefinitions } from "../data/units";
 import { Parser } from "../parser/parser";
 import { Tokenizer } from "../parser/tokenizer";
+
+// Regular expressions for base conversion parsing
+const BINARY_PREFIX_REGEX = /^-?0b/i;
+const HEX_PREFIX_REGEX = /^-?0x/i;
+
 import type {
   AggregateNode,
   ArrayNode,
@@ -271,6 +276,10 @@ function processEscapeSequences(str: string): string {
 // Handler functions for each node type
 function evaluateNumberNode(node: NumberNode): CalculatedValue {
   // Numbers are now always dimensionless
+  // Preserve format information if present
+  if (node.format) {
+    return { type: "number", value: node.value, format: node.format };
+  }
   return { type: "number", value: node.value };
 }
 
@@ -1836,6 +1845,60 @@ function evaluateBinaryNode(
     return convertQuantity(leftResult, targetUnit);
   }
 
+  // Special handling for number base conversion
+  if (node.operator === "convert_base") {
+    const leftResult = evaluateNode(node.left, variables, context);
+    const rightNode = node.right as VariableNode;
+    const targetBase = rightNode.name.toLowerCase();
+
+    if (leftResult.type !== "number") {
+      throw new Error(`Cannot convert ${leftResult.type} to ${targetBase}`);
+    }
+
+    const value = leftResult.value;
+
+    // Check if the value is an integer
+    if (!value.isInteger()) {
+      throw new Error(
+        `Cannot convert non-integer value ${value.toString()} to ${targetBase}`
+      );
+    }
+
+    const intValue = value;
+
+    if (targetBase === "binary" || targetBase === "bin") {
+      // Convert to binary string
+      const isNegative = intValue.isNegative();
+      const absValue = intValue.abs();
+      const binaryStr = absValue.toBinary();
+      // toBinary already includes '0b' prefix
+      return {
+        type: "string",
+        value: isNegative ? `-${binaryStr}` : binaryStr,
+      };
+    }
+    if (targetBase === "hex" || targetBase === "hexadecimal") {
+      // Convert to hex string
+      const isNegative = intValue.isNegative();
+      const absValue = intValue.abs();
+      const hexStr = absValue.toHexadecimal();
+      // toHexadecimal already includes '0x' prefix
+      return {
+        type: "string",
+        value: isNegative ? `-${hexStr}` : hexStr,
+      };
+    }
+    if (targetBase === "decimal" || targetBase === "dec") {
+      // Return as number with decimal format
+      return {
+        type: "number",
+        value: leftResult.value,
+        format: "decimal",
+      };
+    }
+    throw new Error(`Unknown number base: ${targetBase}`);
+  }
+
   // Special handling for unit operator (e.g., 5 m, 10 kg)
   if (node.operator === "unit") {
     const leftResult = evaluateNode(node.left, variables, context);
@@ -1901,6 +1964,118 @@ function evaluateBinaryNode(
     }
 
     throw new Error("Timezone conversion requires a timestamp value");
+  }
+
+  // Special handling for format conversion (to binary, to hex)
+  if (node.operator === "format_convert") {
+    const leftResult = evaluateNode(node.left, variables, context);
+    const rightNode = node.right as VariableNode;
+    const formatType = rightNode.name;
+
+    if (leftResult.type !== "number") {
+      throw new Error(`Cannot convert ${leftResult.type} to ${formatType}`);
+    }
+
+    // Check if the value is an integer
+    if (!leftResult.value.isInteger()) {
+      throw new Error(
+        `Cannot convert non-integer value ${leftResult.value.toString()} to ${formatType}`
+      );
+    }
+
+    const intValue = leftResult.value;
+    const num = intValue.toNumber();
+
+    if (formatType === "binary") {
+      // Convert to binary string
+      const absNum = Math.abs(num);
+      const binaryStr = absNum.toString(2);
+      return {
+        type: "string",
+        value: num < 0 ? `-0b${binaryStr}` : `0b${binaryStr}`,
+      };
+    }
+    if (formatType === "hex") {
+      // Convert to hex string
+      const absNum = Math.abs(num);
+      const hexStr = absNum.toString(16);
+      return {
+        type: "string",
+        value: num < 0 ? `-0x${hexStr}` : `0x${hexStr}`,
+      };
+    }
+    throw new Error(`Unknown format: ${formatType}`);
+  }
+
+  // Special handling for base conversion (from binary, hex, etc.)
+  if (node.operator === "convert_base") {
+    const leftResult = evaluateNode(node.left, variables, context);
+    const rightNode = node.right as VariableNode;
+    const targetBase = rightNode.name;
+
+    if (leftResult.type !== "string") {
+      throw new Error(
+        `Base conversion requires a string value, got ${leftResult.type}`
+      );
+    }
+
+    const inputStr = leftResult.value.trim();
+
+    // Parse the input number from its current base
+    let parsedValue: number;
+
+    if (inputStr.startsWith("0b") || inputStr.startsWith("-0b")) {
+      // Binary input
+      const isNegative = inputStr.startsWith("-");
+      const binaryStr = inputStr.replace(BINARY_PREFIX_REGEX, "");
+      parsedValue = Number.parseInt(binaryStr, 2);
+      if (isNegative) {
+        parsedValue = -parsedValue;
+      }
+    } else if (inputStr.startsWith("0x") || inputStr.startsWith("-0x")) {
+      // Hex input
+      const isNegative = inputStr.startsWith("-");
+      const hexStr = inputStr.replace(HEX_PREFIX_REGEX, "");
+      parsedValue = Number.parseInt(hexStr, 16);
+      if (isNegative) {
+        parsedValue = -parsedValue;
+      }
+    } else {
+      // Assume decimal
+      parsedValue = Number.parseFloat(inputStr);
+    }
+
+    if (Number.isNaN(parsedValue)) {
+      throw new Error(`Invalid number format: ${inputStr}`);
+    }
+
+    // Convert to target base
+    if (targetBase === "decimal" || targetBase === "dec") {
+      return {
+        type: "number",
+        value: toDecimal(parsedValue),
+      };
+    }
+
+    if (targetBase === "binary" || targetBase === "bin") {
+      const absNum = Math.abs(Math.floor(parsedValue));
+      const binaryStr = absNum.toString(2);
+      return {
+        type: "string",
+        value: parsedValue < 0 ? `-0b${binaryStr}` : `0b${binaryStr}`,
+      };
+    }
+
+    if (targetBase === "hex" || targetBase === "hexadecimal") {
+      const absNum = Math.abs(Math.floor(parsedValue));
+      const hexStr = absNum.toString(16);
+      return {
+        type: "string",
+        value: parsedValue < 0 ? `-0x${hexStr}` : `0x${hexStr}`,
+      };
+    }
+
+    throw new Error(`Unknown target base: ${targetBase}`);
   }
 
   const left = evaluateNode(node.left, variables, context);
@@ -2015,49 +2190,81 @@ function evaluateBinaryOperation(
     case "/":
       return evaluateDivide(left, right);
 
-    case "%":
-      return {
-        type: "number",
-        value: modulo(left.value, right.value),
-      };
+    case "%": {
+      const result = modulo(left.value, right.value);
+      // Modulo always produces integers when inputs are integers
+      const numberFormat = left.format || right.format;
+      if (numberFormat && left.value.isInteger() && right.value.isInteger()) {
+        return { type: "number", value: result, format: numberFormat };
+      }
+      return { type: "number", value: result };
+    }
 
     case "percent":
       // Return percentage as its own type
       return { type: "percentage", value: left.value };
 
-    case "^":
-      return {
-        type: "number",
-        value: power(left.value, right.value),
-      };
+    case "^": {
+      const result = power(left.value, right.value);
+      // Power often produces non-integers, but preserve format when it does produce an integer
+      const numberFormat = left.format || right.format;
+      if (numberFormat && result.isInteger()) {
+        return { type: "number", value: result, format: numberFormat };
+      }
+      return { type: "number", value: result };
+    }
 
-    case "&":
-      return {
-        type: "number",
-        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-        value: toDecimal(fromDecimal(left.value) & fromDecimal(right.value)),
-      };
+    case "&": {
+      // Bitwise AND always produces integers
+      const result = toDecimal(
+        // biome-ignore lint/nursery/noBitwiseOperators: This is intentionally a bitwise operator
+        fromDecimal(left.value) & fromDecimal(right.value)
+      );
+      const numberFormat = left.format || right.format;
+      if (numberFormat) {
+        return { type: "number", value: result, format: numberFormat };
+      }
+      return { type: "number", value: result };
+    }
 
-    case "|":
-      return {
-        type: "number",
-        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-        value: toDecimal(fromDecimal(left.value) | fromDecimal(right.value)),
-      };
+    case "|": {
+      // Bitwise OR always produces integers
+      const result = toDecimal(
+        // biome-ignore lint/nursery/noBitwiseOperators: This is intentionally a bitwise operator
+        fromDecimal(left.value) | fromDecimal(right.value)
+      );
+      const numberFormat = left.format || right.format;
+      if (numberFormat) {
+        return { type: "number", value: result, format: numberFormat };
+      }
+      return { type: "number", value: result };
+    }
 
-    case "<<":
-      return {
-        type: "number",
-        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-        value: toDecimal(fromDecimal(left.value) << fromDecimal(right.value)),
-      };
+    case "<<": {
+      // Left shift always produces integers
+      const result = toDecimal(
+        // biome-ignore lint/nursery/noBitwiseOperators: This is intentionally a bitwise operator
+        fromDecimal(left.value) << fromDecimal(right.value)
+      );
+      const numberFormat = left.format || right.format;
+      if (numberFormat) {
+        return { type: "number", value: result, format: numberFormat };
+      }
+      return { type: "number", value: result };
+    }
 
-    case ">>":
-      return {
-        type: "number",
-        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-        value: toDecimal(fromDecimal(left.value) >> fromDecimal(right.value)),
-      };
+    case ">>": {
+      // Right shift always produces integers
+      const result = toDecimal(
+        // biome-ignore lint/nursery/noBitwiseOperators: This is intentionally a bitwise operator
+        fromDecimal(left.value) >> fromDecimal(right.value)
+      );
+      const numberFormat = left.format || right.format;
+      if (numberFormat) {
+        return { type: "number", value: result, format: numberFormat };
+      }
+      return { type: "number", value: result };
+    }
 
     default:
       throw new Error(`Unknown binary operator: ${operator}`);
@@ -2176,6 +2383,13 @@ function evaluateAddSubtract(
     operator === "+"
       ? add(left.value, right.value)
       : subtract(left.value, right.value);
+
+  // Preserve format if the result is an integer and at least one operand has a format
+  const numberFormat = left.format || right.format;
+  if (numberFormat && result.isInteger()) {
+    return { type: "number", value: result, format: numberFormat };
+  }
+
   return { type: "number", value: result };
 }
 
@@ -2292,9 +2506,18 @@ function evaluateMultiply(
   if (left.type !== "number" || right.type !== "number") {
     throw new Error("Multiplication requires numeric values");
   }
+
+  const result = multiply(left.value, right.value);
+
+  // Preserve format if the result is an integer and at least one operand has a format
+  const numberFormat = left.format || right.format;
+  if (numberFormat && result.isInteger()) {
+    return { type: "number", value: result, format: numberFormat };
+  }
+
   return {
     type: "number",
-    value: multiply(left.value, right.value),
+    value: result,
   };
 }
 
@@ -2309,7 +2532,17 @@ function evaluateDivide(
   if (isZero(right.value)) {
     throw new Error("Division by zero");
   }
-  return { type: "number", value: divide(left.value, right.value) };
+
+  const result = divide(left.value, right.value);
+
+  // Preserve format if the result is an integer and at least one operand has a format
+  // Division often produces non-integers, so format is likely to be lost
+  const numberFormat = left.format || right.format;
+  if (numberFormat && result.isInteger()) {
+    return { type: "number", value: result, format: numberFormat };
+  }
+
+  return { type: "number", value: result };
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity

@@ -22,6 +22,8 @@ const UNICODE_LETTER_PATTERN = /\p{L}/u;
 const UNICODE_LETTER_OR_DIGIT_PATTERN = /[\p{L}\p{N}_]/u;
 const DATETIME_LOOKAHEAD_PATTERN = /^\d{1,2}[./]\d{1,2}[./]\d{4}[Tt]/;
 const CURRENCY_CODE_PATTERN = /^[A-Za-z]{3}$/;
+const HEX_DIGIT_PATTERN = /[0-9a-fA-F]/;
+const BINARY_DIGIT_PATTERN = /[01]/;
 
 // Re-export for backward compatibility
 export const DATE_KEYWORDS = dateKeywords;
@@ -375,9 +377,69 @@ export class Tokenizer {
     return { type: TokenType.TIME_LITERAL, value, position: start };
   }
 
+  private readHexLiteral(start: number): Token {
+    let value = "0";
+    this.advance(); // skip '0'
+    value += this.current; // 'x' or 'X'
+    this.advance();
+
+    // Must have at least one hex digit
+    if (!HEX_DIGIT_PATTERN.test(this.current)) {
+      throw new Error("Invalid hex literal: expected hex digit after 0x");
+    }
+
+    while (HEX_DIGIT_PATTERN.test(this.current)) {
+      value += this.current;
+      this.advance();
+    }
+
+    // Keep the full hex string for display, but also provide decimal value
+    return {
+      type: TokenType.NUMBER,
+      value, // Keep original format (e.g., "0xFF")
+      position: start,
+      format: "hex" as const,
+    };
+  }
+
+  private readBinaryLiteral(start: number): Token {
+    let value = "0";
+    this.advance(); // skip '0'
+    value += this.current; // 'b' or 'B'
+    this.advance();
+
+    // Must have at least one binary digit
+    if (!BINARY_DIGIT_PATTERN.test(this.current)) {
+      throw new Error("Invalid binary literal: expected 0 or 1 after 0b");
+    }
+
+    while (BINARY_DIGIT_PATTERN.test(this.current)) {
+      value += this.current;
+      this.advance();
+    }
+
+    // Keep the full binary string for display
+    return {
+      type: TokenType.NUMBER,
+      value, // Keep original format (e.g., "0b1010")
+      position: start,
+      format: "binary" as const,
+    };
+  }
+
   private readNumber(): Token {
     const start = this.position;
     let value = "";
+
+    // Check for hex literal (0x prefix)
+    if (this.current === "0" && (this.peek() === "x" || this.peek() === "X")) {
+      return this.readHexLiteral(start);
+    }
+
+    // Check for binary literal (0b prefix)
+    if (this.current === "0" && (this.peek() === "b" || this.peek() === "B")) {
+      return this.readBinaryLiteral(start);
+    }
 
     // Check if this could be a datetime pattern (DD.MM.YYYYTHH:MM)
     const datetimeToken = this.tryReadDateTime();

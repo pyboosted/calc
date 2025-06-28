@@ -23,6 +23,19 @@ export function toDecimal(value: number | string | Decimal): Decimal {
   if (value instanceof Decimal) {
     return value;
   }
+
+  // Handle hex and binary string literals
+  if (typeof value === "string") {
+    if (value.startsWith("0x") || value.startsWith("0X")) {
+      // Convert hex to decimal
+      return new Decimal(Number.parseInt(value, 16));
+    }
+    if (value.startsWith("0b") || value.startsWith("0B")) {
+      // Convert binary to decimal - parseInt needs the digits without prefix
+      return new Decimal(Number.parseInt(value.slice(2), 2));
+    }
+  }
+
   return new Decimal(value);
 }
 

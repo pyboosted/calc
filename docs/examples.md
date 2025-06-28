@@ -16,6 +16,34 @@ sin(0)
 round(3.14159, 2)
 ```
 
+## Number Formats (v1.5.1)
+```
+# Binary literals
+0b1010          # 10
+0b11111111      # 255
+0b0             # 0
+
+# Hexadecimal literals
+0xFF            # 255
+0x10            # 16
+0xDEADBEEF      # 3735928559
+
+# Base conversions
+10 to binary    # 0b1010
+255 to hex      # 0xff
+0xFF to decimal # 255
+0b1111 to hex   # 0xf
+
+# Mixed operations
+0xFF + 10       # 265
+0b1010 * 5      # 50
+0x100 - 0xFF    # 1
+
+# Negative numbers
+-10 to binary   # -0b1010
+-255 to hex     # -0xff
+```
+
 ## Unit Conversions
 ```
 100 cm in meters

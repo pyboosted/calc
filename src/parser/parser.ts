@@ -463,6 +463,24 @@ export class Parser {
               | "object",
           } as TypeCastNode;
         }
+
+        // Check for number base conversions
+        if (
+          targetType === "binary" ||
+          targetType === "bin" ||
+          targetType === "hex" ||
+          targetType === "hexadecimal" ||
+          targetType === "decimal" ||
+          targetType === "dec"
+        ) {
+          this.advance();
+          return {
+            type: "binary",
+            operator: "convert_base",
+            left: node,
+            right: { type: "variable", name: targetType } as VariableNode,
+          } as BinaryOpNode;
+        }
       }
 
       // Not a type cast, restore position for unit/timezone conversion handling
@@ -518,6 +536,19 @@ export class Parser {
           operator: "convert",
           left: node,
           right: { type: "variable", name: targetUnit } as VariableNode,
+        } as BinaryOpNode;
+      } else if (
+        nextToken.type === TokenType.VARIABLE &&
+        (nextToken.value === "binary" || nextToken.value === "hex")
+      ) {
+        // Handle "to binary" and "to hex" conversions
+        const format = nextToken.value;
+        this.advance();
+        node = {
+          type: "binary",
+          operator: "format_convert",
+          left: node,
+          right: { type: "variable", name: format } as VariableNode,
         } as BinaryOpNode;
       } else {
         // Check if this might be a timezone conversion
@@ -1129,8 +1160,9 @@ export class Parser {
     // Numbers
     if (this.current.type === TokenType.NUMBER) {
       const value = toDecimal(this.current.value);
+      const format = this.current.format; // Preserve format if available
       this.advance();
-      return { type: "number", value } as NumberNode;
+      return { type: "number", value, format } as NumberNode;
     }
 
     // String literals with interpolation (backticks)

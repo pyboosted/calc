@@ -650,3 +650,4 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - All numeric calculations use Decimal.js for arbitrary precision arithmetic (v1.5.0)
 - Precision is preserved through all operations including unit conversions and currency calculations
 - The precision display setting in config only affects output formatting, not internal calculations
+- Binary and hex conversions require integer values - attempting to convert decimals throws an error (v1.5.1)

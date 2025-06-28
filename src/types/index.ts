@@ -38,9 +38,12 @@ export interface PartialInfo {
   remainingParams: string[]; // Parameters still needed
 }
 
+// Number format types
+export type NumberFormat = "decimal" | "binary" | "hex";
+
 // Discriminated union type for all calculated values
 export type CalculatedValue =
-  | { type: "number"; value: Decimal } // Pure numbers only, no units
+  | { type: "number"; value: Decimal; format?: NumberFormat } // Pure numbers with optional format
   | { type: "percentage"; value: Decimal } // Special type for percentages
   | { type: "quantity"; value: Decimal; dimensions: DimensionMap }
   | { type: "string"; value: string }
@@ -107,11 +110,13 @@ export interface Token {
   type: TokenType;
   value: string;
   position: number;
+  format?: NumberFormat; // Optional format for number tokens
 }
 
 export interface NumberNode {
   type: "number";
   value: Decimal;
+  format?: NumberFormat;
 }
 
 export interface BinaryOpNode {
