@@ -64,6 +64,103 @@ export class Tokenizer {
     }
   }
 
+  private tryReadConcatenatedUnit(): Token[] | null {
+    // Try to detect patterns like "1h30min" or "2kg300g"
+    const start = this.position;
+    const savedPosition = this.position;
+    const savedCurrent = this.current;
+    const tokens: Token[] = [];
+
+    // Read first number
+    let numberValue = "";
+    while (DIGIT_PATTERN.test(this.current)) {
+      numberValue += this.current;
+      this.advance();
+    }
+
+    if (numberValue.length === 0) {
+      return null;
+    }
+
+    // Check if followed by a unit
+    let unitValue = "";
+    while (UNICODE_LETTER_PATTERN.test(this.current)) {
+      unitValue += this.current;
+      this.advance();
+    }
+
+    if (!isUnit(unitValue)) {
+      // Not a unit, restore position
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+
+    // We have a number followed by a unit
+    tokens.push({
+      type: TokenType.NUMBER,
+      value: numberValue,
+      position: start,
+    });
+    tokens.push({
+      type: TokenType.UNIT,
+      value: unitValue,
+      position: start + numberValue.length,
+    });
+
+    // Check if there's another number immediately following
+    if (!DIGIT_PATTERN.test(this.current)) {
+      // No more concatenated units
+      this.position = savedPosition;
+      this.current = savedCurrent;
+      return null;
+    }
+
+    // Continue reading concatenated units
+    while (DIGIT_PATTERN.test(this.current)) {
+      const numStart = this.position;
+      numberValue = "";
+
+      while (DIGIT_PATTERN.test(this.current)) {
+        numberValue += this.current;
+        this.advance();
+      }
+
+      unitValue = "";
+      while (UNICODE_LETTER_PATTERN.test(this.current)) {
+        unitValue += this.current;
+        this.advance();
+      }
+
+      if (!isUnit(unitValue)) {
+        // Not a valid unit, this might be something else
+        break;
+      }
+
+      tokens.push({
+        type: TokenType.NUMBER,
+        value: numberValue,
+        position: numStart,
+      });
+      tokens.push({
+        type: TokenType.UNIT,
+        value: unitValue,
+        position: numStart + numberValue.length,
+      });
+    }
+
+    // Check if we successfully parsed concatenated units
+    if (tokens.length >= 4) {
+      // At least 2 number-unit pairs
+      return tokens;
+    }
+
+    // Restore position if we didn't find valid concatenated units
+    this.position = savedPosition;
+    this.current = savedCurrent;
+    return null;
+  }
+
   private pushToken(tokens: Token[], token: Token): void {
     tokens.push(token);
     this.processedTokens.push(token);
@@ -350,7 +447,6 @@ export class Tokenizer {
     return { type: TokenType.NUMBER, value, position: start };
   }
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Tokenizer needs to handle many different keyword and identifier types
   private tryReadKeywordOrIdentifier(): Token {
     const start = this.position;
     let value = "";
@@ -448,56 +544,6 @@ export class Tokenizer {
       return { type: TokenType.TIMEZONE, value, position: start };
     }
 
-    // Special handling for words that can be both keywords and functions (sum, avg, average)
-    if (["sum", "avg", "average"].includes(finalLowerValue)) {
-      // Peek ahead to see if the next non-whitespace character is '(' or '=' or '+=' or '-='
-      const savedPos = this.position;
-      while (
-        this.position < this.input.length &&
-        WHITESPACE_PATTERN.test(this.input[this.position] || "")
-      ) {
-        this.position++;
-      }
-
-      let isFollowedByParen = false;
-      let isFollowedByAssignment = false;
-
-      if (this.position < this.input.length) {
-        const nextChar = this.input[this.position];
-        isFollowedByParen = nextChar === "(";
-        isFollowedByAssignment =
-          nextChar === "=" ||
-          (nextChar === "+" &&
-            this.position + 1 < this.input.length &&
-            this.input[this.position + 1] === "=") ||
-          (nextChar === "-" &&
-            this.position + 1 < this.input.length &&
-            this.input[this.position + 1] === "=");
-      }
-
-      this.position = savedPos; // Reset position
-
-      if (isFollowedByParen) {
-        return {
-          type: TokenType.FUNCTION,
-          value: finalLowerValue,
-          position: start,
-        };
-      }
-      if (isFollowedByAssignment) {
-        return {
-          type: TokenType.VARIABLE,
-          value,
-          position: start,
-        };
-      }
-      return {
-        type: TokenType.KEYWORD,
-        value: finalLowerValue,
-        position: start,
-      };
-    }
-
     // Check if this is a function
     if (isFunction(finalLowerValue)) {
       return {
@@ -508,7 +554,18 @@ export class Tokenizer {
     }
 
     // Check if this is a keyword
+    // Special case: "in" can be both a keyword and a unit (inches)
+    // If it follows a number, it's likely the unit
     if (isKeyword(finalLowerValue)) {
+      // Special handling for "in" which can be a unit
+      if (
+        finalLowerValue === "in" &&
+        this.lastToken &&
+        this.lastToken.type === TokenType.NUMBER
+      ) {
+        // In this context, "in" is likely the unit for inches
+        return { type: TokenType.VARIABLE, value, position: start };
+      }
       return {
         type: TokenType.KEYWORD,
         value: finalLowerValue,
@@ -846,6 +903,18 @@ export class Tokenizer {
         const token = this.tryReadDoubleQuoteString();
         if (token) {
           this.pushToken(tokens, token);
+          continue;
+        }
+      }
+
+      // Try concatenated units first (like "1h30min")
+      if (DIGIT_PATTERN.test(this.current)) {
+        const concatenatedTokens = this.tryReadConcatenatedUnit();
+        if (concatenatedTokens) {
+          // Push all tokens from concatenated units
+          for (const token of concatenatedTokens) {
+            this.pushToken(tokens, token);
+          }
           continue;
         }
       }

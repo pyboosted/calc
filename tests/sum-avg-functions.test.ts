@@ -107,48 +107,8 @@ describe("Sum and Average Functions", () => {
     });
   });
 
-  describe("aggregate keyword compatibility", () => {
-    test("sum keyword should work for multi-line aggregation", () => {
-      const vars = new Map<string, CalculatedValue>();
-      const context = { previousResults: [] as CalculatedValue[] };
-
-      // Simulate multi-line calculation
-      const result1 = evaluate("100", vars, context);
-      context.previousResults.push(result1);
-
-      const result2 = evaluate("200", vars, context);
-      context.previousResults.push(result2);
-
-      const result3 = evaluate("300", vars, context);
-      context.previousResults.push(result3);
-
-      // Use sum as aggregate keyword
-      const sum = evaluate("sum", vars, context);
-      expect(sum.type).toBe("number");
-      expect(sum.value).toBe(600);
-    });
-
-    test("avg keyword should work for multi-line aggregation", () => {
-      const vars = new Map<string, CalculatedValue>();
-      const context = { previousResults: [] as CalculatedValue[] };
-
-      // Simulate multi-line calculation
-      const result1 = evaluate("10", vars, context);
-      context.previousResults.push(result1);
-
-      const result2 = evaluate("20", vars, context);
-      context.previousResults.push(result2);
-
-      const result3 = evaluate("30", vars, context);
-      context.previousResults.push(result3);
-
-      // Use avg as aggregate keyword
-      const avg = evaluate("avg", vars, context);
-      expect(avg.type).toBe("number");
-      expect(avg.value).toBe(20);
-    });
-
-    test("agg keyword with pipe should work", () => {
+  describe("aggregate with pipe operator", () => {
+    test("agg | sum should work for multi-line aggregation", () => {
       const vars = new Map<string, CalculatedValue>();
       const context = { previousResults: [] as CalculatedValue[] };
 
@@ -157,11 +117,22 @@ describe("Sum and Average Functions", () => {
       context.previousResults.push({ type: "number", value: 10 });
       context.previousResults.push({ type: "number", value: 15 });
 
-      // Use agg keyword with pipe
+      // Use agg keyword with pipe to sum
       const sum = evaluate("agg | sum", vars, context);
       expect(sum.type).toBe("number");
       expect(sum.value).toBe(30);
+    });
 
+    test("agg | avg should work for multi-line aggregation", () => {
+      const vars = new Map<string, CalculatedValue>();
+      const context = { previousResults: [] as CalculatedValue[] };
+
+      // Simulate multi-line calculation
+      context.previousResults.push({ type: "number", value: 5 });
+      context.previousResults.push({ type: "number", value: 10 });
+      context.previousResults.push({ type: "number", value: 15 });
+
+      // Use agg keyword with pipe to average
       const avg = evaluate("agg | avg", vars, context);
       expect(avg.type).toBe("number");
       expect(avg.value).toBe(10);

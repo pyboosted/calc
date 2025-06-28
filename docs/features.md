@@ -10,6 +10,10 @@
 ## Unit Conversions
 - **Length, weight, temperature, time, volume, data**
   - Examples: `100 cm in meters`, `32 F in C`, `1 hour in minutes`
+- **Compound unit input** (v1.4.7):
+  - Space-separated: `1h 30min`, `2kg 300g`, `5ft 6in`
+  - Concatenated: `1h30min`, `2kg300g`, `5ft6in`
+  - Supports expressions: `100m / (1min 30s)`, `(2h 30min) + (1h 45min)`
 
 ## Dimensional Analysis & Compound Units (v1.4.0)
 - **Velocity**: `100m / 10s = 10 m/s`, `60 km/h to m/s`
@@ -56,9 +60,11 @@
 - Use `prev` to reference the previous line's result (skips empty lines and comments)
 
 ### Aggregate Operations
-- `total`, `sum`, `average`/`avg` calculate sum/mean of previous numeric values (stops at empty line or comment)
+- `total` calculates sum of previous numeric values (stops at empty line or comment)
 - String concatenation: `total` concatenates strings when previous results contain strings
-- `agg` keyword: Returns array of previous results for piping (e.g., `agg | sum`)
+- `agg` keyword: Returns array of previous results for piping
+- Use `agg | sum` for sum of previous results (replaces old `sum` aggregate)
+- Use `agg | avg` or `agg | average` for average of previous results (replaces old `avg`/`average` aggregates)
 
 ### Smart Percentage Calculations
 - Basic: `20%` = 0.2
@@ -123,6 +129,9 @@
 - **Time arithmetic**: `12:15@moscow - 10:00@moscow in minutes`
 - **Date differences**: `25/07/2025 - today in days`, `(01.01.2025 - 25.12.2024) in hours`
 - **Supported units**: days, weeks, months, years, hours, minutes, seconds, milliseconds
+- **Smart time formatting**: Fractional time values display in compound format (e.g., `2.5 hours` → `2h 30min`)
+  - Weeks are skipped in compound format unless the base unit is weeks
+  - Whole numbers stay in their original unit (e.g., `150 minutes` stays as is)
 
 ## Environment and Arguments (v1.3.6)
 - **`env()` function**: Read environment variables with `env("VAR_NAME")`

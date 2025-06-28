@@ -511,19 +511,6 @@ describe("String Aggregates", () => {
     expect(result).toEqual({ type: "string", value: "Hello World" });
   });
 
-  test("sum as alias for total with strings", () => {
-    const vars = new Map();
-
-    const previousResults = [
-      { type: "string" as const, value: "A" },
-      { type: "string" as const, value: "B" },
-      { type: "string" as const, value: "C" },
-    ];
-
-    const result = evaluate("sum", vars, { previousResults });
-    expect(result).toEqual({ type: "string", value: "ABC" });
-  });
-
   test("total with mixed strings and numbers uses only strings", () => {
     const vars = new Map();
 
@@ -535,30 +522,5 @@ describe("String Aggregates", () => {
 
     const result = evaluate("total", vars, { previousResults });
     expect(result).toEqual({ type: "string", value: "Hello World" });
-  });
-
-  test("average ignores strings", () => {
-    const vars = new Map();
-
-    const previousResults = [
-      { type: "number" as const, value: 10 },
-      { type: "string" as const, value: "ignored" },
-      { type: "number" as const, value: 20 },
-    ];
-
-    const result = evaluate("average", vars, { previousResults });
-    expect(result).toEqual({ type: "number", value: 15 });
-  });
-
-  test("avg as alias for average", () => {
-    const vars = new Map();
-
-    const previousResults = [
-      { type: "number" as const, value: 5 },
-      { type: "number" as const, value: 15 },
-    ];
-
-    const result = evaluate("avg", vars, { previousResults });
-    expect(result).toEqual({ type: "number", value: 10 });
   });
 });

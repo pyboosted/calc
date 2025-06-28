@@ -324,10 +324,9 @@ This allows the calculator to handle multiple data types while maintaining type 
    - Arrays/objects to string: Converts to JSON representation
 
 7. **Integration with Aggregates**:
-   - `sum` and `avg`/`average` work as both:
-     - Aggregate keywords (operate on previous results)
-     - Functions (operate on array arguments)
-   - Context-aware tokenization determines usage
+   - `sum` and `avg`/`average` now work only as array functions
+   - For aggregate operations, use pipe operator: `agg | sum`, `agg | avg`
+   - The `agg` keyword returns an array of previous results
 
 ### Type System and Type Checking (v1.3.1)
 
@@ -615,6 +614,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - String functions are case-sensitive and follow JavaScript conventions
 - Escape sequences in strings support `\n`, `\t`, `\\`, and `\`` 
 - Aggregate operations (`total`) concatenate strings when previous results contain strings
+- `sum` and `avg`/`average` are no longer aggregate keywords - use `agg | sum` and `agg | avg` instead (v1.4.5)
 - Boolean operations use JavaScript-like truthiness rules (v1.3.1)
 - Logical operators (`and`, `or`) implement short-circuit evaluation
 - Comparison operators automatically handle unit conversions for numbers with units
@@ -623,7 +623,8 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `null` is a distinct type from `false` or `0`, following JavaScript semantics
 - Arrays and objects are first-class types with full support for literals, functions, and property access (v1.3.2)
 - Array functions `push` and `pop` mutate the array (like JavaScript) - push returns new length, pop returns removed element
-- The `sum`, `avg`, and `average` functions can work as both aggregate keywords and array functions
+- The `sum`, `avg`, and `average` functions now work only as array functions (v1.4.5)
+- For aggregate operations over previous results, use `agg | sum` or `agg | avg`
 - Type casting supports parsing JSON strings to arrays/objects with `as array` and `as object`
 - Property access works with both dot notation and bracket notation for arrays and objects
 - Environment variables can be read with `env("VAR_NAME")` function (v1.3.6)

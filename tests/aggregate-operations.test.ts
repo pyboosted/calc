@@ -17,20 +17,6 @@ describe("Aggregate Operations", () => {
     expect(result.value).toBe(60); // 10 + 20 + 30
   });
 
-  test("average calculates mean of previous values", () => {
-    const vars = new Map();
-
-    // Simulate previous results: 10, 20, 30
-    const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 10 },
-      { type: "number" as const, value: 20 },
-      { type: "number" as const, value: 30 },
-    ];
-
-    const result = evaluate("average", vars, { previousResults });
-    expect(result.value).toBe(20); // (10 + 20 + 30) / 3
-  });
-
   test("ignores non-numeric values", () => {
     const vars = new Map();
 
@@ -47,28 +33,11 @@ describe("Aggregate Operations", () => {
     expect(result.value).toBe(60); // Only sums 10 + 20 + 30
   });
 
-  test("works with decimal values", () => {
-    const vars = new Map();
-
-    const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 10.5 },
-      { type: "number" as const, value: 20.25 },
-      { type: "number" as const, value: 30.75 },
-    ];
-
-    const result = evaluate("average", vars, { previousResults });
-    expect(result.value).toBe(20.5); // (10.5 + 20.25 + 30.75) / 3
-  });
-
   test("throws error when no previous values", () => {
     const vars = new Map();
 
     expect(() => evaluate("total", vars, { previousResults: [] })).toThrow(
       "No values to total"
-    );
-
-    expect(() => evaluate("average", vars, { previousResults: [] })).toThrow(
-      "No values to average"
     );
   });
 
@@ -139,35 +108,6 @@ describe("Aggregate Operations", () => {
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
       expect(result.dimensions.length?.unit).toBe("m");
-    }
-  });
-
-  test("average with target unit conversion", () => {
-    const vars = new Map();
-
-    const previousResults: CalculatedValue[] = [
-      {
-        type: "quantity" as const,
-        value: 100,
-        dimensions: { length: { exponent: 1, unit: "km" } },
-      },
-      {
-        type: "quantity" as const,
-        value: 50,
-        dimensions: { length: { exponent: 1, unit: "km" } },
-      },
-      {
-        type: "quantity" as const,
-        value: 30,
-        dimensions: { length: { exponent: 1, unit: "km" } },
-      },
-    ];
-
-    const result = evaluate("average in miles", vars, { previousResults });
-    expect(result.value).toBeCloseTo(37.282, 2); // Average of 60 km in miles
-    expect(result.type).toBe("quantity");
-    if (result.type === "quantity") {
-      expect(result.dimensions.length?.unit).toBe("miles");
     }
   });
 

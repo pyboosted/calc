@@ -89,13 +89,13 @@ prev / 3
 200
 300
 total          # 600
-average        # 200
+agg | avg      # 200 (new syntax for average)
 
 # With grouping
 85
 90
 95
-average        # 90
+agg | avg      # 90 (average of previous results)
 
 Comment or empty line breaks the group
 50
@@ -140,6 +140,18 @@ today - birthday in days
 now in yerevan                 # Current time in Yerevan
 12:15 - 10:00 in minutes       # Time difference
 25.10.2025T12:15@moscow        # DateTime with timezone
+
+# Smart time formatting
+2.5 hours                      # Displays as "2h 30min"
+150 minutes                    # Stays as "150 minutes" (whole number)
+2.5 weeks                      # Displays as "2w 3d 12h"
+3.5 months                     # Displays as "3mo 15d 5h 15min"
+100.5 days                     # Displays as "3mo 9d 12h"
+
+# Time calculations with units
+rent = 100 USD / month
+money = 256 USD
+money / rent                   # 2.56 months → displays as "2mo 17d 2h 24min"
 ```
 
 ## Comments and Organization
@@ -471,17 +483,16 @@ parsed_obj = json_obj as object        # {x: 10, y: 20}
 [1, 2, 3] as string                    # "[1,2,3]"
 {a: 1, b: 2} as string                 # "{\"a\":1,\"b\":2}"
 
-# sum and avg as functions vs aggregates
-# As functions:
+# sum and avg as array functions
 sum([1, 2, 3, 4])                      # 10
 avg([10, 20, 30])                      # 20
 
-# As aggregate keywords:
+# For aggregate operations, use agg with pipe:
 10
 20
 30
-sum                                    # 60 (aggregate)
-average                                # 20 (aggregate)
+agg | sum                              # 60 (sum of previous results)
+agg | avg                              # 20 (average of previous results)
 ```
 
 ## Environment Variables and Arguments (v1.3.6)

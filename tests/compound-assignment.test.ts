@@ -211,11 +211,11 @@ describe("Compound Assignment Operators", () => {
   describe("Chained compound assignments", () => {
     test("multiple += operations", () => {
       const variables = new Map<string, CalculatedValue>();
-      evaluate("sum = 0", variables);
-      evaluate("sum += 10", variables);
-      evaluate("sum += 20", variables);
-      evaluate("sum += 30", variables);
-      const result = variables.get("sum");
+      evaluate("total_val = 0", variables);
+      evaluate("total_val += 10", variables);
+      evaluate("total_val += 20", variables);
+      evaluate("total_val += 30", variables);
+      const result = variables.get("total_val");
       expect(result).toBeDefined();
       if (result) {
         expect(result.type).toBe("number");

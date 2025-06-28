@@ -3,6 +3,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import type { CalculatedValue } from "../types";
 import { TimezoneManager } from "../utils/timezone-manager";
 import type { DimensionMap } from "./dimensions";
+import { TIME_CONVERSIONS } from "./dimensions";
 
 // Regex patterns
 const LOWERCASE_CURRENCY_PATTERN = /^[a-z]{3}$/;
@@ -10,6 +11,7 @@ const UTC_OFFSET_PATTERN = /^utc([+-]\d+)$/i;
 const ISO_DATE_TIME_PATTERN =
   /(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})/;
 const TRAILING_ZEROS_AFTER_DECIMAL = /\.?0+$/;
+const FRACTIONAL_SECONDS_TRAILING_ZEROS = /\.?0+$/;
 const _INVALID_CHARS_IN_NUMBER = /[^0-9.e+-]/gi;
 
 // Helper functions for date formatting
@@ -277,12 +279,174 @@ export function buildCompoundUnitString(dimensions: DimensionMap): string {
   return `${positive.join("⋅")}/${negative.join("⋅")}`;
 }
 
+// Helper to format seconds value
+function formatSecondsValue(seconds: number): string {
+  if (seconds % 1 === 0) {
+    return seconds.toString();
+  }
+  return seconds.toFixed(3).replace(FRACTIONAL_SECONDS_TRAILING_ZEROS, "");
+}
+
+// Regex for extracting minutes from time parts
+const MINUTES_PATTERN = /^(\d+)min$/;
+
+// Helper to handle rounding of seconds to minutes
+function handleRoundedMinute(
+  parts: string[],
+  divisors: { value: number; label: string }[]
+): void {
+  const minIndex = parts.findIndex((p) => p.endsWith("min"));
+  if (minIndex >= 0 && parts[minIndex]) {
+    // Extract the number and increment
+    const match = parts[minIndex].match(MINUTES_PATTERN);
+    if (match?.[1]) {
+      parts[minIndex] = `${Number.parseInt(match[1], 10) + 1}min`;
+    }
+  } else {
+    // Add 1min to parts in the right position
+    const minuteDivisorIndex = divisors.findIndex((d) => d.label === "min");
+    if (minuteDivisorIndex >= 0) {
+      // Count how many parts we already have before minutes
+      let insertIndex = 0;
+      for (let i = 0; i < minuteDivisorIndex; i++) {
+        const divisor = divisors[i];
+        if (divisor && parts.some((p) => p.endsWith(divisor.label))) {
+          insertIndex++;
+        }
+      }
+      parts.splice(insertIndex, 0, "1min");
+    } else {
+      parts.push("1min");
+    }
+  }
+}
+
+// Helper to build time parts array
+function buildTimeParts(
+  totalSeconds: number,
+  divisors: { value: number; label: string }[]
+): string[] {
+  const parts: string[] = [];
+  let remaining = totalSeconds;
+
+  for (const { value, label } of divisors) {
+    const amount = Math.floor(remaining / value);
+    if (amount > 0) {
+      parts.push(`${amount}${label}`);
+    }
+    remaining %= value;
+  }
+
+  // Round remaining seconds to avoid floating-point issues
+  remaining = Math.round(remaining * 1000) / 1000;
+
+  // Add remaining seconds if any or if no parts
+  if (remaining > 0 || parts.length === 0) {
+    // If we have exactly 60 seconds due to rounding, convert to 1 minute
+    if (remaining >= 59.9995 && remaining < 60.0005 && parts.length > 0) {
+      handleRoundedMinute(parts, divisors);
+    } else if (remaining > 0.0005) {
+      parts.push(`${formatSecondsValue(remaining)}s`);
+    }
+  }
+
+  return parts;
+}
+
+// Format time duration in compound format (e.g., "2h 30min")
+function formatTimeDuration(seconds: number, baseUnit?: string): string {
+  // Round to nearest millisecond to avoid floating-point precision issues
+  const roundedSeconds = Math.round(seconds * 1000) / 1000;
+  const absSeconds = Math.abs(roundedSeconds);
+  const sign = roundedSeconds < 0 ? "-" : "";
+
+  // For very small values, just show seconds
+  if (
+    absSeconds < 60 &&
+    (!baseUnit || baseUnit === "s" || baseUnit === "seconds")
+  ) {
+    return `${sign}${formatSecondsValue(absSeconds)}s`;
+  }
+
+  // Special handling for weeks as base unit
+  if (baseUnit === "week" || baseUnit === "weeks" || baseUnit === "w") {
+    const divisors = [
+      { value: 604_800, label: "w" },
+      { value: 86_400, label: "d" },
+      { value: 3600, label: "h" },
+      { value: 60, label: "min" },
+    ];
+    const parts = buildTimeParts(absSeconds, divisors);
+    return sign + parts.join(" ");
+  }
+
+  // Special handling for months as base unit
+  if (baseUnit === "month" || baseUnit === "months") {
+    const divisors = [
+      { value: 2_629_800, label: "mo" },
+      { value: 86_400, label: "d" },
+      { value: 3600, label: "h" },
+      { value: 60, label: "min" },
+    ];
+    const parts = buildTimeParts(absSeconds, divisors);
+    return sign + parts.join(" ");
+  }
+
+  // Standard time formatting (skip weeks)
+  const divisors = [
+    { value: 2_629_800, label: "mo" }, // Average month
+    { value: 86_400, label: "d" },
+    { value: 3600, label: "h" },
+    { value: 60, label: "min" },
+  ];
+  const parts = buildTimeParts(absSeconds, divisors);
+  return sign + parts.join(" ");
+}
+
 // Format a quantity with its best unit representation
 export function formatQuantity(
   value: number,
   dimensions: DimensionMap,
   precision?: number
 ): string {
+  // Special formatting for time quantities
+  if (
+    Object.keys(dimensions).length === 1 &&
+    dimensions.time &&
+    dimensions.time.exponent === 1
+  ) {
+    const timeUnit = dimensions.time.unit;
+    if (timeUnit) {
+      const conversions = TIME_CONVERSIONS[timeUnit];
+      if (conversions) {
+        const seconds =
+          value * conversions.coefficient * 10 ** (conversions.exponent || 0);
+
+        // Only use compound format if the value has fractional parts in the current unit
+        // This way "150 minutes" stays as "150 minutes" but "2.5 hours" becomes "2h 30min"
+
+        // Check if the value is a whole number in the current unit
+        const roundedValue = Math.round(value);
+        const isWholeNumber = Math.abs(value - roundedValue) < 0.0001;
+
+        // Also check if the value has many decimal places (likely from calculation)
+        const valueStr = value.toString();
+        const decimalPart = valueStr.split(".")[1];
+        const hasLongDecimal =
+          valueStr.includes(".") && decimalPart && decimalPart.length > 6;
+
+        if (!isWholeNumber || hasLongDecimal) {
+          // If it's very close to a whole number but has long decimals, round it
+          if (isWholeNumber && hasLongDecimal) {
+            return formatTimeDuration(seconds, timeUnit);
+          }
+          // Value has fractional parts, use compound format for better readability
+          return formatTimeDuration(seconds, timeUnit);
+        }
+      }
+    }
+  }
+
   const unit = findBestUnit(dimensions);
   let formattedValue: string;
 

@@ -1,4 +1,5 @@
 import { isUnit } from "../data/units";
+import { getDimensionForUnit } from "../evaluator/dimensions";
 import {
   type AggregateNode,
   type ArrayNode,
@@ -909,7 +910,34 @@ export class Parser {
         this.current.type === TokenType.UNIT ||
         this.current.type === TokenType.CURRENCY
       ) {
-        // Try to parse as a compound unit
+        // First, check if this could be a compound unit expression (e.g., "1h 30min")
+        const unit = this.current.value;
+        this.advance();
+
+        // Check if the next tokens form a compound unit pattern (number followed by unit)
+        const currentToken = this.current;
+        if (
+          currentToken.type === TokenType.NUMBER &&
+          this.peek(1) &&
+          (this.peek(1)?.type === TokenType.UNIT ||
+            this.peek(1)?.type === TokenType.CURRENCY)
+        ) {
+          // This might be a compound unit expression
+          const compoundResult = this.parseCompoundUnitExpression(node, unit);
+          if (compoundResult) {
+            node = compoundResult;
+            continue;
+          }
+        }
+
+        // Not a compound unit, check for compound unit syntax like "kg/s"
+        this.position--; // Back up to re-read the unit
+        this.current = this.tokens[this.position] || {
+          type: TokenType.EOF,
+          value: "",
+          position: this.position,
+        };
+
         const compoundUnit = parseCompoundUnit(this.tokens, this.position);
 
         if (compoundUnit) {
@@ -931,8 +959,7 @@ export class Parser {
           } as BinaryOpNode;
         } else {
           // Simple single unit
-          const unit = this.current.value;
-          this.advance();
+          this.advance(); // consume the unit we backed up from
 
           // Always wrap in a unit conversion node
           node = {
@@ -1022,6 +1049,71 @@ export class Parser {
     }
 
     return node;
+  }
+
+  // Helper to parse compound units like "1h 30min" or "2kg 300g"
+  private parseCompoundUnitExpression(
+    firstValue: ASTNode,
+    firstUnit: string
+  ): ASTNode | null {
+    const firstDimension = getDimensionForUnit(firstUnit);
+    if (!firstDimension) {
+      return null;
+    }
+
+    // Create the first unit node
+    let result: ASTNode = {
+      type: "binary",
+      operator: "unit",
+      left: firstValue,
+      right: { type: "variable", name: firstUnit } as VariableNode,
+    } as BinaryOpNode;
+
+    // Look for additional number+unit pairs
+    while (
+      this.current.type === TokenType.NUMBER &&
+      this.peek(1) &&
+      (this.peek(1)?.type === TokenType.UNIT ||
+        this.peek(1)?.type === TokenType.CURRENCY)
+    ) {
+      const nextValue = Number.parseFloat(this.current.value);
+      this.advance(); // consume number
+
+      const nextUnit = this.current.value;
+      const nextDimension = getDimensionForUnit(nextUnit);
+
+      // Validate dimension compatibility
+      if (nextDimension !== firstDimension) {
+        // Different dimensions, stop parsing compound unit
+        this.position--; // Back up to the number
+        this.current = this.tokens[this.position] || {
+          type: TokenType.EOF,
+          value: "",
+          position: this.position,
+        };
+        break;
+      }
+
+      this.advance(); // consume unit
+
+      // Create unit node for this component
+      const nextUnitNode: ASTNode = {
+        type: "binary",
+        operator: "unit",
+        left: { type: "number", value: nextValue } as NumberNode,
+        right: { type: "variable", name: nextUnit } as VariableNode,
+      } as BinaryOpNode;
+
+      // Add to result
+      result = {
+        type: "binary",
+        operator: "+",
+        left: result,
+        right: nextUnitNode,
+      } as BinaryOpNode;
+    }
+
+    return result;
   }
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: It is complex by design
@@ -1241,18 +1333,10 @@ export class Parser {
       }
       // Aggregate keywords
       if (
-        ["total", "sum", "average", "avg", "agg", "aggregate"].includes(
-          this.current.value
-        )
+        ["total", "average", "agg", "aggregate"].includes(this.current.value)
       ) {
         let aggregateType = this.current.value;
         // Convert aliases to canonical names
-        if (aggregateType === "sum") {
-          aggregateType = "total";
-        }
-        if (aggregateType === "avg") {
-          aggregateType = "average";
-        }
         if (aggregateType === "aggregate") {
           aggregateType = "agg";
         }

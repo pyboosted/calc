@@ -61,6 +61,11 @@ sqrt(144)               # 12
 32 °F in °C            # 0 °C
 60 km/h to m/s         # 16.667 m/s
 
+# Compound unit input
+1h 30min                # 1.5 hours
+2kg300g                 # 2.3 kg
+100m / 1min30s          # 66.67 m/min
+
 # Variables and functions
 radius = 5
 area = pi * radius^2    # 78.54
