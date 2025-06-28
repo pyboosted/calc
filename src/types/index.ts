@@ -23,6 +23,13 @@ export interface FunctionInfo {
   isBuiltin: false;
 }
 
+// Lambda information
+export interface LambdaInfo {
+  parameters: string[];
+  body: ASTNode;
+  closure?: Map<string, CalculatedValue>;
+}
+
 // Discriminated union type for all calculated values
 export type CalculatedValue =
   | { type: "number"; value: number } // Pure numbers only, no units
@@ -34,7 +41,8 @@ export type CalculatedValue =
   | { type: "null"; value: null }
   | { type: "array"; value: CalculatedValue[] }
   | { type: "object"; value: Map<string, CalculatedValue> }
-  | { type: "function"; value: FunctionInfo };
+  | { type: "function"; value: FunctionInfo }
+  | { type: "lambda"; value: LambdaInfo };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -78,6 +86,7 @@ export const TokenType = {
   RBRACE: "RBRACE",
   LBRACKET: "LBRACKET",
   RBRACKET: "RBRACKET",
+  ARROW: "ARROW",
   EOF: "EOF",
 } as const;
 
@@ -247,6 +256,12 @@ export interface FunctionDefinitionNode {
   body: ASTNode;
 }
 
+export interface LambdaNode {
+  type: "lambda";
+  parameters: string[];
+  body: ASTNode;
+}
+
 // ASTNode is now a discriminated union type
 export type ASTNode =
   | NumberNode
@@ -274,4 +289,5 @@ export type ASTNode =
   | IndexAccessNode
   | PropertyAssignmentNode
   | TypeCheckNode
-  | FunctionDefinitionNode;
+  | FunctionDefinitionNode
+  | LambdaNode;

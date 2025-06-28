@@ -383,6 +383,9 @@ export class CalculatorEngine {
       case "function":
         // Functions are considered equal if they have the same name
         return a.value.name === (b as typeof a).value.name;
+      case "lambda":
+        // Lambdas are equal if they reference the same object
+        return a === b;
       default: {
         // Exhaustive check
         const _exhaustiveCheck: never = a;

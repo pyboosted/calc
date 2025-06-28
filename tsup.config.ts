@@ -7,7 +7,7 @@ export default defineConfig({
     cli: "src/cli.tsx",
   },
   format: ["esm"],
-  target: "node18",
+  target: "node22",
   platform: "node",
   outDir: "dist",
   clean: true,

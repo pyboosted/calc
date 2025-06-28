@@ -491,6 +491,9 @@ export function formatResultWithUnit(
     case "function":
       return `<function ${value.value.name}(${value.value.parameters.join(", ")})>`;
 
+    case "lambda":
+      return `<lambda(${value.value.parameters.join(", ")})>`;
+
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;

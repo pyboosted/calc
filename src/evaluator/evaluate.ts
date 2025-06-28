@@ -56,6 +56,14 @@ import {
   parseUnit,
 } from "./dimensions";
 import { evaluateArgFunction, evaluateEnvFunction } from "./env-arg-functions";
+import {
+  evaluateLambda,
+  filterArray,
+  groupByArray,
+  mapArray,
+  reduceArray,
+  sortArray,
+} from "./lambda-functions";
 import { mathFunctions } from "./math-functions";
 import {
   addQuantities,
@@ -212,6 +220,10 @@ function formatValue(value: CalculatedValue): string {
       }
       return `{${entries.join(", ")}}`;
     }
+    case "function":
+      return `<function ${value.value.name}(${value.value.parameters.join(", ")})>`;
+    case "lambda":
+      return `<lambda(${value.value.parameters.join(", ")})>`;
     default:
       // This should never happen with our exhaustive type checking
       throw new Error("Unknown value type");
@@ -314,6 +326,8 @@ function isTruthy(value: CalculatedValue): boolean {
       return value.value !== 0; // Quantities are truthy if non-zero
     case "function":
       return true; // Functions are always truthy
+    case "lambda":
+      return true; // Lambdas are always truthy
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;
@@ -492,6 +506,12 @@ function valueToJSON(value: CalculatedValue): JSONValue {
       return {
         type: "function",
         name: value.value.name,
+        parameters: value.value.parameters,
+      };
+    case "lambda":
+      // Convert lambda to object representation
+      return {
+        type: "lambda",
         parameters: value.value.parameters,
       };
     default: {
@@ -738,10 +758,28 @@ function evaluateFunctionNode(
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
 ): CalculatedValue {
-  // Check if it's a user-defined function
+  // Check if it's a user-defined function or lambda
   const funcDef = variables.get(node.name);
-  if (funcDef && funcDef.type === "function") {
-    return evaluateUserFunction(funcDef, node.args, variables, context);
+  if (funcDef) {
+    if (funcDef.type === "function") {
+      return evaluateUserFunction(funcDef, node.args, variables, context);
+    }
+    if (funcDef.type === "lambda") {
+      // Call lambda directly
+      const lambda = funcDef.value;
+      const evaluatedArgs = node.args.map((arg) =>
+        evaluateNode(arg, variables, context)
+      );
+
+      // Check parameter count
+      if (evaluatedArgs.length !== lambda.parameters.length) {
+        throw new Error(
+          `Lambda expects ${lambda.parameters.length} arguments, got ${evaluatedArgs.length}`
+        );
+      }
+
+      return evaluateLambda(lambda, evaluatedArgs, variables, context);
+    }
   }
 
   // Handle env() function
@@ -759,6 +797,79 @@ function evaluateFunctionNode(
       stdinData: context?.stdinData,
       cliArg: context?.cliArg,
     });
+  }
+
+  // Handle lambda-based array functions
+  if (node.name === "filter") {
+    if (node.args.length !== 2) {
+      throw new Error("filter requires exactly 2 arguments");
+    }
+    const firstArg = node.args[0];
+    const secondArg = node.args[1];
+    if (!firstArg || !secondArg) {
+      throw new Error("filter requires exactly 2 arguments");
+    }
+    const arr = evaluateNode(firstArg, variables, context);
+    const predicate = evaluateNode(secondArg, variables, context);
+    return filterArray(arr, predicate, variables, context);
+  }
+
+  if (node.name === "map") {
+    if (node.args.length !== 2) {
+      throw new Error("map requires exactly 2 arguments");
+    }
+    const firstArg = node.args[0];
+    const secondArg = node.args[1];
+    if (!firstArg || !secondArg) {
+      throw new Error("map requires exactly 2 arguments");
+    }
+    const arr = evaluateNode(firstArg, variables, context);
+    const transform = evaluateNode(secondArg, variables, context);
+    return mapArray(arr, transform, variables, context);
+  }
+
+  if (node.name === "reduce") {
+    if (node.args.length !== 3) {
+      throw new Error("reduce requires exactly 3 arguments");
+    }
+    const firstArg = node.args[0];
+    const secondArg = node.args[1];
+    const thirdArg = node.args[2];
+    if (!firstArg || !secondArg || !thirdArg) {
+      throw new Error("reduce requires exactly 3 arguments");
+    }
+    const arr = evaluateNode(firstArg, variables, context);
+    const reducer = evaluateNode(secondArg, variables, context);
+    const initial = evaluateNode(thirdArg, variables, context);
+    return reduceArray(arr, reducer, initial, variables, context);
+  }
+
+  if (node.name === "sort") {
+    if (node.args.length !== 2) {
+      throw new Error("sort requires exactly 2 arguments");
+    }
+    const firstArg = node.args[0];
+    const secondArg = node.args[1];
+    if (!firstArg || !secondArg) {
+      throw new Error("sort requires exactly 2 arguments");
+    }
+    const arr = evaluateNode(firstArg, variables, context);
+    const comparator = evaluateNode(secondArg, variables, context);
+    return sortArray(arr, comparator, variables, context);
+  }
+
+  if (node.name === "groupBy") {
+    if (node.args.length !== 2) {
+      throw new Error("groupBy requires exactly 2 arguments");
+    }
+    const firstArg = node.args[0];
+    const secondArg = node.args[1];
+    if (!firstArg || !secondArg) {
+      throw new Error("groupBy requires exactly 2 arguments");
+    }
+    const arr = evaluateNode(firstArg, variables, context);
+    const keyFunc = evaluateNode(secondArg, variables, context);
+    return groupByArray(arr, keyFunc, variables, context);
   }
 
   // Handle type inspection functions
@@ -2133,6 +2244,9 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
     case "function":
       // Functions are equal if they have the same name
       return left.value.name === (right as typeof left).value.name;
+    case "lambda":
+      // Lambdas are equal if they reference the same object
+      return left === right;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -2186,6 +2300,8 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
       return left.value < (right as typeof left).value;
     case "function":
       throw new Error("Cannot compare functions");
+    case "lambda":
+      throw new Error("Cannot compare lambdas");
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -2381,7 +2497,7 @@ function evaluatePropertyAssignmentNode(
   return value;
 }
 
-function evaluateNode(
+export function evaluateNode(
   node: ASTNode,
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
@@ -2475,6 +2591,19 @@ function evaluateNode(
       };
       variables.set(node.name, functionValue);
       return functionValue;
+    }
+
+    case "lambda": {
+      // Create a lambda value with closure
+      const lambdaValue: CalculatedValue = {
+        type: "lambda",
+        value: {
+          parameters: node.parameters,
+          body: node.body,
+          closure: new Map(variables), // Capture current scope
+        },
+      };
+      return lambdaValue;
     }
 
     default: {

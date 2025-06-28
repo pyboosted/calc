@@ -54,6 +54,10 @@ export function deepCloneCalculatedValue(
       // Functions are immutable, so we can return the same reference
       return value;
 
+    case "lambda":
+      // Lambdas are immutable, so we can return the same reference
+      return value;
+
     default: {
       // This should never happen if all cases are covered
       const _exhaustive: never = value;

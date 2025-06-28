@@ -314,6 +314,10 @@ function convertToJSON(value: CalculatedValue): JSONValue {
     // Functions cannot be serialized to JSON
     return `<function ${value.value.name}>`;
   }
+  if (value.type === "lambda") {
+    // Lambdas cannot be serialized to JSON
+    return `<lambda(${value.value.parameters.join(", ")})>`;
+  }
   return value.value;
 }
 

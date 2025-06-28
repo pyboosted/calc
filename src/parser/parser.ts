@@ -13,6 +13,7 @@ import {
   type DateTimeNode,
   type FunctionDefinitionNode,
   type FunctionNode,
+  type LambdaNode,
   type LogicalNode,
   type NullNode,
   type NumberNode,
@@ -28,6 +29,7 @@ import {
   type UnaryOpNode,
   type VariableNode,
 } from "../types";
+import { isLambdaStart, parseLambda } from "./lambda-parser";
 import { parseCompoundUnit, unitsToExpression } from "./unit-parser";
 
 export class Parser {
@@ -35,11 +37,11 @@ export class Parser {
   private position = 0;
   private _current!: Token;
 
-  private get current(): Token {
+  get current(): Token {
     return this._current;
   }
 
-  private set current(token: Token) {
+  set current(token: Token) {
     this._current = token;
   }
 
@@ -52,7 +54,7 @@ export class Parser {
     };
   }
 
-  private advance(): Token {
+  advance(): Token {
     if (this.position < this.tokens.length - 1) {
       this.position++;
       this.current = this.tokens[this.position] || {
@@ -64,7 +66,7 @@ export class Parser {
     return this.current;
   }
 
-  private peek(offset = 1): Token | null {
+  peek(offset = 1): Token | null {
     const pos = this.position + offset;
     return pos < this.tokens.length ? this.tokens[pos] || null : null;
   }
@@ -153,7 +155,15 @@ export class Parser {
     return expr;
   }
 
-  private parseExpression(): ASTNode {
+  parseExpression(): ASTNode {
+    // Check if this might be a lambda expression
+    if (isLambdaStart(this)) {
+      const lambda = this.parseLambdaExpression();
+      if (lambda) {
+        return lambda;
+      }
+    }
+
     return this.parseTernary();
   }
 
@@ -1194,6 +1204,27 @@ export class Parser {
     throw new Error(`Unexpected token: ${this.current.value}`);
   }
 
+  private parseLambdaExpression(): LambdaNode | null {
+    // Try to parse as lambda
+    // Save current position in case we need to backtrack
+    const savedPosition = this.position;
+    const savedCurrent = this.current;
+
+    try {
+      const lambda = parseLambda(this);
+      if (lambda) {
+        return lambda;
+      }
+    } catch (_error) {
+      // If parsing fails, backtrack
+    }
+
+    // Backtrack if not a lambda
+    this.position = savedPosition;
+    this.current = savedCurrent;
+    return null;
+  }
+
   private parseFunction(): FunctionNode {
     const name = this.current.value;
     this.advance();
@@ -1204,11 +1235,32 @@ export class Parser {
 
       // Parse function arguments
       if ((this.current as Token).type !== TokenType.RPAREN) {
-        args.push(this.parseExpression());
+        // Check if this might be a lambda expression
+        if (isLambdaStart(this)) {
+          const lambda = this.parseLambdaExpression();
+          if (lambda) {
+            args.push(lambda);
+          } else {
+            args.push(this.parseExpression());
+          }
+        } else {
+          args.push(this.parseExpression());
+        }
 
         while ((this.current as Token).type === TokenType.COMMA) {
           this.advance(); // consume ,
-          args.push(this.parseExpression());
+
+          // Check for lambda in subsequent arguments
+          if (isLambdaStart(this)) {
+            const lambda = this.parseLambdaExpression();
+            if (lambda) {
+              args.push(lambda);
+            } else {
+              args.push(this.parseExpression());
+            }
+          } else {
+            args.push(this.parseExpression());
+          }
         }
       }
 

@@ -947,6 +947,19 @@ export class Tokenizer {
         continue;
       }
 
+      // Check for arrow operator (=>)
+      if (this.current === "=" && this.peek() === ">") {
+        const token = {
+          type: TokenType.ARROW,
+          value: "=>",
+          position: start,
+        };
+        this.pushToken(tokens, token);
+        this.advance();
+        this.advance();
+        continue;
+      }
+
       // Single character comparison operators
       if (this.current === "<") {
         const token = {
