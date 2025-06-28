@@ -297,14 +297,88 @@ total                                  # "Hello World"
 
 # Array functions
 arr = [1, 2, 3]
-push(arr, 4)                           # 4 (returns the pushed value, arr is now [1, 2, 3, 4])
-pop(arr)                               # 4 (returns removed element, arr is now [1, 2, 3])
+push(arr, 4)                           # [1, 2, 3, 4] (returns new array, arr is unchanged)
+push(arr, 4, 5)                        # [1, 2, 3, 4, 5] (can push multiple items)
+pop([1, 2, 3])                         # [1, 2] (returns new array without last element)
+pop([])                                # [] (empty array returns empty)
+shift([1, 2, 3])                       # [2, 3] (removes first element)
+unshift([2, 3], 1)                     # [1, 2, 3] (adds at beginning)
+unshift([3], 1, 2)                     # [1, 2, 3] (can add multiple items)
+append([1, 2], [3, 4])                 # [1, 2, 3, 4] (concatenates arrays)
+prepend([3, 4], [1, 2])                # [1, 2, 3, 4] (prepends second array)
 first(arr)                             # 1
 last(arr)                              # 3
 slice(arr, 1, 2)                       # [2]
 length(arr)                            # 3
 sum([1, 2, 3, 4])                      # 10
 avg([10, 20, 30])                      # 20
+
+# Difference between push and append
+arr = [1, 2, 3]
+push(arr, [4, 5])                      # [1, 2, 3, [4, 5]] (adds array as element)
+append(arr, [4, 5])                    # [1, 2, 3, 4, 5] (concatenates arrays)
+
+# Find functions
+numbers = [1, 5, 10, 15, 20]
+find(numbers, x => x > 10)             # 15 (first element > 10)
+find(numbers, x => x > 100)            # null (no match found)
+findIndex(numbers, x => x > 10)        # 3 (index of 15)
+findIndex(numbers, x => x > 100)       # -1 (no match found)
+
+# Find with objects
+users = [{name: "Alice", age: 25}, {name: "Bob", age: 30}]
+find(users, u => u.age > 28)           # {name: "Bob", age: 30}
+findIndex(users, u => u.name == "Alice") # 0
+
+# Mutation functions (functions ending with !)
+# These modify the array in place and return the modified array
+arr = [1, 2, 3]
+push!(arr, 4)                          # [1, 2, 3, 4] (arr is mutated)
+arr                                    # [1, 2, 3, 4]
+
+arr = [1, 2, 3, 4]
+pop!(arr)                              # [1, 2, 3] (arr is mutated)
+arr                                    # [1, 2, 3]
+
+arr = [1, 2, 3, 4]
+shift!(arr)                            # [2, 3, 4] (removes first element, arr is mutated)
+arr                                    # [2, 3, 4]
+
+arr = [2, 3, 4]
+unshift!(arr, 1)                       # [1, 2, 3, 4] (adds at beginning, arr is mutated)
+arr                                    # [1, 2, 3, 4]
+
+arr1 = [1, 2, 3]
+arr2 = [4, 5, 6]
+append!(arr1, arr2)                    # [1, 2, 3, 4, 5, 6] (arr1 is mutated)
+arr1                                   # [1, 2, 3, 4, 5, 6]
+arr2                                   # [4, 5, 6] (unchanged)
+
+arr1 = [3, 4, 5]
+arr2 = [1, 2]
+prepend!(arr1, arr2)                   # [1, 2, 3, 4, 5] (arr1 is mutated)
+arr1                                   # [1, 2, 3, 4, 5]
+
+arr = [1, 2, 3, 4, 5]
+slice!(arr, 1, 4)                      # [2, 3, 4] (arr is mutated to contain only slice)
+arr                                    # [2, 3, 4]
+
+arr = [1, 2, 3, 4, 5]
+filter!(arr, x => x > 2)               # [3, 4, 5] (arr is mutated)
+arr                                    # [3, 4, 5]
+
+arr = [1, 2, 3]
+map!(arr, x => x * 2)                  # [2, 4, 6] (arr is mutated)
+arr                                    # [2, 4, 6]
+
+# Comparison: mutating vs non-mutating
+original = [1, 2, 3]
+new_arr = push(original, 4)            # Returns [1, 2, 3, 4]
+original                               # Still [1, 2, 3]
+
+original = [1, 2, 3]
+push!(original, 4)                     # Returns [1, 2, 3, 4]
+original                               # Now [1, 2, 3, 4]
 
 # Object functions
 obj = {a: 1, b: 2, c: 3}

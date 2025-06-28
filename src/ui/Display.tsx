@@ -3,10 +3,13 @@ import { formatInTimeZone } from "date-fns-tz";
 import { Box, Text } from "ink";
 import type React from "react";
 import type { CalculatedValue } from "../types";
+import { ConfigManager } from "../utils/config-manager";
 import { TimezoneManager } from "../utils/timezone-manager";
 
 // Performance optimization: Move regex to module level
 const UTC_OFFSET_PATTERN = /^utc([+-]\d+)$/i;
+const THOUSANDS_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g;
+const TRAILING_ZEROS_PATTERN = /0+$/;
 const ISO_DATE_TIME_PATTERN =
   /(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})/;
 
@@ -131,7 +134,8 @@ function formatResult(result: CalculatedValue): string {
       return formatObject(result.value);
     case "quantity": {
       const { formatQuantity } = require("../evaluator/unit-formatter");
-      return formatQuantity(result.value, result.dimensions);
+      const config = ConfigManager.getInstance();
+      return formatQuantity(result.value, result.dimensions, config.precision);
     }
     case "percentage":
       return `${formatNumber(result.value)}%`;
@@ -185,18 +189,29 @@ function formatObject(obj: Map<string, CalculatedValue>): string {
 }
 
 function formatNumber(num: number): string {
+  const config = ConfigManager.getInstance();
+  const precision = config.precision;
+
   // Handle very large or very small numbers with scientific notation
   if (Math.abs(num) > 1e10 || (Math.abs(num) < 1e-5 && num !== 0)) {
-    return num.toExponential(6);
+    return num.toExponential(precision);
   }
 
-  // Round to reasonable precision
-  const rounded = Math.round(num * 1e10) / 1e10;
+  // Format with the configured precision
+  const formatted = num.toFixed(precision);
 
   // Format with thousands separators
-  const parts = rounded.toString().split(".");
+  const parts = formatted.split(".");
   if (parts[0]) {
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    parts[0] = parts[0].replace(THOUSANDS_SEPARATOR_PATTERN, ",");
+  }
+
+  // Remove trailing zeros after decimal point if precision > 0
+  if (parts[1]) {
+    parts[1] = parts[1].replace(TRAILING_ZEROS_PATTERN, "");
+    if (parts[1].length === 0) {
+      return parts[0] || "";
+    }
   }
 
   return parts.join(".");

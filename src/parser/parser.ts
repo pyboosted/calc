@@ -19,6 +19,7 @@ import {
   type NumberNode,
   type ObjectNode,
   type PropertyAccessNode,
+  type PropertyAssignmentNode,
   type StringNode,
   type TernaryNode,
   type TimeNode,
@@ -90,6 +91,7 @@ export class Parser {
     return node;
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Parser functions naturally have high complexity due to grammar rules
   private parseAssignment(): ASTNode {
     const expr = this.parseExpression();
 
@@ -115,6 +117,37 @@ export class Parser {
         } as FunctionDefinitionNode;
       }
 
+      // Property assignment: obj.prop = value or obj[key] = value
+      if (expr.type === "propertyAccess") {
+        this.advance(); // consume =
+        const value = this.parseExpression();
+        const propAccess = expr as PropertyAccessNode;
+
+        // For dot notation (computed: false), extract the property name
+        if (!propAccess.computed && propAccess.property.type === "string") {
+          return {
+            type: "propertyAssignment",
+            object: propAccess.object,
+            property: (propAccess.property as StringNode).value,
+            value,
+            computed: false,
+          } as PropertyAssignmentNode;
+        }
+
+        // For bracket notation (computed: true), pass the property expression
+        if (propAccess.computed) {
+          return {
+            type: "propertyAssignment",
+            object: propAccess.object,
+            property: propAccess.property,
+            value,
+            computed: true,
+          } as PropertyAssignmentNode;
+        }
+
+        throw new Error("Invalid property access in assignment");
+      }
+
       // Regular variable assignment
       if (expr.type === "variable") {
         this.advance(); // consume =
@@ -129,27 +162,71 @@ export class Parser {
 
     // Handle compound assignments (+=, -=)
     if (
-      (this.current.type === TokenType.PLUS_EQUALS ||
-        this.current.type === TokenType.MINUS_EQUALS) &&
-      expr.type === "variable"
+      this.current.type === TokenType.PLUS_EQUALS ||
+      this.current.type === TokenType.MINUS_EQUALS
     ) {
-      const operator = this.current.type === TokenType.PLUS_EQUALS ? "+" : "-";
-      this.advance(); // consume += or -=
-      const rightValue = this.parseExpression();
+      // Handle compound assignment to properties
+      if (expr.type === "propertyAccess") {
+        const operator =
+          this.current.type === TokenType.PLUS_EQUALS ? "+" : "-";
+        this.advance(); // consume += or -=
+        const rightValue = this.parseExpression();
+        const propAccess = expr as PropertyAccessNode;
 
-      // Convert a += b to a = a + b
-      const binaryOp: BinaryOpNode = {
-        type: "binary",
-        operator,
-        left: expr,
-        right: rightValue,
-      };
+        // Convert obj.prop += val to obj.prop = obj.prop + val
+        const binaryOp: BinaryOpNode = {
+          type: "binary",
+          operator,
+          left: expr,
+          right: rightValue,
+        };
 
-      return {
-        type: "assignment",
-        variable: (expr as VariableNode).name,
-        value: binaryOp,
-      } as AssignmentNode;
+        // For dot notation
+        if (!propAccess.computed && propAccess.property.type === "string") {
+          return {
+            type: "propertyAssignment",
+            object: propAccess.object,
+            property: (propAccess.property as StringNode).value,
+            value: binaryOp,
+            computed: false,
+          } as PropertyAssignmentNode;
+        }
+
+        // For bracket notation
+        if (propAccess.computed) {
+          return {
+            type: "propertyAssignment",
+            object: propAccess.object,
+            property: propAccess.property,
+            value: binaryOp,
+            computed: true,
+          } as PropertyAssignmentNode;
+        }
+
+        throw new Error("Invalid property access in compound assignment");
+      }
+
+      // Handle compound assignment to variables
+      if (expr.type === "variable") {
+        const operator =
+          this.current.type === TokenType.PLUS_EQUALS ? "+" : "-";
+        this.advance(); // consume += or -=
+        const rightValue = this.parseExpression();
+
+        // Convert a += b to a = a + b
+        const binaryOp: BinaryOpNode = {
+          type: "binary",
+          operator,
+          left: expr,
+          right: rightValue,
+        };
+
+        return {
+          type: "assignment",
+          variable: (expr as VariableNode).name,
+          value: binaryOp,
+        } as AssignmentNode;
+      }
     }
 
     return expr;

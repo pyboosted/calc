@@ -248,7 +248,10 @@ function processNonInteractiveMode(input: string, options: ProcessOptions) {
 
       // Only output if not in output mode (output mode shows only last result)
       if (!options.outputMode) {
-        console.log(chalk.green(formatResultWithUnit(result)));
+        const config = ConfigManager.getInstance();
+        console.log(
+          chalk.green(formatResultWithUnit(result, undefined, config.precision))
+        );
       }
 
       // Add result to previousResults for aggregate operations
@@ -278,7 +281,10 @@ function processNonInteractiveMode(input: string, options: ProcessOptions) {
       console.log(JSON.stringify(convertToJSON(lastResult)));
     } else {
       // For other types, use the formatter
-      console.log(formatResultWithUnit(lastResult));
+      const config = ConfigManager.getInstance();
+      console.log(
+        formatResultWithUnit(lastResult, undefined, config.precision)
+      );
     }
   }
 

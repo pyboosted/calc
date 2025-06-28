@@ -63,10 +63,18 @@ export const functions = [
   // Array functions
   "push",
   "pop",
+  "shift",
+  "unshift",
+  "append",
+  "prepend",
   "first",
   "last",
   "length",
   "slice",
+  "find",
+  "findIndex",
+  "filter",
+  "map",
   // Object functions
   "keys",
   "values",
@@ -95,7 +103,28 @@ export function isKeyword(value: string): boolean {
 }
 
 export function isFunction(value: string): boolean {
-  return functions.includes(value.toLowerCase());
+  const lowerValue = value.toLowerCase();
+  // Check for exact match
+  if (functions.includes(lowerValue)) {
+    return true;
+  }
+  // Check for mutation function (ends with !)
+  if (lowerValue.endsWith("!") && lowerValue.length > 1) {
+    const baseName = lowerValue.slice(0, -1);
+    // Only allow ! suffix for specific array functions
+    return [
+      "push",
+      "pop",
+      "shift",
+      "unshift",
+      "append",
+      "prepend",
+      "slice",
+      "filter",
+      "map",
+    ].includes(baseName);
+  }
+  return false;
 }
 
 export function isMathConstant(value: string): boolean {

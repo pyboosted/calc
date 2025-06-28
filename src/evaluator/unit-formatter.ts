@@ -9,6 +9,8 @@ const LOWERCASE_CURRENCY_PATTERN = /^[a-z]{3}$/;
 const UTC_OFFSET_PATTERN = /^utc([+-]\d+)$/i;
 const ISO_DATE_TIME_PATTERN =
   /(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d{3})/;
+const TRAILING_ZEROS_AFTER_DECIMAL = /\.?0+$/;
+const _INVALID_CHARS_IN_NUMBER = /[^0-9.e+-]/gi;
 
 // Helper functions for date formatting
 function getDateFormatPattern(
@@ -282,8 +284,17 @@ export function formatQuantity(
   precision?: number
 ): string {
   const unit = findBestUnit(dimensions);
-  const formattedValue =
-    precision !== undefined ? value.toFixed(precision) : value.toString();
+  let formattedValue: string;
+
+  if (precision !== undefined) {
+    formattedValue = value.toFixed(precision);
+    // Remove trailing zeros after decimal point
+    if (formattedValue.includes(".")) {
+      formattedValue = formattedValue.replace(TRAILING_ZEROS_AFTER_DECIMAL, "");
+    }
+  } else {
+    formattedValue = value.toString();
+  }
 
   if (unit) {
     return `${formattedValue} ${unit}`;
@@ -404,10 +415,24 @@ export function formatResultWithUnit(
   // Handle CalculatedValue
   switch (value.type) {
     case "number": {
-      const formattedNum =
-        precision !== undefined
-          ? value.value.toFixed(precision)
-          : value.value.toString();
+      const num = value.value;
+      let formattedNum: string;
+
+      // Handle very large or very small numbers with scientific notation
+      if (Math.abs(num) > 1e10 || (Math.abs(num) < 1e-5 && num !== 0)) {
+        formattedNum =
+          precision !== undefined
+            ? num.toExponential(precision)
+            : num.toExponential();
+      } else if (precision !== undefined) {
+        formattedNum = num.toFixed(precision);
+        // Remove trailing zeros after decimal point
+        if (formattedNum.includes(".")) {
+          formattedNum = formattedNum.replace(TRAILING_ZEROS_AFTER_DECIMAL, "");
+        }
+      } else {
+        formattedNum = num.toString();
+      }
       return formattedNum;
     }
 
@@ -485,8 +510,19 @@ export function formatResultWithUnit(
       return `{${entries.join(", ")}}`;
     }
 
-    case "percentage":
-      return `${value.value}%`;
+    case "percentage": {
+      let formattedNum: string;
+      if (precision !== undefined) {
+        formattedNum = value.value.toFixed(precision);
+        // Remove trailing zeros after decimal point
+        if (formattedNum.includes(".")) {
+          formattedNum = formattedNum.replace(TRAILING_ZEROS_AFTER_DECIMAL, "");
+        }
+      } else {
+        formattedNum = value.value.toString();
+      }
+      return `${formattedNum}%`;
+    }
 
     case "function":
       return `<function ${value.value.name}(${value.value.parameters.join(", ")})>`;

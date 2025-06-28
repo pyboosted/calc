@@ -1,4 +1,4 @@
-import type { LambdaNode } from "../types";
+import type { LambdaNode, Token } from "../types";
 import { TokenType } from "../types";
 import type { Parser } from "./parser";
 
@@ -16,7 +16,7 @@ export function parseLambda(parser: Parser): LambdaNode | null {
     parser.advance(); // consume parameter
 
     // Must be followed by arrow
-    if (parser.current.type !== TokenType.ARROW) {
+    if ((parser.current as Token).type !== TokenType.ARROW) {
       return null;
     }
     parser.advance(); // consume =>
@@ -26,21 +26,21 @@ export function parseLambda(parser: Parser): LambdaNode | null {
     parser.advance(); // consume (
 
     // Empty parameter list
-    if (parser.current.type === TokenType.RPAREN) {
+    if ((parser.current as Token).type === TokenType.RPAREN) {
       parser.advance(); // consume )
     } else {
       // Parse comma-separated parameters
       while (true) {
-        if (parser.current.type !== TokenType.VARIABLE) {
+        if ((parser.current as Token).type !== TokenType.VARIABLE) {
           throw new Error("Expected parameter name in lambda");
         }
 
         parameters.push(parser.current.value);
         parser.advance();
 
-        if (parser.current.type === TokenType.COMMA) {
+        if ((parser.current as Token).type === TokenType.COMMA) {
           parser.advance(); // consume comma
-        } else if (parser.current.type === TokenType.RPAREN) {
+        } else if ((parser.current as Token).type === TokenType.RPAREN) {
           parser.advance(); // consume )
           break;
         } else {
@@ -50,7 +50,7 @@ export function parseLambda(parser: Parser): LambdaNode | null {
     }
 
     // Must be followed by arrow
-    if (parser.current.type !== TokenType.ARROW) {
+    if ((parser.current as Token).type !== TokenType.ARROW) {
       return null;
     }
     parser.advance(); // consume =>

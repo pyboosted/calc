@@ -943,6 +943,10 @@ function evaluateFunctionNode(
     [
       "push",
       "pop",
+      "shift",
+      "unshift",
+      "append",
+      "prepend",
       "first",
       "last",
       "length",
@@ -950,9 +954,23 @@ function evaluateFunctionNode(
       "avg",
       "average",
       "slice",
+      "find",
+      "findIndex",
+      "filter",
+      "map",
+      // Mutation functions with ! suffix
+      "push!",
+      "pop!",
+      "shift!",
+      "unshift!",
+      "append!",
+      "prepend!",
+      "slice!",
+      "filter!",
+      "map!",
     ].includes(node.name)
   ) {
-    return evaluateArrayFunction(node.name, args);
+    return evaluateArrayFunction(node.name, args, variables);
   }
 
   // Handle object functions
@@ -962,7 +980,7 @@ function evaluateFunctionNode(
 
   // Handle length function (works on arrays, strings, and objects)
   if (node.name === "length") {
-    return evaluateArrayFunction(node.name, args);
+    return evaluateArrayFunction(node.name, args, variables);
   }
 
   const func = mathFunctions[node.name];
@@ -2491,8 +2509,22 @@ function evaluatePropertyAssignmentNode(
     );
   }
 
+  // Get the property name
+  let propertyName: string;
+  if (typeof node.property === "string") {
+    // Static property (dot notation)
+    propertyName = node.property;
+  } else {
+    // Dynamic property (bracket notation)
+    const propValue = evaluateNode(node.property, variables, context);
+    if (propValue.type !== "string") {
+      throw new Error(`Property name must be a string, got ${propValue.type}`);
+    }
+    propertyName = propValue.value;
+  }
+
   const value = evaluateNode(node.value, variables, context);
-  object.value.set(node.property, value);
+  object.value.set(propertyName, value);
 
   return value;
 }

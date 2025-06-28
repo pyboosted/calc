@@ -46,15 +46,17 @@ describe("Array Functions with Variables", () => {
     expect(evaluate("last(arr)", variables).value).toBe(5);
     expect(evaluate("length(arr)", variables).value).toBe(5);
 
-    // Test push (mutates array and returns the added item)
+    // Test push (returns new array without mutating original)
     const pushResult = evaluate("push(arr, 6)", variables);
-    expect(pushResult.type).toBe("number");
-    expect(pushResult.value).toBe(6); // the added value
+    expect(pushResult.type).toBe("array");
+    if (pushResult.type === "array") {
+      expect(pushResult.value.length).toBe(6);
+      expect(pushResult.value[5]?.value).toBe(6);
+    }
 
-    // Verify the array was mutated
+    // Verify the original array was NOT mutated
     const arrAfterPush = variables.get("arr");
-    expect(arrAfterPush.value.length).toBe(6);
-    expect(arrAfterPush.value[5].value).toBe(6);
+    expect(arrAfterPush.value.length).toBe(5);
   });
 
   test("pop function with array variables", () => {
@@ -62,18 +64,25 @@ describe("Array Functions with Variables", () => {
 
     evaluate("data = [1, 2, 3]", variables);
 
-    // pop returns the removed element
+    // pop returns new array without last element
     const popped = evaluate("pop(data)", variables);
-    expect(popped.type).toBe("number");
-    expect(popped.value).toBe(3);
+    expect(popped.type).toBe("array");
+    if (popped.type === "array") {
+      expect(popped.value.length).toBe(2);
+      expect(popped.value[0]?.value).toBe(1);
+      expect(popped.value[1]?.value).toBe(2);
+    }
 
-    // Verify array was mutated
+    // Verify original array was NOT mutated
     const dataAfterPop = variables.get("data");
-    expect(dataAfterPop.value.length).toBe(2);
+    expect(dataAfterPop.value.length).toBe(3);
 
-    // Pop from empty array returns null
+    // Pop from empty array returns empty array
     evaluate("empty = []", variables);
     const poppedEmpty = evaluate("pop(empty)", variables);
-    expect(poppedEmpty.type).toBe("null");
+    expect(poppedEmpty.type).toBe("array");
+    if (poppedEmpty.type === "array") {
+      expect(poppedEmpty.value.length).toBe(0);
+    }
   });
 });

@@ -361,6 +361,12 @@ export class Tokenizer {
       this.advance();
     }
 
+    // Check for trailing ! (for mutation functions)
+    if (this.current === "!" && value.length > 0) {
+      value += this.current;
+      this.advance();
+    }
+
     // Special handling for UTC offsets (utc+5, utc-5, etc.)
     if (
       value.toLowerCase() === "utc" &&

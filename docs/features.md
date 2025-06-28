@@ -81,7 +81,9 @@
 ## Arrays and Objects (v1.3.2)
 - **Array literals**: `[1, 2, 3]`, nested arrays, mixed types
 - **Object literals**: `{a: 1, b: 2}`, nested objects, string keys
-- **Array functions**: `push`, `pop`, `first`, `last`, `slice`, `length`, `sum`, `avg`/`average`
+- **Array functions**: 
+  - Non-mutating: `push`, `pop`, `shift`, `unshift`, `append`, `prepend`, `first`, `last`, `slice`, `length`, `sum`, `avg`/`average`, `find`, `findIndex`
+  - Mutating (with `!` suffix): `push!`, `pop!`, `shift!`, `unshift!`, `append!`, `prepend!`, `slice!`, `filter!`, `map!`
 - **Object functions**: `keys`, `values`, `has`
 - **Property access**: 
   - Dot notation: `obj.property`

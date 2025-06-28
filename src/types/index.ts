@@ -239,8 +239,9 @@ export interface IndexAccessNode {
 export interface PropertyAssignmentNode {
   type: "propertyAssignment";
   object: ASTNode;
-  property: string;
+  property: string | ASTNode; // Can be a string for static, or ASTNode for dynamic
   value: ASTNode;
+  computed?: boolean; // Whether it's bracket notation
 }
 
 export interface TypeCheckNode {
