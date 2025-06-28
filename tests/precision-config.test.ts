@@ -73,7 +73,7 @@ describe("Precision Configuration", () => {
     mkdirSync(CONFIG_DIR, { recursive: true });
     writeFileSync(CONFIG_FILE, "precision: 3\n");
 
-    const result = execSync('bun run src/cli.tsx -e "100 cm / 3 in m"', {
+    const result = execSync('bun run src/cli.tsx -e "100 cm / 3 to m"', {
       encoding: "utf8",
     }).trim();
 
