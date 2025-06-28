@@ -616,3 +616,46 @@ expenses | filter(x => x > 100)        # [120, 200, 150]
 expenses | filter(x => x > 100) | avg  # 156.67
 expenses | map(x => x * 1.1) | sum     # 704 (with 10% increase)
 ```
+
+## Nullish Coalescing Operator (v1.4.5)
+```
+# Basic usage
+null ?? 42                             # 42 (null is replaced)
+0 ?? 42                                # 0 (zero is not null)
+false ?? true                          # false (false is not null)
+"" ?? "default"                        # "" (empty string is not null)
+
+# With variables
+config = null
+config ?? "default config"             # "default config"
+
+# Different from || operator
+# || treats all falsy values as false
+0 || 42                                # 42 (|| treats 0 as falsy)
+0 ?? 42                                # 0 (?? only checks for null)
+
+false || true                          # true (|| treats false as falsy)
+false ?? true                          # false (?? only checks for null)
+
+"" || "default"                        # "default" (|| treats "" as falsy)
+"" ?? "default"                        # "" (?? only checks for null)
+
+# Chaining defaults
+userPreference ?? systemDefault ?? "fallback"
+
+# Real-world examples
+# Default configuration values
+timeout = config.timeout ?? 5000
+retries = config.retries ?? 3
+
+# Safe array/object access
+arr = [1, 2, 3]
+arr[10] ?? 0                           # 0 (out of bounds returns null)
+
+obj = {name: "John", age: 30}
+obj.email ?? "no-email@example.com"   # "no-email@example.com"
+
+# Combine with other operators
+(user.discount ?? 0) * price           # Safe discount calculation
+items | map(i => i.price ?? 0) | sum   # Sum with null-safe prices
+```

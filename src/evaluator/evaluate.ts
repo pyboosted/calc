@@ -19,9 +19,11 @@ import type {
   FunctionNode,
   IndexAccessNode,
   LogicalNode,
+  NullishCoalescingNode,
   NullNode,
   NumberNode,
   ObjectNode,
+  PartialInfo,
   PropertyAccessNode,
   PropertyAssignmentNode,
   StringNode,
@@ -328,6 +330,8 @@ function isTruthy(value: CalculatedValue): boolean {
       return true; // Functions are always truthy
     case "lambda":
       return true; // Lambdas are always truthy
+    case "partial":
+      return true; // Partials are always truthy
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;
@@ -514,6 +518,12 @@ function valueToJSON(value: CalculatedValue): JSONValue {
         type: "lambda",
         parameters: value.value.parameters,
       };
+    case "partial":
+      // Convert partial to object representation
+      return {
+        type: "partial",
+        remainingParams: value.value.remainingParams,
+      };
     default: {
       const _exhaustiveCheck: never = value;
       return _exhaustiveCheck;
@@ -607,17 +617,6 @@ function evaluateFormat(args: CalculatedValue[]): CalculatedValue {
   return { type: "string", value: formatted };
 }
 
-function evaluateLen(args: CalculatedValue[]): CalculatedValue {
-  if (args.length !== 1) {
-    throw new Error("len() requires exactly 1 argument");
-  }
-  const strArg = args[0];
-  if (!strArg || strArg.type !== "string") {
-    throw new Error("len() requires a string argument");
-  }
-  return { type: "number", value: strArg.value.length };
-}
-
 function evaluateSubstr(args: CalculatedValue[]): CalculatedValue {
   if (args.length < 2 || args.length > 3) {
     throw new Error("substr() requires 2 or 3 arguments");
@@ -686,8 +685,6 @@ function evaluateStringFunction(
   switch (name) {
     case "format":
       return evaluateFormat(args);
-    case "len":
-      return evaluateLen(args);
     case "substr":
       return evaluateSubstr(args);
     case "charat":
@@ -712,8 +709,21 @@ function evaluateUserFunction(
     evaluateNode(arg, variables, context)
   );
 
+  // If fewer arguments than parameters, create partial application
+  if (evaluatedArgs.length < func.parameters.length) {
+    const remainingParams = func.parameters.slice(evaluatedArgs.length);
+    return {
+      type: "partial",
+      value: {
+        callable: funcDef,
+        appliedArgs: evaluatedArgs,
+        remainingParams,
+      },
+    };
+  }
+
   // Check parameter count
-  if (evaluatedArgs.length !== func.parameters.length) {
+  if (evaluatedArgs.length > func.parameters.length) {
     throw new Error(
       `Function ${func.name} expects ${func.parameters.length} arguments, got ${evaluatedArgs.length}`
     );
@@ -752,6 +762,91 @@ function evaluateUserFunction(
   return result;
 }
 
+function evaluatePartialApplication(
+  partial: { type: "partial"; value: PartialInfo },
+  args: ASTNode[],
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const { callable, appliedArgs, remainingParams } = partial.value;
+
+  // Evaluate new arguments
+  const newArgs = args.map((arg) => evaluateNode(arg, variables, context));
+
+  // Combine with previously applied arguments
+  const allArgs = [...appliedArgs, ...newArgs];
+
+  // Check if we have enough arguments now
+  let totalParams: number;
+  if (callable.type === "function") {
+    totalParams = callable.value.parameters.length;
+  } else if (callable.type === "lambda") {
+    totalParams = callable.value.parameters.length;
+  } else {
+    totalParams = 0; // This shouldn't happen
+  }
+
+  if (allArgs.length < totalParams) {
+    // Still partial
+    const newRemainingParams = remainingParams.slice(newArgs.length);
+    return {
+      type: "partial",
+      value: {
+        callable,
+        appliedArgs: allArgs,
+        remainingParams: newRemainingParams,
+      },
+    };
+  }
+
+  if (allArgs.length > totalParams) {
+    const name = callable.type === "function" ? callable.value.name : "lambda";
+    throw new Error(
+      `${name} expects ${totalParams} arguments, got ${allArgs.length}`
+    );
+  }
+
+  // Now we have all arguments, evaluate the callable
+  if (callable.type === "function") {
+    const func = callable.value;
+
+    // Create new scope with parameter bindings
+    const functionScope = new Map(variables);
+    func.parameters.forEach((param, index) => {
+      const argValue = allArgs[index];
+      if (argValue !== undefined) {
+        functionScope.set(param, argValue);
+      }
+    });
+
+    // Check recursion depth
+    const callStack = context?.callStack || new Map<string, number>();
+    const currentDepth = callStack.get(func.name) || 0;
+    const newDepth = currentDepth + 1;
+
+    if (newDepth > MAX_RECURSION_DEPTH) {
+      throw new Error(
+        `Maximum recursion depth exceeded for function ${func.name}`
+      );
+    }
+
+    // Update call stack for recursion tracking
+    const newCallStack = new Map(callStack);
+    newCallStack.set(func.name, newDepth);
+
+    // Evaluate function body with new scope and context
+    return evaluateNode(func.body, functionScope, {
+      ...context,
+      callStack: newCallStack,
+    });
+  }
+  if (callable.type === "lambda") {
+    // Lambda
+    return evaluateLambda(callable.value, allArgs, variables, context);
+  }
+  throw new Error("Invalid callable type in partial application");
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
 function evaluateFunctionNode(
   node: FunctionNode,
@@ -771,14 +866,30 @@ function evaluateFunctionNode(
         evaluateNode(arg, variables, context)
       );
 
+      // If fewer arguments than parameters, create partial application
+      if (evaluatedArgs.length < lambda.parameters.length) {
+        const remainingParams = lambda.parameters.slice(evaluatedArgs.length);
+        return {
+          type: "partial",
+          value: {
+            callable: funcDef,
+            appliedArgs: evaluatedArgs,
+            remainingParams,
+          },
+        };
+      }
+
       // Check parameter count
-      if (evaluatedArgs.length !== lambda.parameters.length) {
+      if (evaluatedArgs.length > lambda.parameters.length) {
         throw new Error(
           `Lambda expects ${lambda.parameters.length} arguments, got ${evaluatedArgs.length}`
         );
       }
 
       return evaluateLambda(lambda, evaluatedArgs, variables, context);
+    }
+    if (funcDef.type === "partial") {
+      return evaluatePartialApplication(funcDef, node.args, variables, context);
     }
   }
 
@@ -934,11 +1045,11 @@ function evaluateFunctionNode(
   const args = node.args.map((arg) => evaluateNode(arg, variables, context));
 
   // Handle string functions
-  if (["format", "len", "substr", "charat", "trim"].includes(node.name)) {
+  if (["format", "substr", "charat", "trim"].includes(node.name)) {
     return evaluateStringFunction(node.name, args);
   }
 
-  // Handle array functions (length is handled in both array and string functions)
+  // Handle array functions (length and len work for arrays, strings, and objects)
   if (
     [
       "push",
@@ -950,6 +1061,7 @@ function evaluateFunctionNode(
       "first",
       "last",
       "length",
+      "len",
       "sum",
       "avg",
       "average",
@@ -2265,6 +2377,9 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
     case "lambda":
       // Lambdas are equal if they reference the same object
       return left === right;
+    case "partial":
+      // Partials are equal if they reference the same object
+      return left === right;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -2320,6 +2435,8 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
       throw new Error("Cannot compare functions");
     case "lambda":
       throw new Error("Cannot compare lambdas");
+    case "partial":
+      throw new Error("Cannot compare partial applications");
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -2380,6 +2497,21 @@ function evaluateTernaryNode(
     return evaluateNode(node.trueExpr, variables, context);
   }
   return evaluateNode(node.falseExpr, variables, context);
+}
+
+function evaluateNullishCoalescingNode(
+  node: NullishCoalescingNode,
+  variables: Map<string, CalculatedValue>,
+  context?: EvaluationContext
+): CalculatedValue {
+  const left = evaluateNode(node.left, variables, context);
+
+  // Only check for null type, not other falsy values
+  if (left.type === "null") {
+    return evaluateNode(node.right, variables, context);
+  }
+
+  return left;
 }
 
 function evaluateArrayNode(
@@ -2591,6 +2723,9 @@ export function evaluateNode(
 
     case "logical":
       return evaluateLogicalNode(node, variables, context);
+
+    case "nullishCoalescing":
+      return evaluateNullishCoalescingNode(node, variables, context);
 
     case "ternary":
       return evaluateTernaryNode(node, variables, context);

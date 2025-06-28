@@ -235,6 +235,7 @@ This allows the calculator to handle multiple data types while maintaining type 
    - `and`: Logical AND with short-circuit evaluation
    - `or`: Logical OR with short-circuit evaluation
    - `not`: Logical NOT
+   - `??`: Nullish coalescing operator - returns right operand only when left is null (v1.4.5)
    - Operators return the last evaluated value (not just true/false)
 
 4. **Ternary Operator**:
@@ -249,7 +250,7 @@ This allows the calculator to handle multiple data types while maintaining type 
 
 6. **Operator Precedence** (lowest to highest):
    - Ternary (`? :`)
-   - Logical OR (`or`)
+   - Logical OR (`or`) and Nullish Coalescing (`??`)
    - Logical AND (`and`)
    - Comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`)
    - Additive (`+`, `-`)
@@ -595,6 +596,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Logical operators (`and`, `or`) implement short-circuit evaluation
 - Comparison operators automatically handle unit conversions for numbers with units
 - The ternary operator (`? :`) supports nested expressions and evaluates conditions for truthiness
+- The nullish coalescing operator (`??`) returns the right operand only when the left is null (v1.4.5)
 - `null` is a distinct type from `false` or `0`, following JavaScript semantics
 - Arrays and objects are first-class types with full support for literals, functions, and property access (v1.3.2)
 - Array functions `push` and `pop` mutate the array (like JavaScript) - push returns new length, pop returns removed element

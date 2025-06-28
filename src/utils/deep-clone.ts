@@ -58,6 +58,19 @@ export function deepCloneCalculatedValue(
       // Lambdas are immutable, so we can return the same reference
       return value;
 
+    case "partial":
+      // Partials contain references to other values, deep clone the applied args
+      return {
+        type: "partial",
+        value: {
+          callable: value.value.callable, // The callable itself is immutable
+          appliedArgs: value.value.appliedArgs.map((arg) =>
+            deepCloneCalculatedValue(arg)
+          ),
+          remainingParams: [...value.value.remainingParams],
+        },
+      };
+
     default: {
       // This should never happen if all cases are covered
       const _exhaustive: never = value;

@@ -86,10 +86,10 @@ describe("String Functions", () => {
     expect(result).toEqual({ type: "string", value: "llo" });
   });
 
-  test("error handling - len() with non-string", () => {
+  test("error handling - len() with non-string/array/object", () => {
     const vars = new Map();
     expect(() => evaluate("len(123)", vars)).toThrow(
-      "len() requires a string argument"
+      "len can only be called on arrays, strings, or objects"
     );
   });
 

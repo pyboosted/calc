@@ -407,7 +407,7 @@ describe("Lambda Functions", () => {
   describe("Error handling", () => {
     test("filter with non-lambda", () => {
       expect(() => evaluateExpression("filter([1, 2, 3], 42)")).toThrow(
-        "Second argument to filter must be a lambda"
+        "Second argument to filter must be a function or lambda"
       );
     });
 

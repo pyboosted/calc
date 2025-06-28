@@ -138,13 +138,14 @@ export function evaluateArrayFunction(
       return arr.value.at(-1) || { type: "null", value: null };
     }
 
-    case "length": {
+    case "length":
+    case "len": {
       if (args.length !== 1) {
-        throw new Error("length requires exactly 1 argument");
+        throw new Error(`${name} requires exactly 1 argument`);
       }
       const arg = args[0];
       if (!arg) {
-        throw new Error("length requires an argument");
+        throw new Error(`${name} requires an argument`);
       }
       if (arg.type === "array") {
         return { type: "number", value: arg.value.length };
@@ -156,7 +157,7 @@ export function evaluateArrayFunction(
         return { type: "number", value: arg.value.size };
       }
       throw new Error(
-        "length can only be called on arrays, strings, or objects"
+        `${name} can only be called on arrays, strings, or objects`
       );
     }
 

@@ -18,6 +18,11 @@ export const operatorMap: Record<string, OperatorConfig> = {
   "&": { tokenType: TokenType.OPERATOR, value: "&", consumeNext: "&" },
   "|": { tokenType: TokenType.PIPE, value: "|" },
   "||": { tokenType: TokenType.OR, value: "||", multiChar: true },
+  "??": {
+    tokenType: TokenType.NULLISH_COALESCING,
+    value: "??",
+    multiChar: true,
+  },
   "<<": { tokenType: TokenType.OPERATOR, value: "<<", multiChar: true },
   ">>": { tokenType: TokenType.OPERATOR, value: ">>", multiChar: true },
 };

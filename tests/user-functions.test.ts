@@ -147,9 +147,13 @@ describe("User-Defined Functions", () => {
     // Define a function
     evaluate("add(a, b) = a + b", variables);
 
-    // Test parameter count mismatch
-    expect(() => evaluate("add(5)", variables)).toThrow(
-      "Function add expects 2 arguments, got 1"
+    // Test parameter count mismatch - with partial application, add(5) creates a partial
+    const partial = evaluate("add(5)", variables);
+    expect(partial.type).toBe("partial");
+
+    // But too many arguments should still error
+    expect(() => evaluate("add(5, 10, 15)", variables)).toThrow(
+      "add expects 2 arguments, got 3"
     );
 
     expect(() => evaluate("add(1, 2, 3)", variables)).toThrow(

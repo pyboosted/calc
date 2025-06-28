@@ -42,6 +42,7 @@ export function getTokenColor(type: TokenType, value?: string): string {
     case TokenType.AND:
     case TokenType.OR:
     case TokenType.NOT:
+    case TokenType.NULLISH_COALESCING:
       return "magenta"; // Logical operators
     case TokenType.QUESTION:
     case TokenType.COLON:

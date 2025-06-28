@@ -84,6 +84,7 @@
 - **Comparison operators**: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - **Logical operators**: `and`, `or`, `not`
 - **Ternary operator**: `condition ? true : false`
+- **Nullish coalescing operator** (v1.4.5): `null ?? default` - returns right operand only when left is null (not other falsy values)
 - **Type casting**: `as boolean`
 
 ## Arrays and Objects (v1.3.2)

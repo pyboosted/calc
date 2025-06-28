@@ -324,6 +324,10 @@ function convertToJSON(value: CalculatedValue): JSONValue {
     // Lambdas cannot be serialized to JSON
     return `<lambda(${value.value.parameters.join(", ")})>`;
   }
+  if (value.type === "partial") {
+    // Partials cannot be serialized to JSON
+    return `<partial(${value.value.remainingParams.join(", ")})>`;
+  }
   return value.value;
 }
 

@@ -143,6 +143,8 @@ function formatResult(result: CalculatedValue): string {
       return `<function ${result.value.name}(${result.value.parameters.join(", ")})>`;
     case "lambda":
       return `<lambda(${result.value.parameters.join(", ")})>`;
+    case "partial":
+      return `<partial(${result.value.remainingParams.join(", ")})>`;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = result;

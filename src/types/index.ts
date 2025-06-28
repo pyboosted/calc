@@ -30,6 +30,13 @@ export interface LambdaInfo {
   closure?: Map<string, CalculatedValue>;
 }
 
+// Partial application information
+export interface PartialInfo {
+  callable: CalculatedValue; // The function or lambda being partially applied
+  appliedArgs: CalculatedValue[]; // Arguments already applied
+  remainingParams: string[]; // Parameters still needed
+}
+
 // Discriminated union type for all calculated values
 export type CalculatedValue =
   | { type: "number"; value: number } // Pure numbers only, no units
@@ -42,7 +49,8 @@ export type CalculatedValue =
   | { type: "array"; value: CalculatedValue[] }
   | { type: "object"; value: Map<string, CalculatedValue> }
   | { type: "function"; value: FunctionInfo }
-  | { type: "lambda"; value: LambdaInfo };
+  | { type: "lambda"; value: LambdaInfo }
+  | { type: "partial"; value: PartialInfo };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -83,6 +91,7 @@ export const TokenType = {
   OR: "OR",
   NOT: "NOT",
   PIPE: "PIPE",
+  NULLISH_COALESCING: "NULLISH_COALESCING",
   LBRACE: "LBRACE",
   RBRACE: "RBRACE",
   LBRACKET: "LBRACKET",
@@ -214,6 +223,12 @@ export interface LogicalNode {
   right: ASTNode;
 }
 
+export interface NullishCoalescingNode {
+  type: "nullishCoalescing";
+  left: ASTNode;
+  right: ASTNode;
+}
+
 export interface ArrayNode {
   type: "array";
   elements: ASTNode[];
@@ -285,6 +300,7 @@ export type ASTNode =
   | TernaryNode
   | ComparisonNode
   | LogicalNode
+  | NullishCoalescingNode
   | ArrayNode
   | ObjectNode
   | PropertyAccessNode

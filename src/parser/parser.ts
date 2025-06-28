@@ -272,10 +272,20 @@ export class Parser {
   private parseLogicalOr(): ASTNode {
     let left = this.parseLogicalAnd();
 
-    while (this.current.type === TokenType.OR) {
-      this.advance();
-      const right = this.parseLogicalAnd();
-      left = { type: "logical", operator: "or", left, right } as LogicalNode;
+    while (
+      this.current.type === TokenType.OR ||
+      this.current.type === TokenType.NULLISH_COALESCING
+    ) {
+      if (this.current.type === TokenType.OR) {
+        this.advance();
+        const right = this.parseLogicalAnd();
+        left = { type: "logical", operator: "or", left, right } as LogicalNode;
+      } else {
+        // NULLISH_COALESCING
+        this.advance();
+        const right = this.parseLogicalAnd();
+        left = { type: "nullishCoalescing", left, right };
+      }
     }
 
     return left;

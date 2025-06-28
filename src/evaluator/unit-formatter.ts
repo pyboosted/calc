@@ -530,6 +530,9 @@ export function formatResultWithUnit(
     case "lambda":
       return `<lambda(${value.value.parameters.join(", ")})>`;
 
+    case "partial":
+      return `<partial(${value.value.remainingParams.join(", ")})>`;
+
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;

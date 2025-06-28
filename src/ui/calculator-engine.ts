@@ -386,6 +386,9 @@ export class CalculatorEngine {
       case "lambda":
         // Lambdas are equal if they reference the same object
         return a === b;
+      case "partial":
+        // Partials are equal if they reference the same object
+        return a === b;
       default: {
         // Exhaustive check
         const _exhaustiveCheck: never = a;
