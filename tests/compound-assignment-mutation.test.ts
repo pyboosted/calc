@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CalculatorEngine } from "../src/ui/calculator-engine";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Compound Assignment Mutation During Recalculation", () => {
   test("+= should not accumulate values on recalculation", () => {
@@ -14,7 +15,10 @@ describe("Compound Assignment Mutation During Recalculation", () => {
     const result1 = lines[2]?.result;
     if (result1?.type === "array") {
       expect(result1.value).toHaveLength(1);
-      expect(result1.value[0]?.value).toBe(1);
+      expect(result1.value[0]?.type).toBe("number");
+      if (result1.value[0]?.type === "number") {
+        expect(fromDecimal(result1.value[0]?.value)).toBe(1);
+      }
     }
 
     // Trigger recalculation by updating the first line
@@ -26,7 +30,10 @@ describe("Compound Assignment Mutation During Recalculation", () => {
     const result2 = lines[2]?.result;
     if (result2?.type === "array") {
       expect(result2.value).toHaveLength(1);
-      expect(result2.value[0]?.value).toBe(1);
+      expect(result2.value[0]?.type).toBe("number");
+      if (result2.value[0]?.type === "number") {
+        expect(fromDecimal(result2.value[0]?.value)).toBe(1);
+      }
     }
   });
 
@@ -50,7 +57,7 @@ describe("Compound Assignment Mutation During Recalculation", () => {
       expect(
         numbersLine.result.value.map((v) => {
           if (v.type === "number") {
-            return v.value;
+            return fromDecimal(v.value);
           }
           return null;
         })
@@ -81,7 +88,7 @@ describe("Compound Assignment Mutation During Recalculation", () => {
       expect(
         itemsLine.result.value.map((v) => {
           if (v.type === "number") {
-            return v.value;
+            return fromDecimal(v.value);
           }
           return null;
         })

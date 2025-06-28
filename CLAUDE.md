@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), pipe operator for functional composition (v1.4.5), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features arbitrary precision arithmetic using Decimal.js (v1.5.0), advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), pipe operator for functional composition (v1.4.5), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -165,9 +165,9 @@ The UI uses Ink (React for CLI) with a sophisticated state management system:
 **CalculatedValue** is now a discriminated union:
 ```typescript
 type CalculatedValue = 
-  | { type: 'number'; value: number }                    // Pure numbers only, no units
-  | { type: 'percentage'; value: number }                // Special type for percentages
-  | { type: 'quantity'; value: number; dimensions: DimensionMap }  // Numbers with dimensional analysis
+  | { type: 'number'; value: Decimal }                    // Pure numbers only, no units (v1.5.0: now using Decimal.js)
+  | { type: 'percentage'; value: Decimal }                // Special type for percentages
+  | { type: 'quantity'; value: Decimal; dimensions: DimensionMap }  // Numbers with dimensional analysis
   | { type: 'string'; value: string }
   | { type: 'date'; value: Date; timezone?: string }
   | { type: 'boolean'; value: boolean }
@@ -647,3 +647,6 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Pipe operator (`|`) enables functional composition (v1.4.5): `[1, 2, 3] | sum`
 - Pipe operator works with built-in functions, user-defined functions, and higher-order functions
 - Unit conversions during division now properly handle compound units (v1.4.5 bugfix)
+- All numeric calculations use Decimal.js for arbitrary precision arithmetic (v1.5.0)
+- Precision is preserved through all operations including unit conversions and currency calculations
+- The precision display setting in config only affects output formatting, not internal calculations

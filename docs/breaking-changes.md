@@ -1,5 +1,29 @@
 # Breaking Changes
 
+## Version 1.5.0
+
+### Major Enhancement
+
+- **Arbitrary Precision Arithmetic**: All numeric calculations now use Decimal.js for arbitrary precision
+  - No more floating point errors: `0.1 + 0.2` now equals exactly `0.3`
+  - Support for numbers beyond JavaScript's MAX_SAFE_INTEGER
+  - Precision is preserved through all operations, including unit conversions and currency calculations
+  - Internal precision is 40 significant digits
+  - Display precision is configurable via config file (default: 2 decimal places)
+
+### Technical Changes
+
+- All numeric values in `CalculatedValue` types now use `Decimal` instead of `number`
+- The `fromDecimal()` and `toDecimal()` utilities are used for conversions when needed
+- All mathematical operations use Decimal.js methods instead of JavaScript operators
+- Unit conversions and currency calculations maintain full precision throughout
+
+### Migration Notes
+
+- This is largely a transparent upgrade - existing calculations will work as before but with better precision
+- The only visible change is improved accuracy in calculations that previously suffered from floating point errors
+- Display formatting remains the same, controlled by the precision setting in config
+
 ## Version 1.4.8 (Upcoming)
 
 ### Breaking Changes

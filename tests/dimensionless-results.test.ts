@@ -1,22 +1,26 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Dimensionless Results", () => {
   test("unit/same unit returns dimensionless number", () => {
-    expect(evaluate("1kg/kg", new Map())).toEqual({
-      type: "number",
-      value: 1,
-    });
+    const result1 = evaluate("1kg/kg", new Map());
+    expect(result1.type).toBe("number");
+    if (result1.type === "number") {
+      expect(fromDecimal(result1.value)).toBe(1);
+    }
 
-    expect(evaluate("5m/m", new Map())).toEqual({
-      type: "number",
-      value: 5,
-    });
+    const result2 = evaluate("5m/m", new Map());
+    expect(result2.type).toBe("number");
+    if (result2.type === "number") {
+      expect(fromDecimal(result2.value)).toBe(5);
+    }
 
-    expect(evaluate("10s/s", new Map())).toEqual({
-      type: "number",
-      value: 10,
-    });
+    const result3 = evaluate("10s/s", new Map());
+    expect(result3.type).toBe("number");
+    if (result3.type === "number") {
+      expect(fromDecimal(result3.value)).toBe(10);
+    }
   });
 
   test("compound units that cancel completely", () => {
@@ -27,10 +31,10 @@ describe("Dimensionless Results", () => {
     evaluate("divisor = 20kg*m", vars);
     const result = evaluate("force / divisor", vars);
 
-    expect(result).toEqual({
-      type: "number",
-      value: 5,
-    });
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(5);
+    }
   });
 
   test("no zero-exponent dimensions in output", () => {

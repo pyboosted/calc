@@ -31,6 +31,7 @@ import {
   type UnaryOpNode,
   type VariableNode,
 } from "../types";
+import { toDecimal } from "../utils/decimal-math";
 import { isLambdaStart, parseLambda } from "./lambda-parser";
 import { parseCompoundUnit, unitsToExpression } from "./unit-parser";
 
@@ -158,6 +159,13 @@ export class Parser {
           variable: (expr as VariableNode).name,
           value,
         } as AssignmentNode;
+      }
+
+      // Check if trying to assign to a constant
+      if (expr.type === "constant") {
+        throw new Error(
+          `Cannot assign to mathematical constant: ${(expr as ConstantNode).name}`
+        );
       }
     }
 
@@ -588,7 +596,7 @@ export class Parser {
           type: "binary",
           operator: "/",
           left: percentValue,
-          right: { type: "number", value: 100 } as NumberNode,
+          right: { type: "number", value: toDecimal(100) } as NumberNode,
         } as BinaryOpNode,
         right,
       } as BinaryOpNode;
@@ -758,7 +766,7 @@ export class Parser {
               type: "binary",
               operator: "/",
               left: percentValue,
-              right: { type: "number", value: 100 } as NumberNode,
+              right: { type: "number", value: toDecimal(100) } as NumberNode,
             } as BinaryOpNode,
           } as BinaryOpNode;
 
@@ -979,7 +987,7 @@ export class Parser {
           type: "binary",
           operator: "percent",
           left: node,
-          right: { type: "number", value: 100 } as NumberNode,
+          right: { type: "number", value: toDecimal(100) } as NumberNode,
         } as BinaryOpNode;
       } else if (
         this.current.type === TokenType.KEYWORD &&
@@ -1100,7 +1108,7 @@ export class Parser {
       const nextUnitNode: ASTNode = {
         type: "binary",
         operator: "unit",
-        left: { type: "number", value: nextValue } as NumberNode,
+        left: { type: "number", value: toDecimal(nextValue) } as NumberNode,
         right: { type: "variable", name: nextUnit } as VariableNode,
       } as BinaryOpNode;
 
@@ -1120,7 +1128,7 @@ export class Parser {
   private parsePrimary(): ASTNode {
     // Numbers
     if (this.current.type === TokenType.NUMBER) {
-      const value = Number.parseFloat(this.current.value);
+      const value = toDecimal(this.current.value);
       this.advance();
       return { type: "number", value } as NumberNode;
     }

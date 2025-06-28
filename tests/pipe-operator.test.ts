@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 function evalExpression(
   input: string,
@@ -20,7 +21,10 @@ describe("Pipe Operator", () => {
       // Test piping to length function
       const result = evalExpression("arr | length", vars);
       expect(result.type).toBe("number");
-      expect(result.value).toBe(5);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(5);
+      }
     });
 
     test("should handle chained pipes", () => {
@@ -31,7 +35,10 @@ describe("Pipe Operator", () => {
 
       const result = evalExpression("text | trim | len", vars);
       expect(result.type).toBe("number");
-      expect(result.value).toBe(11); // "hello world" is 11 characters
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(11);
+      } // "hello world" is 11 characters
     });
 
     test("should pipe to function with additional arguments", () => {
@@ -48,8 +55,14 @@ describe("Pipe Operator", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(2);
-        expect(result.value[0]?.value).toBe(4);
-        expect(result.value[1]?.value).toBe(5);
+        expect(result.value[0]?.type).toBe("number");
+        if (result.value[0]?.type === "number") {
+          expect(fromDecimal(result.value[0]?.value)).toBe(4);
+        }
+        expect(result.value[1]?.type).toBe("number");
+        if (result.value[1]?.type === "number") {
+          expect(fromDecimal(result.value[1]?.value)).toBe(5);
+        }
       }
     });
 
@@ -62,7 +75,10 @@ describe("Pipe Operator", () => {
       // Test piping to user function
       const result = evalExpression("5 | double", vars);
       expect(result.type).toBe("number");
-      expect(result.value).toBe(10);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(10);
+      }
     });
 
     test("should maintain units through pipe", () => {
@@ -75,7 +91,7 @@ describe("Pipe Operator", () => {
       const result = evalExpression("100 cm | toMeters", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(1);
+        expect(fromDecimal(result.value)).toBe(1);
         expect(result.dimensions.length?.unit).toBe("m");
       }
     });
@@ -108,7 +124,10 @@ describe("Pipe Operator", () => {
       // 3 + 2 should be evaluated first, then piped
       const result = evalExpression("3 + 2 | double", vars);
       expect(result.type).toBe("number");
-      expect(result.value).toBe(10); // (3 + 2) * 2 = 10
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(10);
+      } // (3 + 2) * 2 = 10
     });
 
     test("pipe should have higher precedence than comparison", () => {
@@ -135,9 +154,18 @@ describe("Pipe Operator", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]?.value).toBe(1);
-        expect(result.value[1]?.value).toBe(4);
-        expect(result.value[2]?.value).toBe(9);
+        expect(result.value[0]?.type).toBe("number");
+        if (result.value[0]?.type === "number") {
+          expect(fromDecimal(result.value[0]?.value)).toBe(1);
+        }
+        expect(result.value[1]?.type).toBe("number");
+        if (result.value[1]?.type === "number") {
+          expect(fromDecimal(result.value[1]?.value)).toBe(4);
+        }
+        expect(result.value[2]?.type).toBe("number");
+        if (result.value[2]?.type === "number") {
+          expect(fromDecimal(result.value[2]?.value)).toBe(9);
+        }
       }
     });
 
@@ -150,7 +178,10 @@ describe("Pipe Operator", () => {
       // Test piping to reduce with lambda
       const result = evalExpression("arr | reduce((a, b) => a + b, 0)", vars);
       expect(result.type).toBe("number");
-      expect(result.value).toBe(10);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(10);
+      }
     });
   });
 });

@@ -1,4 +1,13 @@
 import type { CalculatedValue } from "../types";
+import {
+  add,
+  divide,
+  equals,
+  floor,
+  fromDecimal,
+  toDecimal,
+  ZERO,
+} from "../utils/decimal-math";
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Array function evaluation requires multiple type checks and operations
 export function evaluateArrayFunction(
@@ -148,13 +157,13 @@ export function evaluateArrayFunction(
         throw new Error(`${name} requires an argument`);
       }
       if (arg.type === "array") {
-        return { type: "number", value: arg.value.length };
+        return { type: "number", value: toDecimal(arg.value.length) };
       }
       if (arg.type === "string") {
-        return { type: "number", value: arg.value.length };
+        return { type: "number", value: toDecimal(arg.value.length) };
       }
       if (arg.type === "object") {
-        return { type: "number", value: arg.value.size };
+        return { type: "number", value: toDecimal(arg.value.size) };
       }
       throw new Error(
         `${name} can only be called on arrays, strings, or objects`
@@ -180,7 +189,10 @@ export function evaluateArrayFunction(
           if (result) {
             // Add to existing result
             if (result.type === "number" && element.type === "number") {
-              result = { type: "number", value: result.value + element.value };
+              result = {
+                type: "number",
+                value: add(result.value, element.value),
+              };
             } else {
               // Use quantity operations for mixed or quantity types
               result = addQuantities(result, element);
@@ -192,7 +204,7 @@ export function evaluateArrayFunction(
         }
       }
 
-      return result || { type: "number", value: 0 };
+      return result || { type: "number", value: ZERO };
     }
 
     case "avg":
@@ -216,7 +228,10 @@ export function evaluateArrayFunction(
           if (result) {
             // Add to existing result
             if (result.type === "number" && element.type === "number") {
-              result = { type: "number", value: result.value + element.value };
+              result = {
+                type: "number",
+                value: add(result.value, element.value),
+              };
             } else {
               // Use quantity operations for mixed or quantity types
               result = addQuantities(result, element);
@@ -235,12 +250,15 @@ export function evaluateArrayFunction(
 
       // Divide by count
       if (result.type === "number") {
-        return { type: "number", value: result.value / count };
+        return {
+          type: "number",
+          value: divide(result.value, toDecimal(count)),
+        };
       }
       if (result.type === "quantity") {
         return {
           type: "quantity",
-          value: result.value / count,
+          value: divide(result.value, toDecimal(count)),
           dimensions: result.dimensions,
         };
       }
@@ -260,7 +278,7 @@ export function evaluateArrayFunction(
       if (!start || start.type !== "number") {
         throw new Error("Start index must be a number");
       }
-      const startIndex = Math.floor(start.value);
+      const startIndex = fromDecimal(floor(start.value));
 
       let endIndex: number | undefined;
       if (args.length === 3) {
@@ -268,7 +286,7 @@ export function evaluateArrayFunction(
         if (!end || end.type !== "number") {
           throw new Error("End index must be a number");
         }
-        endIndex = Math.floor(end.value);
+        endIndex = fromDecimal(floor(end.value));
       }
 
       const newElements = arr.value.slice(startIndex, endIndex);
@@ -306,7 +324,7 @@ export function evaluateArrayFunction(
         if (result.type === "boolean") {
           isTruthy = result.value;
         } else if (result.type === "number") {
-          isTruthy = result.value !== 0;
+          isTruthy = !equals(result.value, ZERO);
         } else if (result.type === "string") {
           isTruthy = result.value !== "";
         } else if (result.type !== "null") {
@@ -356,7 +374,7 @@ export function evaluateArrayFunction(
         if (result.type === "boolean") {
           isTruthy = result.value;
         } else if (result.type === "number") {
-          isTruthy = result.value !== 0;
+          isTruthy = !equals(result.value, ZERO);
         } else if (result.type === "string") {
           isTruthy = result.value !== "";
         } else if (result.type !== "null") {
@@ -364,12 +382,12 @@ export function evaluateArrayFunction(
         }
 
         if (isTruthy) {
-          return { type: "number", value: i };
+          return { type: "number", value: toDecimal(i) };
         }
       }
 
       // No element found, return -1 like JavaScript
-      return { type: "number", value: -1 };
+      return { type: "number", value: toDecimal(-1) };
     }
 
     default:
@@ -541,7 +559,7 @@ function evaluateMutatingArrayFunction(
       if (!start || start.type !== "number") {
         throw new Error("Start index must be a number");
       }
-      const startIndex = Math.floor(start.value);
+      const startIndex = fromDecimal(floor(start.value));
 
       let endIndex: number | undefined;
       if (args.length === 3) {
@@ -549,7 +567,7 @@ function evaluateMutatingArrayFunction(
         if (!end || end.type !== "number") {
           throw new Error("End index must be a number");
         }
-        endIndex = Math.floor(end.value);
+        endIndex = fromDecimal(floor(end.value));
       }
 
       // Mutate the array by replacing it with the sliced content
@@ -591,7 +609,7 @@ function evaluateMutatingArrayFunction(
         if (result.type === "boolean") {
           isTruthy = result.value;
         } else if (result.type === "number") {
-          isTruthy = result.value !== 0;
+          isTruthy = !equals(result.value, ZERO);
         } else if (result.type === "string") {
           isTruthy = result.value !== "";
         } else if (result.type !== "null") {

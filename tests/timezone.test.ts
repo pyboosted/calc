@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 import { TimezoneManager } from "../src/utils/timezone-manager";
 
 describe("Timezone Support", () => {
@@ -53,7 +54,7 @@ describe("Timezone Support", () => {
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
       expect(result.dimensions.time?.unit).toBe("minutes");
-      expect(result.value).toBe(135); // 2 hours 15 minutes = 135 minutes
+      expect(fromDecimal(result.value)).toBe(135); // 2 hours 15 minutes = 135 minutes
     }
   });
 
@@ -62,7 +63,7 @@ describe("Timezone Support", () => {
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
       expect(result.dimensions.time?.unit).toBe("s");
-      expect(result.value).toBe(8100); // 2 hours 15 minutes = 8100 seconds
+      expect(fromDecimal(result.value)).toBe(8100); // 2 hours 15 minutes = 8100 seconds
     }
   });
 
@@ -168,7 +169,7 @@ describe("Timezone Support", () => {
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
       expect(result.dimensions.length?.unit).toBe("m");
-      expect(result.value).toBe(1);
+      expect(fromDecimal(result.value)).toBe(1);
     }
   });
 
@@ -227,7 +228,7 @@ describe("Timezone Support", () => {
     expect(result3.type).toBe("quantity");
     if (result3.type === "quantity") {
       expect(result3.dimensions.length?.unit).toBe("miles");
-      expect(result3.value).toBeCloseTo(62.137, 2);
+      expect(fromDecimal(result3.value)).toBeCloseTo(62.137, 2);
     }
   });
 });

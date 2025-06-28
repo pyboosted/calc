@@ -1,5 +1,12 @@
 # Boosted Calculator Features
 
+## Arbitrary Precision Arithmetic (v1.5.0)
+- **Decimal.js integration**: All numeric calculations use arbitrary precision
+- **No floating point errors**: `0.1 + 0.2 = 0.3` (exactly)
+- **Large number support**: Numbers beyond JavaScript's MAX_SAFE_INTEGER
+- **Precision preserved**: Through all operations, unit conversions, and currency calculations
+- **Configurable display**: Precision setting only affects output formatting
+
 ## Basic Mathematics
 - **Basic arithmetic**: `+`, `-`, `*`, `/`, `^` (power), `%` (modulo)
 - **Word operators**: `plus`, `minus`, `times`, `divided`, `mod`

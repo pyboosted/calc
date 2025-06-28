@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { toDecimal } from "../src/utils/decimal-math";
 
 describe("Type Checking with 'is' keyword", () => {
   test("basic type checks", () => {
@@ -102,12 +103,12 @@ describe("Type Checking with 'is' keyword", () => {
     const vars = new Map();
 
     // Store different types in variables
-    vars.set("num", { type: "number", value: 100 });
+    vars.set("num", { type: "number", value: toDecimal(100) });
     vars.set("str", { type: "string", value: "hello" });
     vars.set("date", { type: "date", value: new Date() });
     vars.set("currency", {
       type: "quantity",
-      value: 50,
+      value: toDecimal(50),
       dimensions: { currency: { exponent: 1, code: "usd" } },
     });
 
@@ -170,7 +171,7 @@ describe("Type inspection functions", () => {
 
     vars.set("price", {
       type: "quantity",
-      value: 99.99,
+      value: toDecimal(99.99),
       dimensions: { currency: { exponent: 1, code: "usd" } },
     });
     vars.set("meeting", { type: "date", value: new Date(), timezone: "ny" });
@@ -186,7 +187,7 @@ describe("Type checking in expressions", () => {
     const vars = new Map();
     vars.set("value", {
       type: "quantity",
-      value: 100,
+      value: toDecimal(100),
       dimensions: { currency: { exponent: 1, code: "usd" } },
     });
 

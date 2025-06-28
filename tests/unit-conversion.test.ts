@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Unit Conversions", () => {
   describe.each([
@@ -45,13 +46,17 @@ describe("Unit Conversions", () => {
       (expression, expectedValue, expectedUnit, precision) => {
         const result = evaluate(expression, new Map());
 
-        if (precision > 0) {
-          expect(result.value).toBeCloseTo(expectedValue, precision);
-        } else {
-          expect(result.value).toBe(expectedValue);
-        }
-
         expect(result.type).toBe("quantity");
+        if (result.type === "quantity") {
+          if (precision > 0) {
+            expect(fromDecimal(result.value)).toBeCloseTo(
+              expectedValue,
+              precision
+            );
+          } else {
+            expect(fromDecimal(result.value)).toBe(expectedValue);
+          }
+        }
         if (result.type === "quantity") {
           // Find which dimension has the unit
           for (const [_dim, info] of Object.entries(result.dimensions)) {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Compound Unit Input", () => {
   describe("Time units", () => {
@@ -8,7 +9,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("1h 30min", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(1.5); // 1.5 hours (unit is preserved from first component)
+        expect(fromDecimal(result.value)).toBe(1.5); // 1.5 hours (unit is preserved from first component)
         expect(result.dimensions.time?.exponent).toBe(1);
         expect(result.dimensions.time?.unit).toBe("h");
       }
@@ -19,7 +20,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("2h 45min 30s", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBeCloseTo(2.758_333_3, 4); // 2h 45min 30s in hours
+        expect(fromDecimal(result.value)).toBeCloseTo(2.758_333_3, 4); // 2h 45min 30s in hours
         expect(result.dimensions.time?.exponent).toBe(1);
         expect(result.dimensions.time?.unit).toBe("h");
       }
@@ -30,7 +31,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("0h 30min", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(0.5); // 0.5 hours
+        expect(fromDecimal(result.value)).toBe(0.5); // 0.5 hours
         expect(result.dimensions.time?.unit).toBe("h");
       }
     });
@@ -41,7 +42,7 @@ describe("Compound Unit Input", () => {
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
         // 100m / 1.5min = 66.67 m/min
-        expect(result.value).toBeCloseTo(66.667, 2);
+        expect(fromDecimal(result.value)).toBeCloseTo(66.667, 2);
         expect(result.dimensions.length?.exponent).toBe(1);
         expect(result.dimensions.time?.exponent).toBe(-1);
       }
@@ -54,7 +55,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("2kg 300g", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(2.3); // 2.3 kg (unit preserved from first component)
+        expect(fromDecimal(result.value)).toBe(2.3); // 2.3 kg (unit preserved from first component)
         expect(result.dimensions.mass?.exponent).toBe(1);
         expect(result.dimensions.mass?.unit).toBe("kg");
       }
@@ -65,7 +66,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("5kg 0g", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(5); // 5 kg
+        expect(fromDecimal(result.value)).toBe(5); // 5 kg
         expect(result.dimensions.mass?.unit).toBe("kg");
       }
     });
@@ -75,7 +76,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("1kg 500g 250mg", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBeCloseTo(1.500_25, 5); // 1.50025 kg
+        expect(fromDecimal(result.value)).toBeCloseTo(1.500_25, 5); // 1.50025 kg
         expect(result.dimensions.mass?.unit).toBe("kg");
       }
     });
@@ -87,7 +88,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("4m 20cm", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(4.2); // 4.2 meters
+        expect(fromDecimal(result.value)).toBe(4.2); // 4.2 meters
         expect(result.dimensions.length?.exponent).toBe(1);
       }
     });
@@ -97,7 +98,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("1km 500m", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(1.5); // 1.5 km (unit is preserved from first component)
+        expect(fromDecimal(result.value)).toBe(1.5); // 1.5 km (unit is preserved from first component)
         expect(result.dimensions.length?.unit).toBe("km");
       }
     });
@@ -108,7 +109,7 @@ describe("Compound Unit Input", () => {
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
         // 5ft + 6in = 5.5 ft (unit is preserved from first component)
-        expect(result.value).toBe(5.5);
+        expect(fromDecimal(result.value)).toBe(5.5);
         expect(result.dimensions.length?.unit).toBe("ft");
       }
     });
@@ -120,7 +121,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("(2h 30min) + (1h 45min)", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(4.25); // 4h 15min = 4.25 hours
+        expect(fromDecimal(result.value)).toBe(4.25); // 4h 15min = 4.25 hours
         expect(result.dimensions.time?.unit).toBe("h");
       }
     });
@@ -131,7 +132,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("duration * 2", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(3); // 3 hours
+        expect(fromDecimal(result.value)).toBe(3); // 3 hours
         expect(result.dimensions.time?.unit).toBe("h");
       }
     });
@@ -141,7 +142,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("(2h 30min) to minutes", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(150); // 150 minutes
+        expect(fromDecimal(result.value)).toBe(150); // 150 minutes
         expect(result.dimensions.time?.unit).toBe("minutes");
       }
     });
@@ -161,7 +162,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("1m 50cm 200mm", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(1.7); // 1 + 0.5 + 0.2 = 1.7 meters
+        expect(fromDecimal(result.value)).toBe(1.7); // 1 + 0.5 + 0.2 = 1.7 meters
       }
     });
   });
@@ -172,7 +173,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("30min 1h", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(90); // 30min + 1h = 90 minutes (unit preserved from first component)
+        expect(fromDecimal(result.value)).toBe(90); // 30min + 1h = 90 minutes (unit preserved from first component)
         expect(result.dimensions.time?.unit).toBe("min");
       }
     });
@@ -182,7 +183,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("5 m", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(5);
+        expect(fromDecimal(result.value)).toBe(5);
         expect(result.dimensions.length?.exponent).toBe(1);
       }
     });
@@ -192,7 +193,7 @@ describe("Compound Unit Input", () => {
       const result = evaluate("distance = 100m / (1min 30s)", vars);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBeCloseTo(66.667, 2); // 100m / 1.5min = 66.67 m/min
+        expect(fromDecimal(result.value)).toBeCloseTo(66.667, 2); // 100m / 1.5min = 66.67 m/min
         expect(result.dimensions.length?.unit).toBe("m");
         expect(result.dimensions.time?.unit).toBe("min");
         expect(result.dimensions.time?.exponent).toBe(-1);

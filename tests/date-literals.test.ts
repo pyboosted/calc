@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { Decimal, fromDecimal } from "../src/utils/decimal-math";
 
 describe("Date Literals", () => {
   test("parses DD.MM.YYYY format", () => {
@@ -34,7 +35,8 @@ describe("Date Literals", () => {
     if (result.type === "quantity") {
       expect(result.dimensions.time?.unit).toBe("days");
       // Allow for a day difference due to time zones and execution time
-      expect(Math.abs(result.value - expectedDays)).toBeLessThanOrEqual(1);
+      const diff = result.value.minus(new Decimal(expectedDays)).abs();
+      expect(fromDecimal(diff)).toBeLessThanOrEqual(1);
     }
   });
 
@@ -53,7 +55,7 @@ describe("Date Literals", () => {
     const result = evaluate("25.13", new Map());
     expect(result.type).toBe("number");
     if (result.type === "number") {
-      expect(result.value).toBeCloseTo(25.13);
+      expect(fromDecimal(result.value)).toBeCloseTo(25.13);
     }
   });
 
@@ -72,7 +74,7 @@ describe("Date Literals", () => {
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
       expect(result.dimensions.time?.unit).toBe("days");
-      expect(result.value).toBe(205); // Days between Jan 1 and July 25
+      expect(fromDecimal(result.value)).toBe(205); // Days between Jan 1 and July 25
     }
   });
 
@@ -83,7 +85,7 @@ describe("Date Literals", () => {
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
       expect(result.dimensions.time?.unit).toBe("days");
-      expect(result.value).toBeGreaterThan(12_000); // At least 12000 days old
+      expect(fromDecimal(result.value)).toBeGreaterThan(12_000); // At least 12000 days old
     }
   });
 });

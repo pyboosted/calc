@@ -607,7 +607,7 @@ export class Tokenizer {
     if (isMathConstant(finalLowerValue)) {
       return {
         type: TokenType.CONSTANT,
-        value: finalLowerValue,
+        value, // Keep original case
         position: start,
       };
     }

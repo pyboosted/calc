@@ -3,12 +3,19 @@ import {
   unitDefinitions,
 } from "../data/units";
 import { CurrencyManager } from "../utils/currency-manager";
+import {
+  add,
+  Decimal,
+  divide,
+  multiply,
+  subtract,
+} from "../utils/decimal-math";
 
 export function convertUnits(
-  value: number,
+  value: Decimal,
   fromUnit: string,
   toUnit: string
-): number {
+): Decimal {
   // Handle temperature conversions separately
   if (isTemperatureUnit(fromUnit) && isTemperatureUnit(toUnit)) {
     return convertTemperature(value, fromUnit, toUnit);
@@ -34,22 +41,26 @@ export function convertUnits(
   }
 
   // Convert to base unit, then to target unit
-  const baseValue = value * from.factor;
-  return baseValue / to.factor;
+  const baseValue = multiply(value, new Decimal(from.factor));
+  return divide(baseValue, new Decimal(to.factor));
 }
 
-function convertTemperature(value: number, from: string, to: string): number {
+function convertTemperature(value: Decimal, from: string, to: string): Decimal {
   const fromUnit = from.toLowerCase();
   const toUnit = to.toLowerCase();
 
   // Convert to Celsius first
-  let celsius: number;
+  let celsius: Decimal;
   if (fromUnit === "celsius" || fromUnit === "c") {
     celsius = value;
   } else if (fromUnit === "fahrenheit" || fromUnit === "f") {
-    celsius = ((value - 32) * 5) / 9;
+    // celsius = ((value - 32) * 5) / 9
+    celsius = divide(
+      multiply(subtract(value, new Decimal(32)), new Decimal(5)),
+      new Decimal(9)
+    );
   } else if (fromUnit === "kelvin" || fromUnit === "k") {
-    celsius = value - 273.15;
+    celsius = subtract(value, new Decimal(273.15));
   } else {
     throw new Error(`Unknown temperature unit: ${from}`);
   }
@@ -59,10 +70,14 @@ function convertTemperature(value: number, from: string, to: string): number {
     return celsius;
   }
   if (toUnit === "fahrenheit" || toUnit === "f") {
-    return (celsius * 9) / 5 + 32;
+    // return (celsius * 9) / 5 + 32
+    return add(
+      divide(multiply(celsius, new Decimal(9)), new Decimal(5)),
+      new Decimal(32)
+    );
   }
   if (toUnit === "kelvin" || toUnit === "k") {
-    return celsius + 273.15;
+    return add(celsius, new Decimal(273.15));
   }
   throw new Error(`Unknown temperature unit: ${to}`);
 }
@@ -72,7 +87,7 @@ function isCurrency(unit: string): boolean {
   return currencyManager.getRate(unit) !== undefined;
 }
 
-function convertCurrency(value: number, from: string, to: string): number {
+function convertCurrency(value: Decimal, from: string, to: string): Decimal {
   const currencyManager = CurrencyManager.getInstance();
   const fromRate = currencyManager.getRate(from);
   const toRate = currencyManager.getRate(to);
@@ -82,6 +97,6 @@ function convertCurrency(value: number, from: string, to: string): number {
   }
 
   // Convert to USD first, then to target currency
-  const usdValue = value / fromRate;
-  return usdValue * toRate;
+  const usdValue = divide(value, new Decimal(fromRate));
+  return multiply(usdValue, new Decimal(toRate));
 }

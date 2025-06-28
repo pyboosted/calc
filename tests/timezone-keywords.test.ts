@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 // Top-level regex for performance
 const TIME_FORMAT_REGEX = /^\d{2}:\d{2}$/;
@@ -151,7 +152,7 @@ describe("Timezone Keywords", () => {
       if (result.type === "quantity") {
         expect(result.dimensions.time?.unit).toBe("s");
         // Tokyo is ahead of UTC, so 12:00 Tokyo is earlier than 12:00 UTC
-        expect(result.value).toBeLessThan(0);
+        expect(fromDecimal(result.value)).toBeLessThan(0);
       }
     });
 
@@ -161,7 +162,7 @@ describe("Timezone Keywords", () => {
       const result = evaluate("now@tokyo - now@moscow", variables);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(0);
+        expect(fromDecimal(result.value)).toBe(0);
         expect(result.dimensions.time?.unit).toBe("s");
       }
     });
@@ -174,7 +175,7 @@ describe("Timezone Keywords", () => {
       if (result.type === "quantity") {
         expect(result.dimensions.time?.unit).toBe("hours");
         // Tokyo is UTC+9, so 12:00 Tokyo is 9 hours before 12:00 UTC
-        expect(result.value).toBe(-9);
+        expect(fromDecimal(result.value)).toBe(-9);
       }
     });
   });

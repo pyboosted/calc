@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("env() function", () => {
   test("reads existing environment variable", () => {
@@ -68,7 +69,10 @@ describe("env() function", () => {
     // Number conversion
     const portResult = evaluate('env("PORT") as number', variables);
     expect(portResult.type).toBe("number");
-    expect(portResult.value).toBe(3000);
+    expect(portResult.type).toBe("number");
+    if (portResult.type === "number") {
+      expect(fromDecimal(portResult.value)).toBe(3000);
+    }
 
     // Boolean conversion
     const debugResult = evaluate('env("DEBUG") as boolean', variables);
@@ -126,8 +130,16 @@ describe("arg() function", () => {
 
     expect(result.type).toBe("object");
     if (result.type === "object") {
-      expect(result.value.get("name")?.value).toBe("John");
-      expect(result.value.get("age")?.value).toBe(30);
+      const nameValue = result.value.get("name");
+      expect(nameValue?.type).toBe("string");
+      if (nameValue?.type === "string") {
+        expect(nameValue.value).toBe("John");
+      }
+      const ageValue = result.value.get("age");
+      expect(ageValue?.type).toBe("number");
+      if (ageValue?.type === "number") {
+        expect(fromDecimal(ageValue.value)).toBe(30);
+      }
     }
   });
 
@@ -139,7 +151,10 @@ describe("arg() function", () => {
     expect(result.type).toBe("array");
     if (result.type === "array") {
       expect(result.value).toHaveLength(4);
-      expect(result.value[0]?.value).toBe(1);
+      expect(result.value[0]?.type).toBe("number");
+      if (result.value[0]?.type === "number") {
+        expect(fromDecimal(result.value[0]?.value)).toBe(1);
+      }
       expect(result.value[3]?.value).toBe("hello");
     }
   });
@@ -151,7 +166,10 @@ describe("arg() function", () => {
     let context = { cliArg: "42" };
     let result = evaluate("arg()", variables, context);
     expect(result.type).toBe("number");
-    expect(result.value).toBe(42);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(42);
+    }
 
     // Boolean true
     context = { cliArg: "true" };
@@ -196,7 +214,10 @@ describe("arg() function", () => {
     let context = { cliArg: "123.45" };
     let result = evaluate("arg() as number", variables, context);
     expect(result.type).toBe("number");
-    expect(result.value).toBe(123.45);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(123.45);
+    }
 
     // String to boolean
     context = { cliArg: "true" };
@@ -222,7 +243,10 @@ describe("arg() function", () => {
         expect(scores?.type).toBe("array");
         if (scores?.type === "array") {
           expect(scores.value).toHaveLength(3);
-          expect(scores.value[1]?.value).toBe(20);
+          expect(scores.value[1]?.type).toBe("number");
+          if (scores.value[1]?.type === "number") {
+            expect(fromDecimal(scores.value[1]?.value)).toBe(20);
+          }
         }
       }
     }
@@ -241,7 +265,10 @@ describe("Integration with expressions", () => {
     );
 
     expect(result.type).toBe("number");
-    expect(result.value).toBe(108);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(108);
+    }
 
     process.env.BASE_PRICE = undefined;
     process.env.TAX_RATE = undefined;
@@ -257,7 +284,10 @@ describe("Integration with expressions", () => {
     // Then access nested property
     const result = evaluate("data.items[0].price", variables);
     expect(result.type).toBe("number");
-    expect(result.value).toBe(10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(10);
+    }
   });
 
   test("conditional logic with env()", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Extended Array Functions", () => {
   describe("shift - non-mutating", () => {
@@ -11,7 +12,11 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value.map((v) => v.value)).toEqual([2, 3, 4]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 3, 4]);
       }
 
       // Original array should be unchanged
@@ -41,7 +46,11 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
 
       // Original array should be unchanged
@@ -57,7 +66,11 @@ describe("Extended Array Functions", () => {
       const result = evaluate("unshift([2, 3], 1)", env);
       expect(result.type).toBe("array");
       if (result.type === "array") {
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3]);
       }
     });
   });
@@ -72,7 +85,11 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(6);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5, 6]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5, 6]);
       }
 
       // Original arrays should be unchanged
@@ -100,8 +117,16 @@ describe("Extended Array Functions", () => {
         result2.type === "array" &&
         result3.type === "array"
       ) {
-        expect(result1.value.map((v) => v.value)).toEqual([1, 2, 3]);
-        expect(result2.value.map((v) => v.value)).toEqual([1, 2, 3]);
+        expect(
+          result1.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3]);
+        expect(
+          result2.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3]);
         expect(result3.value).toEqual([]);
       }
     });
@@ -117,7 +142,11 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
     });
   });
@@ -131,7 +160,11 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value.map((v) => v.value)).toEqual([2, 3, 4]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 3, 4]);
       }
 
       // Original array should be mutated
@@ -139,7 +172,11 @@ describe("Extended Array Functions", () => {
       expect(original.type).toBe("array");
       if (original.type === "array") {
         expect(original.value.length).toBe(3);
-        expect(original.value.map((v) => v.value)).toEqual([2, 3, 4]);
+        expect(
+          original.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 3, 4]);
       }
     });
   });
@@ -153,14 +190,22 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
 
       // Original array should be mutated
       const original = evaluate("arr", env);
       expect(original.type).toBe("array");
       if (original.type === "array") {
-        expect(original.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          original.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
     });
   });
@@ -175,7 +220,11 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(6);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5, 6]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5, 6]);
       }
 
       // First array should be mutated
@@ -183,7 +232,11 @@ describe("Extended Array Functions", () => {
       expect(arr1.type).toBe("array");
       if (arr1.type === "array") {
         expect(arr1.value.length).toBe(6);
-        expect(arr1.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5, 6]);
+        expect(
+          arr1.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5, 6]);
       }
 
       // Second array should be unchanged
@@ -191,7 +244,11 @@ describe("Extended Array Functions", () => {
       expect(arr2.type).toBe("array");
       if (arr2.type === "array") {
         expect(arr2.value.length).toBe(3);
-        expect(arr2.value.map((v) => v.value)).toEqual([4, 5, 6]);
+        expect(
+          arr2.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([4, 5, 6]);
       }
     });
   });
@@ -206,21 +263,33 @@ describe("Extended Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
 
       // First array should be mutated
       const arr1 = evaluate("arr1", env);
       expect(arr1.type).toBe("array");
       if (arr1.type === "array") {
-        expect(arr1.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          arr1.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
 
       // Second array should be unchanged
       const arr2 = evaluate("arr2", env);
       expect(arr2.type).toBe("array");
       if (arr2.type === "array") {
-        expect(arr2.value.map((v) => v.value)).toEqual([1, 2]);
+        expect(
+          arr2.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2]);
       }
     });
   });
@@ -239,7 +308,11 @@ describe("Extended Array Functions", () => {
         const lastElement = pushed.value[3];
         expect(lastElement?.type).toBe("array");
         if (lastElement?.type === "array") {
-          expect(lastElement.value.map((v) => v.value)).toEqual([4, 5, 6]);
+          expect(
+            lastElement.value.map((v) =>
+              v.type === "number" ? fromDecimal(v.value) : null
+            )
+          ).toEqual([4, 5, 6]);
         }
       }
 
@@ -248,7 +321,11 @@ describe("Extended Array Functions", () => {
       expect(appended.type).toBe("array");
       if (appended.type === "array") {
         expect(appended.value.length).toBe(6);
-        expect(appended.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5, 6]);
+        expect(
+          appended.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5, 6]);
       }
     });
   });

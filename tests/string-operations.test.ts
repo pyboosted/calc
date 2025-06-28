@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { toDecimal } from "../src/utils/decimal-math";
 
 // Regex constants for performance
 const TOTAL_REGEX = /^Total: 32\.389/;
@@ -71,7 +72,7 @@ describe("String Operations", () => {
 
   test("type casting to number", () => {
     const result = evaluate("`123.45` as number", new Map());
-    expect(result).toEqual({ type: "number", value: 123.45 });
+    expect(result).toEqual({ type: "number", value: toDecimal(123.45) });
   });
 
   test("type casting invalid string to number throws", () => {

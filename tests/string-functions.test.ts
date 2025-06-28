@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { toDecimal } from "../src/utils/decimal-math";
 
 describe("String Functions", () => {
   describe("Case Transformation Functions", () => {
@@ -243,31 +244,31 @@ describe("String Functions", () => {
     test("indexof() finds first occurrence", () => {
       const vars = new Map();
       const result = evaluate('indexof("hello world", "world")', vars);
-      expect(result).toEqual({ type: "number", value: 6 });
+      expect(result).toEqual({ type: "number", value: toDecimal(6) });
     });
 
     test("indexof() returns -1 when not found", () => {
       const vars = new Map();
       const result = evaluate('indexof("hello", "world")', vars);
-      expect(result).toEqual({ type: "number", value: -1 });
+      expect(result).toEqual({ type: "number", value: toDecimal(-1) });
     });
 
     test("lastindexof() finds last occurrence", () => {
       const vars = new Map();
       const result = evaluate('lastindexof("abcabc", "abc")', vars);
-      expect(result).toEqual({ type: "number", value: 3 });
+      expect(result).toEqual({ type: "number", value: toDecimal(3) });
     });
 
     test("lastindexof() returns -1 when not found", () => {
       const vars = new Map();
       const result = evaluate('lastindexof("hello", "world")', vars);
-      expect(result).toEqual({ type: "number", value: -1 });
+      expect(result).toEqual({ type: "number", value: toDecimal(-1) });
     });
 
     test("indexof() with empty string", () => {
       const vars = new Map();
       const result = evaluate('indexof("hello", "")', vars);
-      expect(result).toEqual({ type: "number", value: 0 });
+      expect(result).toEqual({ type: "number", value: toDecimal(0) });
     });
   });
 
@@ -275,20 +276,20 @@ describe("String Functions", () => {
   test("len() returns string length", () => {
     const vars = new Map();
     const result = evaluate('len("Hello")', vars);
-    expect(result).toEqual({ type: "number", value: 5 });
+    expect(result).toEqual({ type: "number", value: toDecimal(5) });
   });
 
   test("len() with empty string", () => {
     const vars = new Map();
     const result = evaluate('len("")', vars);
-    expect(result).toEqual({ type: "number", value: 0 });
+    expect(result).toEqual({ type: "number", value: toDecimal(0) });
   });
 
   test("len() with variable", () => {
     const vars = new Map();
     evaluate('str = "Hello World"', vars);
     const result = evaluate("len(str)", vars);
-    expect(result).toEqual({ type: "number", value: 11 });
+    expect(result).toEqual({ type: "number", value: toDecimal(11) });
   });
 
   test("substr() extracts substring", () => {
@@ -345,7 +346,7 @@ describe("String Functions", () => {
   test("chaining string functions", () => {
     const vars = new Map();
     const result = evaluate('len(trim("  Hello  "))', vars);
-    expect(result).toEqual({ type: "number", value: 5 });
+    expect(result).toEqual({ type: "number", value: toDecimal(5) });
   });
 
   test("substr with calculated indices", () => {
@@ -516,7 +517,7 @@ describe("String Aggregates", () => {
 
     const previousResults = [
       { type: "string" as const, value: "Hello" },
-      { type: "number" as const, value: 123 },
+      { type: "number" as const, value: toDecimal(123) },
       { type: "string" as const, value: " World" },
     ];
 

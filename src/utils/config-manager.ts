@@ -82,9 +82,12 @@ export class ConfigManager {
       this.config.precision < 0 ||
       this.config.precision > 20
     ) {
-      console.warn(
-        `Invalid precision value: ${this.config.precision}, using default: ${DEFAULT_CONFIG.precision}`
-      );
+      // Only warn in non-test environments
+      if (process.env.NODE_ENV !== "test") {
+        console.warn(
+          `Invalid precision value: ${this.config.precision}, using default: ${DEFAULT_CONFIG.precision}`
+        );
+      }
       this.config.precision = DEFAULT_CONFIG.precision;
     }
   }

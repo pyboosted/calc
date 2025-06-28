@@ -1,6 +1,6 @@
 # Boosted Calculator
 
-A powerful terminal-based calculator inspired by Numi, built with TypeScript and Ink (React for CLI). Features advanced math operations, unit conversions, dimensional analysis, live currency conversion, and more.
+A powerful terminal-based calculator inspired by Numi, built with TypeScript and Ink (React for CLI). Features arbitrary precision arithmetic, advanced math operations, unit conversions, dimensional analysis, live currency conversion, and more.
 
 ![Boosted Calculator Example](docs/example.gif)
 
@@ -83,6 +83,7 @@ today + 7 days
 
 ## Features
 
+- 🔢 **Arbitrary Precision** - Decimal.js for exact calculations (v1.5.0)
 - ✨ **Advanced Mathematics** - Functions, trigonometry, logarithms
 - 🔄 **Unit Conversions** - Length, weight, temperature, time, volume, data
 - ⚡ **Dimensional Analysis** - Compound units like m/s, kg⋅m/s² (Newton)

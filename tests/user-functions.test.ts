@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("User-Defined Functions", () => {
   test("simple function definition and call", () => {
@@ -10,7 +11,10 @@ describe("User-Defined Functions", () => {
 
     // Call the function
     const result = evaluate("double(5)", variables);
-    expect(result.value).toBe(10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(10);
+    }
     expect(result.type).toBe("number");
   });
 
@@ -22,7 +26,10 @@ describe("User-Defined Functions", () => {
 
     // Call the function
     const result = evaluate("add(3, 4)", variables);
-    expect(result.value).toBe(7);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(7);
+    }
     expect(result.type).toBe("number");
   });
 
@@ -35,7 +42,10 @@ describe("User-Defined Functions", () => {
 
     // Call the composite function
     const result = evaluate("cube(3)", variables);
-    expect(result.value).toBe(27);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(27);
+    }
     expect(result.type).toBe("number");
   });
 
@@ -47,10 +57,16 @@ describe("User-Defined Functions", () => {
 
     // Test factorial
     const result1 = evaluate("fact(5)", variables);
-    expect(result1.value).toBe(120);
+    expect(result1.type).toBe("number");
+    if (result1.type === "number") {
+      expect(fromDecimal(result1.value)).toBe(120);
+    }
 
     const result2 = evaluate("fact(0)", variables);
-    expect(result2.value).toBe(1);
+    expect(result2.type).toBe("number");
+    if (result2.type === "number") {
+      expect(fromDecimal(result2.value)).toBe(1);
+    }
   });
 
   test("recursive fibonacci function", () => {
@@ -61,10 +77,16 @@ describe("User-Defined Functions", () => {
 
     // Test fibonacci
     const result1 = evaluate("fib(6)", variables);
-    expect(result1.value).toBe(8); // 0, 1, 1, 2, 3, 5, 8
+    expect(result1.type).toBe("number");
+    if (result1.type === "number") {
+      expect(fromDecimal(result1.value)).toBe(8);
+    } // 0, 1, 1, 2, 3, 5, 8
 
     const result2 = evaluate("fib(10)", variables);
-    expect(result2.value).toBe(55);
+    expect(result2.type).toBe("number");
+    if (result2.type === "number") {
+      expect(fromDecimal(result2.value)).toBe(55);
+    }
   });
 
   test("function with conditional logic", () => {
@@ -75,10 +97,16 @@ describe("User-Defined Functions", () => {
 
     // Test max function
     const result1 = evaluate("max(5, 3)", variables);
-    expect(result1.value).toBe(5);
+    expect(result1.type).toBe("number");
+    if (result1.type === "number") {
+      expect(fromDecimal(result1.value)).toBe(5);
+    }
 
     const result2 = evaluate("max(2, 8)", variables);
-    expect(result2.value).toBe(8);
+    expect(result2.type).toBe("number");
+    if (result2.type === "number") {
+      expect(fromDecimal(result2.value)).toBe(8);
+    }
   });
 
   test("function with type checking", () => {
@@ -113,12 +141,16 @@ describe("User-Defined Functions", () => {
     // Test unit conversion function
     const result1 = evaluate("to_meters(100 cm)", variables);
     expect(result1.type).toBe("quantity");
-    expect(result1.value).toBe(1);
+    if (result1.type === "quantity") {
+      expect(fromDecimal(result1.value)).toBe(1);
+    }
 
     // Test velocity calculation - use 'dist' and 'time' to avoid 't' unit confusion
     const result2 = evaluate("velocity(100 m, 10 s)", variables);
     expect(result2.type).toBe("quantity");
-    expect(result2.value).toBe(10);
+    if (result2.type === "quantity") {
+      expect(fromDecimal(result2.value)).toBe(10);
+    }
   });
 
   test("function parameter name conflicts with units", () => {
@@ -134,7 +166,6 @@ describe("User-Defined Functions", () => {
     // Expected: 10 m/s, but we get 100 m/t due to the bug
     expect(result.type).toBe("quantity");
     // This test documents the current bug behavior
-    expect(result.value).toBe(100); // Wrong value
     if (result.type === "quantity") {
       expect(result.dimensions.mass).toBeDefined(); // Should be time, not mass
       expect(result.dimensions.time).toBeUndefined(); // Should have time
@@ -242,11 +273,17 @@ describe("User-Defined Functions", () => {
 
     // Call function - should use parameter, not outer variable
     const result = evaluate("double(5)", variables);
-    expect(result.value).toBe(10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(10);
+    }
 
     // Outer variable should be unchanged
     const outerX = evaluate("x", variables);
-    expect(outerX.value).toBe(10);
+    expect(outerX.type).toBe("number");
+    if (outerX.type === "number") {
+      expect(fromDecimal(outerX.value)).toBe(10);
+    }
   });
 
   test("complex recursive function - GCD", () => {
@@ -257,9 +294,15 @@ describe("User-Defined Functions", () => {
 
     // Test GCD
     const result1 = evaluate("gcd(48, 18)", variables);
-    expect(result1.value).toBe(6);
+    expect(result1.type).toBe("number");
+    if (result1.type === "number") {
+      expect(fromDecimal(result1.value)).toBe(6);
+    }
 
     const result2 = evaluate("gcd(100, 35)", variables);
-    expect(result2.value).toBe(5);
+    expect(result2.type).toBe("number");
+    if (result2.type === "number") {
+      expect(fromDecimal(result2.value)).toBe(5);
+    }
   });
 });

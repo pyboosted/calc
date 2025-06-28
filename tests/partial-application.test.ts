@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Partial Application", () => {
   describe("basic partial application", () => {
@@ -9,7 +10,7 @@ describe("Partial Application", () => {
       evaluate("add3 = add(3)", env);
       const result = evaluate("add3(5)", env);
 
-      expect(result).toEqual({ type: "number", value: 8 });
+      expect(result).toEqual({ type: "number", value: toDecimal(8) });
     });
 
     test("partial application with multiple parameters", () => {
@@ -19,7 +20,7 @@ describe("Partial Application", () => {
       evaluate("sum3_10_20 = sum3_10(20)", env);
       const result = evaluate("sum3_10_20(30)", env);
 
-      expect(result).toEqual({ type: "number", value: 60 });
+      expect(result).toEqual({ type: "number", value: toDecimal(60) });
     });
 
     test("partial application with lambda", () => {
@@ -28,7 +29,7 @@ describe("Partial Application", () => {
       evaluate("double = multiply(2)", env);
       const result = evaluate("double(5)", env);
 
-      expect(result).toEqual({ type: "number", value: 10 });
+      expect(result).toEqual({ type: "number", value: toDecimal(10) });
     });
   });
 
@@ -38,7 +39,7 @@ describe("Partial Application", () => {
       evaluate("multiply(a, b) = a * b", env);
       const result = evaluate("5 | multiply(2)", env);
 
-      expect(result).toEqual({ type: "number", value: 10 });
+      expect(result).toEqual({ type: "number", value: toDecimal(10) });
     });
 
     test("clamp function with partial application", () => {
@@ -50,13 +51,13 @@ describe("Partial Application", () => {
       evaluate("clamp0to10 = clamp(0, 10)", env);
 
       const result1 = evaluate("15 | clamp0to10", env);
-      expect(result1).toEqual({ type: "number", value: 10 });
+      expect(result1).toEqual({ type: "number", value: toDecimal(10) });
 
       const result2 = evaluate("-5 | clamp0to10", env);
-      expect(result2).toEqual({ type: "number", value: 0 });
+      expect(result2).toEqual({ type: "number", value: toDecimal(0) });
 
       const result3 = evaluate("5 | clamp0to10", env);
-      expect(result3).toEqual({ type: "number", value: 5 });
+      expect(result3).toEqual({ type: "number", value: toDecimal(5) });
     });
 
     test("partial application in array operations", () => {
@@ -68,7 +69,7 @@ describe("Partial Application", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         const values = result.value.map((v) =>
-          v.type === "number" ? v.value : null
+          v.type === "number" ? fromDecimal(v.value) : null
         );
         expect(values).toEqual([3, 6, 9]);
       }
@@ -83,13 +84,13 @@ describe("Partial Application", () => {
       evaluate("square = (x) => power(x, 2)", env);
 
       const result = evaluate("square(5)", env);
-      expect(result).toEqual({ type: "number", value: 25 });
+      expect(result).toEqual({ type: "number", value: toDecimal(25) });
 
       // Test with partial application in reverse order
       evaluate("pow2(exp, base) = base ^ exp", env);
       evaluate("square2 = pow2(2)", env); // Partial application with exp=2
       const result2 = evaluate("square2(5)", env);
-      expect(result2).toEqual({ type: "number", value: 25 });
+      expect(result2).toEqual({ type: "number", value: toDecimal(25) });
     });
 
     test("partial application with string functions", () => {
@@ -109,7 +110,7 @@ describe("Partial Application", () => {
       const result = evaluate("toMeters(100 cm)", env);
       expect(result.type).toBe("quantity");
       if (result.type === "quantity") {
-        expect(result.value).toBe(1);
+        expect(fromDecimal(result.value)).toBe(1);
       }
     });
   });
@@ -127,7 +128,7 @@ describe("Partial Application", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         const values = result.value.map((v) =>
-          v.type === "number" ? v.value : null
+          v.type === "number" ? fromDecimal(v.value) : null
         );
         expect(values).toEqual([0, 5, 10]);
       }
@@ -142,7 +143,7 @@ describe("Partial Application", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         const values = result.value.map((v) =>
-          v.type === "number" ? v.value : null
+          v.type === "number" ? fromDecimal(v.value) : null
         );
         expect(values).toEqual([2, 3, 4]);
       }
@@ -155,7 +156,7 @@ describe("Partial Application", () => {
       evaluate("multiply(a, b) = a * b", env);
       const result = evaluate("[1, 2, 3, 4] | reduce(multiply, 1)", env);
 
-      expect(result).toEqual({ type: "number", value: 24 });
+      expect(result).toEqual({ type: "number", value: toDecimal(24) });
     });
   });
 
@@ -178,7 +179,7 @@ describe("Partial Application", () => {
       evaluate("partial3 = partial2(3)", env);
       const result = evaluate("partial3(4)", env);
 
-      expect(result).toEqual({ type: "number", value: 10 });
+      expect(result).toEqual({ type: "number", value: toDecimal(10) });
     });
   });
 
@@ -192,10 +193,13 @@ describe("Partial Application", () => {
       if (partial.type === "partial") {
         expect(partial.value.remainingParams).toEqual(["b"]);
         expect(partial.value.appliedArgs).toHaveLength(1);
-        expect(partial.value.appliedArgs[0]).toEqual({
-          type: "number",
-          value: 5,
-        });
+        const arg = partial.value.appliedArgs[0];
+        if (arg) {
+          expect(arg.type).toBe("number");
+          if (arg.type === "number") {
+            expect(fromDecimal(arg.value)).toBe(5);
+          }
+        }
       }
     });
   });

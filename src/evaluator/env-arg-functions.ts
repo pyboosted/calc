@@ -1,4 +1,5 @@
 import type { CalculatedValue } from "../types";
+import { toDecimal } from "../utils/decimal-math";
 
 /**
  * Evaluates the env() function to read environment variables
@@ -63,7 +64,7 @@ function parseArgument(value: string): CalculatedValue {
       return { type: "boolean", value: parsed };
     }
     if (typeof parsed === "number") {
-      return { type: "number", value: parsed };
+      return { type: "number", value: toDecimal(parsed) };
     }
     if (typeof parsed === "string") {
       return { type: "string", value: parsed };

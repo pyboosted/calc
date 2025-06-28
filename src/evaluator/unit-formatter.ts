@@ -1,6 +1,8 @@
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import type { CalculatedValue } from "../types";
+import type { Decimal } from "../utils/decimal-math";
+import { fromDecimal } from "../utils/decimal-math";
 import { TimezoneManager } from "../utils/timezone-manager";
 import type { DimensionMap } from "./dimensions";
 import { TIME_CONVERSIONS } from "./dimensions";
@@ -405,7 +407,7 @@ function formatTimeDuration(seconds: number, baseUnit?: string): string {
 
 // Format a quantity with its best unit representation
 export function formatQuantity(
-  value: number,
+  value: Decimal,
   dimensions: DimensionMap,
   precision?: number
 ): string {
@@ -419,15 +421,19 @@ export function formatQuantity(
     if (timeUnit) {
       const conversions = TIME_CONVERSIONS[timeUnit];
       if (conversions) {
-        const seconds =
-          value * conversions.coefficient * 10 ** (conversions.exponent || 0);
+        const seconds = fromDecimal(
+          value
+            .times(conversions.coefficient)
+            .times(10 ** (conversions.exponent || 0))
+        );
 
         // Only use compound format if the value has fractional parts in the current unit
         // This way "150 minutes" stays as "150 minutes" but "2.5 hours" becomes "2h 30min"
 
         // Check if the value is a whole number in the current unit
-        const roundedValue = Math.round(value);
-        const isWholeNumber = Math.abs(value - roundedValue) < 0.0001;
+        const valueNum = fromDecimal(value);
+        const roundedValue = Math.round(valueNum);
+        const isWholeNumber = Math.abs(valueNum - roundedValue) < 0.0001;
 
         // Also check if the value has many decimal places (likely from calculation)
         const valueStr = value.toString();
@@ -457,7 +463,7 @@ export function formatQuantity(
       formattedValue = formattedValue.replace(TRAILING_ZEROS_AFTER_DECIMAL, "");
     }
   } else {
-    formattedValue = value.toString();
+    formattedValue = value.toFixed(0);
   }
 
   if (unit) {
@@ -579,7 +585,7 @@ export function formatResultWithUnit(
   // Handle CalculatedValue
   switch (value.type) {
     case "number": {
-      const num = value.value;
+      const num = fromDecimal(value.value);
       let formattedNum: string;
 
       // Handle very large or very small numbers with scientific notation

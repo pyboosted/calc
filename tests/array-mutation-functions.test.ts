@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Array Mutation Functions", () => {
   describe("push! - mutating", () => {
@@ -11,7 +12,10 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(4);
-        expect(result.value[3]?.value).toBe(4);
+        expect(result.value[3]?.type).toBe("number");
+        if (result.value[3]?.type === "number") {
+          expect(fromDecimal(result.value[3]?.value)).toBe(4);
+        }
       }
 
       // Original array should be mutated
@@ -19,7 +23,10 @@ describe("Array Mutation Functions", () => {
       expect(original.type).toBe("array");
       if (original.type === "array") {
         expect(original.value.length).toBe(4);
-        expect(original.value[3]?.value).toBe(4);
+        expect(original.value[3]?.type).toBe("number");
+        if (original.value[3]?.type === "number") {
+          expect(fromDecimal(original.value[3]?.value)).toBe(4);
+        }
       }
     });
 
@@ -31,7 +38,11 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
     });
 
@@ -61,7 +72,11 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(2);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2]);
       }
 
       // Original array should be mutated
@@ -93,7 +108,11 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value.map((v) => v.value)).toEqual([2, 3, 4]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 3, 4]);
       }
 
       // Original array should be mutated
@@ -101,7 +120,11 @@ describe("Array Mutation Functions", () => {
       expect(original.type).toBe("array");
       if (original.type === "array") {
         expect(original.value.length).toBe(3);
-        expect(original.value.map((v) => v.value)).toEqual([2, 3, 4]);
+        expect(
+          original.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 3, 4]);
       }
     });
 
@@ -112,7 +135,11 @@ describe("Array Mutation Functions", () => {
 
       expect(result.type).toBe("array");
       if (result.type === "array") {
-        expect(result.value.map((v) => v.value)).toEqual([3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([3, 4, 5]);
       }
     });
   });
@@ -126,7 +153,11 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value.map((v) => v.value)).toEqual([3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([3, 4, 5]);
       }
 
       // Original array should be mutated
@@ -134,7 +165,11 @@ describe("Array Mutation Functions", () => {
       expect(original.type).toBe("array");
       if (original.type === "array") {
         expect(original.value.length).toBe(3);
-        expect(original.value.map((v) => v.value)).toEqual([3, 4, 5]);
+        expect(
+          original.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([3, 4, 5]);
       }
     });
 
@@ -157,7 +192,10 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(2);
-        expect(result.value[0]?.value).toBe(5);
+        expect(result.value[0]?.type).toBe("number");
+        if (result.value[0]?.type === "number") {
+          expect(fromDecimal(result.value[0]?.value)).toBe(5);
+        }
         expect(result.value[1]?.value).toBe("hello");
       }
     });
@@ -172,14 +210,22 @@ describe("Array Mutation Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value.map((v) => v.value)).toEqual([2, 4, 6]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 4, 6]);
       }
 
       // Original array should be mutated
       const original = evaluate("arr", env);
       expect(original.type).toBe("array");
       if (original.type === "array") {
-        expect(original.value.map((v) => v.value)).toEqual([2, 4, 6]);
+        expect(
+          original.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([2, 4, 6]);
       }
     });
 
@@ -225,7 +271,10 @@ describe("Array Mutation Functions", () => {
       expect(arr2.type).toBe("array");
       if (arr2.type === "array") {
         expect(arr2.value.length).toBe(4); // Original is mutated
-        expect(arr2.value[3]?.value).toBe(5);
+        expect(arr2.value[3]?.type).toBe("number");
+        if (arr2.value[3]?.type === "number") {
+          expect(fromDecimal(arr2.value[3]?.value)).toBe(5);
+        }
       }
     });
   });

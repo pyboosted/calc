@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Date Arithmetic with Abbreviations", () => {
   describe.each([
@@ -85,7 +86,7 @@ describe("Date Arithmetic with Abbreviations", () => {
     const unitResult = evaluate("100 cm to m", vars);
     expect(unitResult.type).toBe("quantity");
     if (unitResult.type === "quantity") {
-      expect(unitResult.value).toBe(1);
+      expect(fromDecimal(unitResult.value)).toBe(1);
       expect(unitResult.dimensions.length?.unit).toBe("m");
     }
   });

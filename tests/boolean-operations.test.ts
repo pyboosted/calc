@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Boolean Operations", () => {
   test("boolean literals", () => {
@@ -108,7 +109,7 @@ describe("Boolean Operations", () => {
 
   test("short-circuit evaluation", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("x", { type: "number", value: 5 });
+    vars.set("x", { type: "number", value: toDecimal(5) });
 
     // Should not evaluate x/0 (would throw division by zero)
     expect(evaluate("false and x/0", vars)).toEqual({
@@ -123,30 +124,45 @@ describe("Boolean Operations", () => {
 
   test("logical operators return last evaluated value", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("x", { type: "number", value: 5 });
-    vars.set("y", { type: "number", value: 10 });
+    vars.set("x", { type: "number", value: toDecimal(5) });
+    vars.set("y", { type: "number", value: toDecimal(10) });
 
     // 'and' returns first falsy or last value
-    expect(evaluate("x and y", vars)).toEqual({ type: "number", value: 10 });
-    expect(evaluate("0 and x", new Map())).toEqual({
-      type: "number",
-      value: 0,
-    });
+    const and1 = evaluate("x and y", vars);
+    expect(and1.type).toBe("number");
+    if (and1.type === "number") {
+      expect(fromDecimal(and1.value)).toBe(10);
+    }
+    const and2 = evaluate("0 and x", new Map());
+    expect(and2.type).toBe("number");
+    if (and2.type === "number") {
+      expect(fromDecimal(and2.value)).toBe(0);
+    }
 
     // 'or' returns first truthy or last value
-    expect(evaluate("x or y", vars)).toEqual({ type: "number", value: 5 });
-    expect(evaluate("0 or 5", new Map())).toEqual({ type: "number", value: 5 });
+    const or1 = evaluate("x or y", vars);
+    expect(or1.type).toBe("number");
+    if (or1.type === "number") {
+      expect(fromDecimal(or1.value)).toBe(5);
+    }
+    const or2 = evaluate("0 or 5", new Map());
+    expect(or2.type).toBe("number");
+    if (or2.type === "number") {
+      expect(fromDecimal(or2.value)).toBe(5);
+    }
   });
 
   test("ternary operator", () => {
-    expect(evaluate("true ? 10 : 20", new Map())).toEqual({
-      type: "number",
-      value: 10,
-    });
-    expect(evaluate("false ? 10 : 20", new Map())).toEqual({
-      type: "number",
-      value: 20,
-    });
+    const t1 = evaluate("true ? 10 : 20", new Map());
+    expect(t1.type).toBe("number");
+    if (t1.type === "number") {
+      expect(fromDecimal(t1.value)).toBe(10);
+    }
+    const t2 = evaluate("false ? 10 : 20", new Map());
+    expect(t2.type).toBe("number");
+    if (t2.type === "number") {
+      expect(fromDecimal(t2.value)).toBe(20);
+    }
     expect(evaluate("5 > 3 ? `yes` : `no`", new Map())).toEqual({
       type: "string",
       value: "yes",
@@ -159,21 +175,23 @@ describe("Boolean Operations", () => {
 
   test("nested ternary", () => {
     const result = evaluate("true ? false ? 1 : 2 : 3", new Map());
-    expect(result).toEqual({ type: "number", value: 2 });
+    expect(result).toEqual({ type: "number", value: toDecimal(2) });
 
     const result2 = evaluate("false ? 1 : true ? 2 : 3", new Map());
-    expect(result2).toEqual({ type: "number", value: 2 });
+    expect(result2).toEqual({ type: "number", value: toDecimal(2) });
   });
 
   test("type conversions", () => {
-    expect(evaluate("true as number", new Map())).toEqual({
-      type: "number",
-      value: 1,
-    });
-    expect(evaluate("false as number", new Map())).toEqual({
-      type: "number",
-      value: 0,
-    });
+    const r1 = evaluate("true as number", new Map());
+    expect(r1.type).toBe("number");
+    if (r1.type === "number") {
+      expect(fromDecimal(r1.value)).toBe(1);
+    }
+    const r2 = evaluate("false as number", new Map());
+    expect(r2.type).toBe("number");
+    if (r2.type === "number") {
+      expect(fromDecimal(r2.value)).toBe(0);
+    }
     expect(evaluate("true as string", new Map())).toEqual({
       type: "string",
       value: "true",
@@ -276,8 +294,8 @@ describe("Boolean Operations", () => {
 describe("Boolean Integration", () => {
   test("comparisons with variables", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("x", { type: "number", value: 10 });
-    vars.set("y", { type: "number", value: 20 });
+    vars.set("x", { type: "number", value: toDecimal(10) });
+    vars.set("y", { type: "number", value: toDecimal(20) });
 
     expect(evaluate("x < y", vars)).toEqual({ type: "boolean", value: true });
     expect(evaluate("x == 10", vars)).toEqual({ type: "boolean", value: true });
@@ -286,7 +304,7 @@ describe("Boolean Integration", () => {
 
   test("logical operations with expressions", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("x", { type: "number", value: 5 });
+    vars.set("x", { type: "number", value: toDecimal(5) });
 
     const result = evaluate("x > 3 and x < 10", vars);
     expect(result).toEqual({ type: "boolean", value: true });
@@ -297,22 +315,22 @@ describe("Boolean Integration", () => {
 
   test("ternary with calculations", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("price", { type: "number", value: 100 });
+    vars.set("price", { type: "number", value: toDecimal(100) });
     vars.set("discount", { type: "boolean", value: true });
 
     const result = evaluate("discount ? price * 0.9 : price", vars);
-    expect(result).toEqual({ type: "number", value: 90 });
+    expect(result).toEqual({ type: "number", value: toDecimal(90) });
   });
 
   test("mixed type operations", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("count", { type: "number", value: 0 });
+    vars.set("count", { type: "number", value: toDecimal(0) });
 
     // biome-ignore lint/suspicious/noTemplateCurlyInString: This is intentional - testing string interpolation
     evaluate("message = count > 0 ? `Items: ${count}` : `No items`", vars);
     expect(vars.get("message")).toEqual({ type: "string", value: "No items" });
 
-    vars.set("count", { type: "number", value: 5 });
+    vars.set("count", { type: "number", value: toDecimal(5) });
     // biome-ignore lint/suspicious/noTemplateCurlyInString: This is intentional - testing string interpolation
     evaluate("message = count > 0 ? `Items: ${count}` : `No items`", vars);
     expect(vars.get("message")).toEqual({ type: "string", value: "Items: 5" });
@@ -339,15 +357,16 @@ describe("Boolean Integration", () => {
       type: "boolean",
       value: false,
     });
-    expect(evaluate("value ? 10 : 20", vars)).toEqual({
-      type: "number",
-      value: 20,
-    });
+    const ternary = evaluate("value ? 10 : 20", vars);
+    expect(ternary.type).toBe("number");
+    if (ternary.type === "number") {
+      expect(fromDecimal(ternary.value)).toBe(20);
+    }
   });
 
   test("complex boolean expressions", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("age", { type: "number", value: 25 });
+    vars.set("age", { type: "number", value: toDecimal(25) });
     vars.set("member", { type: "boolean", value: true });
     vars.set("student", { type: "boolean", value: false });
 
@@ -361,7 +380,7 @@ describe("Boolean Integration", () => {
 
   test("chained comparisons with logical operators", () => {
     const vars = new Map<string, CalculatedValue>();
-    vars.set("x", { type: "number", value: 5 });
+    vars.set("x", { type: "number", value: toDecimal(5) });
 
     // Simulating 0 < x < 10
     const result = evaluate("0 < x and x < 10", vars);

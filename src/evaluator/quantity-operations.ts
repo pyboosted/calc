@@ -1,4 +1,15 @@
 import type { CalculatedValue } from "../types";
+import {
+  add,
+  Decimal,
+  divide,
+  fromDecimal,
+  isZero,
+  multiply,
+  power,
+  subtract,
+  toDecimal,
+} from "../utils/decimal-math";
 import type { DimensionMap } from "./dimensions";
 import {
   areDimensionsCompatible,
@@ -20,18 +31,24 @@ export function addQuantities(
   // Special handling for percentage
   if (right.type === "percentage") {
     if (left.type === "quantity") {
-      const percentageAmount = left.value * (right.value / 100);
+      const percentageAmount = multiply(
+        left.value,
+        divide(right.value, toDecimal(100))
+      );
       return {
         type: "quantity",
-        value: left.value + percentageAmount,
+        value: add(left.value, percentageAmount),
         dimensions: left.dimensions,
       };
     }
     if (left.type === "number") {
-      const percentageAmount = left.value * (right.value / 100);
+      const percentageAmount = multiply(
+        left.value,
+        divide(right.value, toDecimal(100))
+      );
       return {
         type: "number",
-        value: left.value + percentageAmount,
+        value: add(left.value, percentageAmount),
       };
     }
     throw new Error(`Cannot add percentage to ${left.type}`);
@@ -39,7 +56,7 @@ export function addQuantities(
 
   // Handle simple numbers (no units)
   if (left.type === "number" && right.type === "number") {
-    return { type: "number", value: left.value + right.value };
+    return { type: "number", value: add(left.value, right.value) };
   }
 
   // Convert to quantities for complex operations
@@ -48,7 +65,10 @@ export function addQuantities(
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
-    return { type: "number", value: leftQuantity.value + rightQuantity.value };
+    return {
+      type: "number",
+      value: add(leftQuantity.value, rightQuantity.value),
+    };
   }
 
   // Handle mixed quantity/number
@@ -56,7 +76,7 @@ export function addQuantities(
     if (isDimensionless(leftQuantity.dimensions)) {
       return {
         type: "number",
-        value: leftQuantity.value + rightQuantity.value,
+        value: add(leftQuantity.value, rightQuantity.value),
       };
     }
     throw new Error(
@@ -68,7 +88,7 @@ export function addQuantities(
     if (isDimensionless(rightQuantity.dimensions)) {
       return {
         type: "number",
-        value: leftQuantity.value + rightQuantity.value,
+        value: add(leftQuantity.value, rightQuantity.value),
       };
     }
     throw new Error(
@@ -99,7 +119,7 @@ export function addQuantities(
 
     return {
       type: "quantity",
-      value: leftQuantity.value + rightValue,
+      value: add(leftQuantity.value, rightValue),
       dimensions: leftQuantity.dimensions,
     };
   }
@@ -115,18 +135,24 @@ export function subtractQuantities(
   // Special handling for percentage
   if (right.type === "percentage") {
     if (left.type === "quantity") {
-      const percentageAmount = left.value * (right.value / 100);
+      const percentageAmount = multiply(
+        left.value,
+        divide(right.value, toDecimal(100))
+      );
       return {
         type: "quantity",
-        value: left.value - percentageAmount,
+        value: subtract(left.value, percentageAmount),
         dimensions: left.dimensions,
       };
     }
     if (left.type === "number") {
-      const percentageAmount = left.value * (right.value / 100);
+      const percentageAmount = multiply(
+        left.value,
+        divide(right.value, toDecimal(100))
+      );
       return {
         type: "number",
-        value: left.value - percentageAmount,
+        value: subtract(left.value, percentageAmount),
       };
     }
     throw new Error(`Cannot subtract percentage from ${left.type}`);
@@ -134,7 +160,10 @@ export function subtractQuantities(
 
   // Handle simple numbers (no units)
   if (left.type === "number" && right.type === "number") {
-    return { type: "number", value: left.value - right.value };
+    return {
+      type: "number",
+      value: subtract(left.value, right.value),
+    };
   }
 
   // Convert to quantities for complex operations
@@ -143,7 +172,10 @@ export function subtractQuantities(
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
-    return { type: "number", value: leftQuantity.value - rightQuantity.value };
+    return {
+      type: "number",
+      value: subtract(leftQuantity.value, rightQuantity.value),
+    };
   }
 
   // Handle mixed quantity/number
@@ -151,7 +183,7 @@ export function subtractQuantities(
     if (isDimensionless(leftQuantity.dimensions)) {
       return {
         type: "number",
-        value: leftQuantity.value - rightQuantity.value,
+        value: subtract(leftQuantity.value, rightQuantity.value),
       };
     }
     throw new Error(
@@ -163,7 +195,7 @@ export function subtractQuantities(
     if (isDimensionless(rightQuantity.dimensions)) {
       return {
         type: "number",
-        value: leftQuantity.value - rightQuantity.value,
+        value: subtract(leftQuantity.value, rightQuantity.value),
       };
     }
     throw new Error(
@@ -196,7 +228,7 @@ export function subtractQuantities(
 
     return {
       type: "quantity",
-      value: leftQuantity.value - rightValue,
+      value: subtract(leftQuantity.value, rightValue),
       dimensions: leftQuantity.dimensions,
     };
   }
@@ -217,14 +249,17 @@ export function multiplyQuantities(
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
-    return { type: "number", value: leftQuantity.value * rightQuantity.value };
+    return {
+      type: "number",
+      value: multiply(leftQuantity.value, rightQuantity.value),
+    };
   }
 
   // Handle mixed quantity/number
   if (leftQuantity.type === "quantity" && rightQuantity.type === "number") {
     return {
       type: "quantity",
-      value: leftQuantity.value * rightQuantity.value,
+      value: multiply(leftQuantity.value, rightQuantity.value),
       dimensions: leftQuantity.dimensions,
     };
   }
@@ -232,7 +267,7 @@ export function multiplyQuantities(
   if (leftQuantity.type === "number" && rightQuantity.type === "quantity") {
     return {
       type: "quantity",
-      value: leftQuantity.value * rightQuantity.value,
+      value: multiply(leftQuantity.value, rightQuantity.value),
       dimensions: rightQuantity.dimensions,
     };
   }
@@ -262,8 +297,15 @@ export function multiplyQuantities(
       ) {
         // This dimension will cancel out - convert to common unit first
         // Convert right value to left's unit
-        const conversionFactor = convertUnits(1, rightDim.unit, leftDim.unit);
-        rightValue *= conversionFactor ** Math.abs(rightDim.exponent);
+        const conversionFactor = convertUnits(
+          new Decimal(1),
+          rightDim.unit,
+          leftDim.unit
+        );
+        rightValue = multiply(
+          rightValue,
+          power(conversionFactor, toDecimal(Math.abs(rightDim.exponent)))
+        );
       }
     }
 
@@ -276,13 +318,13 @@ export function multiplyQuantities(
     if (isDimensionless(newDimensions)) {
       return {
         type: "number",
-        value: leftValue * rightValue,
+        value: multiply(leftValue, rightValue),
       };
     }
 
     return {
       type: "quantity",
-      value: leftValue * rightValue,
+      value: multiply(leftValue, rightValue),
       dimensions: newDimensions,
     };
   }
@@ -303,26 +345,29 @@ export function divideQuantities(
 
   // Handle dimensionless numbers
   if (leftQuantity.type === "number" && rightQuantity.type === "number") {
-    if (rightQuantity.value === 0) {
+    if (isZero(rightQuantity.value)) {
       throw new Error("Division by zero");
     }
-    return { type: "number", value: leftQuantity.value / rightQuantity.value };
+    return {
+      type: "number",
+      value: divide(leftQuantity.value, rightQuantity.value),
+    };
   }
 
   // Handle mixed quantity/number
   if (leftQuantity.type === "quantity" && rightQuantity.type === "number") {
-    if (rightQuantity.value === 0) {
+    if (isZero(rightQuantity.value)) {
       throw new Error("Division by zero");
     }
     return {
       type: "quantity",
-      value: leftQuantity.value / rightQuantity.value,
+      value: divide(leftQuantity.value, rightQuantity.value),
       dimensions: leftQuantity.dimensions,
     };
   }
 
   if (leftQuantity.type === "number" && rightQuantity.type === "quantity") {
-    if (rightQuantity.value === 0) {
+    if (isZero(rightQuantity.value)) {
       throw new Error("Division by zero");
     }
     const newDimensions = divideDimensions({}, rightQuantity.dimensions);
@@ -331,20 +376,20 @@ export function divideQuantities(
     if (isDimensionless(newDimensions)) {
       return {
         type: "number",
-        value: leftQuantity.value / rightQuantity.value,
+        value: divide(leftQuantity.value, rightQuantity.value),
       };
     }
 
     return {
       type: "quantity",
-      value: leftQuantity.value / rightQuantity.value,
+      value: divide(leftQuantity.value, rightQuantity.value),
       dimensions: newDimensions,
     };
   }
 
   // Both are quantities
   if (leftQuantity.type === "quantity" && rightQuantity.type === "quantity") {
-    if (rightQuantity.value === 0) {
+    if (isZero(rightQuantity.value)) {
       throw new Error("Division by zero");
     }
 
@@ -372,8 +417,15 @@ export function divideQuantities(
         leftDim.unit !== rightDim.unit
       ) {
         // Same dimension with different units - convert right to left's unit
-        const conversionFactor = convertUnits(1, rightDim.unit, leftDim.unit);
-        rightValue *= conversionFactor ** rightDim.exponent;
+        const conversionFactor = convertUnits(
+          new Decimal(1),
+          rightDim.unit,
+          leftDim.unit
+        );
+        rightValue = multiply(
+          rightValue,
+          power(conversionFactor, toDecimal(rightDim.exponent))
+        );
       }
     }
 
@@ -386,13 +438,13 @@ export function divideQuantities(
     if (isDimensionless(newDimensions)) {
       return {
         type: "number",
-        value: leftValue / rightValue,
+        value: divide(leftValue, rightValue),
       };
     }
 
     return {
       type: "quantity",
-      value: leftValue / rightValue,
+      value: divide(leftValue, rightValue),
       dimensions: newDimensions,
     };
   }
@@ -416,23 +468,29 @@ export function powerQuantity(
   }
 
   if (baseQuantity.type === "number") {
-    return { type: "number", value: baseQuantity.value ** exponent.value };
+    return {
+      type: "number",
+      value: power(baseQuantity.value, exponent.value),
+    };
   }
 
   if (baseQuantity.type === "quantity") {
     const newDimensions = powerDimensions(
       baseQuantity.dimensions,
-      exponent.value
+      fromDecimal(exponent.value)
     );
 
     // Check if result is dimensionless
     if (isDimensionless(newDimensions)) {
-      return { type: "number", value: baseQuantity.value ** exponent.value };
+      return {
+        type: "number",
+        value: power(baseQuantity.value, exponent.value),
+      };
     }
 
     return {
       type: "quantity",
-      value: baseQuantity.value ** exponent.value,
+      value: power(baseQuantity.value, exponent.value),
       dimensions: newDimensions,
     };
   }

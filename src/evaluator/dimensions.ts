@@ -1,4 +1,13 @@
 import { derivedUnits } from "../data/units";
+import type { Decimal } from "../utils/decimal-math";
+import {
+  add as decimalAdd,
+  divide as decimalDivide,
+  multiply as decimalMultiply,
+  power as decimalPower,
+  subtract as decimalSubtract,
+  toDecimal,
+} from "../utils/decimal-math";
 
 // Regex patterns
 const CURRENCY_CODE_PATTERN = /^[A-Z]{3}$/;
@@ -468,11 +477,11 @@ function getCurrencyConversions(): Record<string, UnitConversion> {
 
 // Conversion function
 export function convertUnit(
-  value: number,
+  value: Decimal,
   fromUnit: string,
   toUnit: string,
   dimension: keyof DimensionMap
-): number {
+): Decimal {
   if (fromUnit === toUnit) {
     return value;
   }
@@ -492,41 +501,56 @@ export function convertUnit(
   // Special handling for temperature conversions
   if (dimension === "temperature") {
     // Convert to Kelvin (base unit) first
-    let kelvin: number;
+    let kelvin: Decimal;
     if (fromConv.offset) {
       // From Celsius or Fahrenheit
-      kelvin = (value + fromConv.offset) * fromConv.coefficient;
+      kelvin = decimalMultiply(
+        decimalAdd(value, toDecimal(fromConv.offset)),
+        toDecimal(fromConv.coefficient)
+      );
     } else {
       // From Kelvin
-      kelvin = value * fromConv.coefficient;
+      kelvin = decimalMultiply(value, toDecimal(fromConv.coefficient));
     }
 
     // Convert from Kelvin to target
     if (toConv.offset) {
       // To Celsius or Fahrenheit
-      return kelvin / toConv.coefficient - toConv.offset;
+      return decimalSubtract(
+        decimalDivide(kelvin, toDecimal(toConv.coefficient)),
+        toDecimal(toConv.offset)
+      );
     }
     // To Kelvin
-    return kelvin / toConv.coefficient;
+    return decimalDivide(kelvin, toDecimal(toConv.coefficient));
   }
 
   // For currency, the coefficient represents the exchange rate (units per 1 USD)
   // For other units, it represents the conversion factor to base unit
   if (dimension === "currency") {
-    const fromCurrencyCoef = fromConv.coefficient;
-    const toCurrencyCoef = toConv.coefficient;
+    const fromCurrencyCoef = toDecimal(fromConv.coefficient);
+    const toCurrencyCoef = toDecimal(toConv.coefficient);
     // Convert to USD (base currency) first
-    const usdValue = value / fromCurrencyCoef;
+    const usdValue = decimalDivide(value, fromCurrencyCoef);
     // Then convert from USD to target currency
-    return usdValue * toCurrencyCoef;
+    return decimalMultiply(usdValue, toCurrencyCoef);
   }
 
   // For non-temperature, non-currency units
   const { coefficient: fromCoef, exponent: fromExp = 0 } = fromConv;
-  const baseValue = value * fromCoef * 10 ** fromExp;
+  const baseValue = decimalMultiply(
+    decimalMultiply(value, toDecimal(fromCoef)),
+    decimalPower(toDecimal(10), toDecimal(fromExp))
+  );
 
   const { coefficient: toCoef, exponent: toExp = 0 } = toConv;
-  return baseValue / (toCoef * 10 ** toExp);
+  return decimalDivide(
+    baseValue,
+    decimalMultiply(
+      toDecimal(toCoef),
+      decimalPower(toDecimal(10), toDecimal(toExp))
+    )
+  );
 }
 
 // Multiply dimensions
@@ -688,10 +712,10 @@ export function dimensionsEqual(a: DimensionMap, b: DimensionMap): boolean {
 
 // Convert between compound units
 export function convertCompoundUnit(
-  value: number,
+  value: Decimal,
   fromDimensions: DimensionMap,
   toDimensions: DimensionMap
-): number {
+): Decimal {
   // Check dimension compatibility
   if (!areDimensionsCompatible(fromDimensions, toDimensions)) {
     throw new Error("Incompatible dimensions for conversion");
@@ -727,12 +751,15 @@ export function convertCompoundUnit(
       const toCurrency = toInfo as { exponent: number; code: CurrencyCode };
       if (fromCurrency.code !== toCurrency.code) {
         const conversionFactor = convertUnit(
-          1,
+          toDecimal(1),
           fromCurrency.code,
           toCurrency.code,
           dim
         );
-        result *= conversionFactor ** fromCurrency.exponent;
+        result = decimalMultiply(
+          result,
+          decimalPower(conversionFactor, toDecimal(fromCurrency.exponent))
+        );
       }
     } else if (
       fromInfo &&
@@ -751,8 +778,16 @@ export function convertCompoundUnit(
       }
 
       // Other dimensions use 'unit'
-      const conversionFactor = convertUnit(1, fromInfo.unit, toInfo.unit, dim);
-      result *= conversionFactor ** fromInfo.exponent;
+      const conversionFactor = convertUnit(
+        toDecimal(1),
+        fromInfo.unit,
+        toInfo.unit,
+        dim
+      );
+      result = decimalMultiply(
+        result,
+        decimalPower(conversionFactor, toDecimal(fromInfo.exponent))
+      );
     }
   }
 

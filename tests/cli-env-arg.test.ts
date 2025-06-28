@@ -211,13 +211,7 @@ x * y`;
 
 describe("Complex CLI Scenarios", () => {
   test("env and arg together", () => {
-    const _result = runCLI(
-      '-e "(env(\\"MULTIPLIER\\") as number) * (arg() as number)"',
-      undefined,
-      { MULTIPLIER: "3" }
-    ).replace(' --arg "10"', "");
-
-    // Run with proper arg
+    // Test with proper arg provided
     const actualResult = runCLI(
       '-e "(env(\\"MULTIPLIER\\") as number) * (arg() as number)" --arg "10"',
       undefined,

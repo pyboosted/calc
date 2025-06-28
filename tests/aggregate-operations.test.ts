@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Aggregate Operations", () => {
   test("total sums previous numeric values", () => {
@@ -8,13 +9,16 @@ describe("Aggregate Operations", () => {
 
     // Simulate previous results: 10, 20, 30
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 10 },
-      { type: "number" as const, value: 20 },
-      { type: "number" as const, value: 30 },
+      { type: "number" as const, value: toDecimal(10) },
+      { type: "number" as const, value: toDecimal(20) },
+      { type: "number" as const, value: toDecimal(30) },
     ];
 
     const result = evaluate("total", vars, { previousResults });
-    expect(result.value).toBe(60); // 10 + 20 + 30
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(60);
+    } // 10 + 20 + 30
   });
 
   test("ignores non-numeric values", () => {
@@ -22,15 +26,18 @@ describe("Aggregate Operations", () => {
 
     // Mix of numeric and non-numeric results
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 10 },
+      { type: "number" as const, value: toDecimal(10) },
       { type: "date" as const, value: new Date() }, // Date result
-      { type: "number" as const, value: 20 },
-      { type: "number" as const, value: Number.NaN }, // Non-numeric value
-      { type: "number" as const, value: 30 },
+      { type: "number" as const, value: toDecimal(20) },
+      { type: "number" as const, value: toDecimal(Number.NaN) }, // Non-numeric value
+      { type: "number" as const, value: toDecimal(30) },
     ];
 
     const result = evaluate("total", vars, { previousResults });
-    expect(result.value).toBe(60); // Only sums 10 + 20 + 30
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(60);
+    } // Only sums 10 + 20 + 30
   });
 
   test("throws error when no previous values", () => {
@@ -59,25 +66,25 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { length: { exponent: 1, unit: "meters" } },
       },
       {
         type: "quantity" as const,
-        value: 200,
+        value: toDecimal(200),
         dimensions: { length: { exponent: 1, unit: "meters" } },
       },
       {
         type: "quantity" as const,
-        value: 300,
+        value: toDecimal(300),
         dimensions: { length: { exponent: 1, unit: "meters" } },
       },
     ];
 
     const result = evaluate("total", vars, { previousResults });
-    expect(result.value).toBe(600);
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(600);
       expect(result.dimensions.length?.unit).toBe("meters");
     }
   });
@@ -88,25 +95,25 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
       {
         type: "quantity" as const,
-        value: 500,
+        value: toDecimal(500),
         dimensions: { length: { exponent: 1, unit: "m" } },
       },
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { length: { exponent: 1, unit: "cm" } },
       },
     ];
 
     const result = evaluate("total in m", vars, { previousResults });
-    expect(result.value).toBe(1501); // 1000m + 500m + 1m
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(1501); // 1000m + 500m + 1m
       expect(result.dimensions.length?.unit).toBe("m");
     }
   });
@@ -117,26 +124,26 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
       {
         type: "quantity" as const,
-        value: 50,
+        value: toDecimal(50),
         dimensions: { length: { exponent: 1, unit: "miles" } },
       },
       {
         type: "quantity" as const,
-        value: 30,
+        value: toDecimal(30),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
     ];
 
     // With mixed compatible units and no target, converts to first unit
     const result = evaluate("total", vars, { previousResults });
-    expect(result.value).toBeCloseTo(210.47, 1); // 100km + 80.47km + 30km
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBeCloseTo(210.47, 1); // 100km + 80.47km + 30km
       expect(result.dimensions.length?.unit).toBe("km");
     }
   });
@@ -147,46 +154,48 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
       {
         type: "quantity" as const,
-        value: 50,
+        value: toDecimal(50),
         dimensions: { mass: { exponent: 1, unit: "kg" } },
       }, // Weight - incompatible with length
       {
         type: "quantity" as const,
-        value: 30,
+        value: toDecimal(30),
         dimensions: { time: { exponent: 1, unit: "seconds" } },
       }, // Time - incompatible with both
     ];
 
     // With incompatible units and no target, just sums raw values
     const result = evaluate("total", vars, { previousResults });
-    expect(result.value).toBe(180);
     expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(180);
+    }
   });
 
   test("handles values with and without units", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 100 },
+      { type: "number" as const, value: toDecimal(100) },
       {
         type: "quantity" as const,
-        value: 50,
+        value: toDecimal(50),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
-      { type: "number" as const, value: 25 },
+      { type: "number" as const, value: toDecimal(25) },
     ];
 
     const result = evaluate("total", vars, { previousResults });
-    expect(result.value).toBe(175);
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
-      expect(result.dimensions.length?.unit).toBe("km");
-    } // Takes the first unit found
+      expect(fromDecimal(result.value)).toBe(175);
+      expect(result.dimensions.length?.unit).toBe("km"); // Takes the first unit found
+    }
   });
 
   test("ignores incompatible units in conversion", () => {
@@ -195,25 +204,25 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
       {
         type: "quantity" as const,
-        value: 50,
+        value: toDecimal(50),
         dimensions: { mass: { exponent: 1, unit: "kg" } },
       }, // Weight - can't convert to km
       {
         type: "quantity" as const,
-        value: 30,
+        value: toDecimal(30),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
     ];
 
     const result = evaluate("total in km", vars, { previousResults });
-    expect(result.value).toBe(130); // Only sums compatible units
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(130); // Only sums compatible units
       expect(result.dimensions.length?.unit).toBe("km");
     }
   });
@@ -224,12 +233,12 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { length: { exponent: 1, unit: "cm" } },
       },
       {
         type: "quantity" as const,
-        value: 200,
+        value: toDecimal(200),
         dimensions: { length: { exponent: 1, unit: "cm" } },
       },
     ];
@@ -238,21 +247,21 @@ describe("Aggregate Operations", () => {
     const result1 = evaluate("total in m", vars, { previousResults });
     expect(result1.type).toBe("quantity");
     if (result1.type === "quantity") {
-      expect(result1.value).toBe(3);
+      expect(fromDecimal(result1.value)).toBe(3);
       expect(result1.dimensions.length?.unit).toBe("m");
     }
 
     const result2 = evaluate("total to m", vars, { previousResults });
     expect(result2.type).toBe("quantity");
     if (result2.type === "quantity") {
-      expect(result2.value).toBe(3);
+      expect(fromDecimal(result2.value)).toBe(3);
       expect(result2.dimensions.length?.unit).toBe("m");
     }
 
     const result3 = evaluate("total as m", vars, { previousResults });
     expect(result3.type).toBe("quantity");
     if (result3.type === "quantity") {
-      expect(result3.value).toBe(3);
+      expect(fromDecimal(result3.value)).toBe(3);
       expect(result3.dimensions.length?.unit).toBe("m");
     }
   });
@@ -267,17 +276,17 @@ describe("Aggregate Operations", () => {
       { type: "date" as const, value: testDate },
       {
         type: "quantity" as const,
-        value: 2,
+        value: toDecimal(2),
         dimensions: { time: { exponent: 1, unit: "days" } },
       },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { time: { exponent: 1, unit: "day" } },
       },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { time: { exponent: 1, unit: "hour" } },
       },
     ];
@@ -302,22 +311,22 @@ describe("Aggregate Operations", () => {
       { type: "date" as const, value: testDate },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { time: { exponent: 1, unit: "week" } },
       },
       {
         type: "quantity" as const,
-        value: 3,
+        value: toDecimal(3),
         dimensions: { time: { exponent: 1, unit: "hours" } },
       },
       {
         type: "quantity" as const,
-        value: 30,
+        value: toDecimal(30),
         dimensions: { time: { exponent: 1, unit: "minutes" } },
       },
       {
         type: "quantity" as const,
-        value: 45,
+        value: toDecimal(45),
         dimensions: { time: { exponent: 1, unit: "seconds" } },
       },
     ];
@@ -340,17 +349,17 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 2,
+        value: toDecimal(2),
         dimensions: { time: { exponent: 1, unit: "days" } },
       },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { time: { exponent: 1, unit: "day" } },
       },
       {
         type: "quantity" as const,
-        value: 24,
+        value: toDecimal(24),
         dimensions: { time: { exponent: 1, unit: "hours" } },
       },
     ];
@@ -358,9 +367,9 @@ describe("Aggregate Operations", () => {
     const result = evaluate("total", vars, { previousResults });
 
     // Should sum to 4 days total (2 + 1 + 1)
-    expect(result.value).toBe(4);
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(4);
       expect(result.dimensions.time?.unit).toBe("days");
     }
   });
@@ -377,7 +386,7 @@ describe("Aggregate Operations", () => {
       { type: "date" as const, value: date2 },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { time: { exponent: 1, unit: "day" } },
       },
     ];
@@ -385,9 +394,9 @@ describe("Aggregate Operations", () => {
     const result = evaluate("total", vars, { previousResults });
 
     // Should only sum the numeric values (1 day), ignoring the dates
-    expect(result.value).toBe(1);
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(1);
       expect(result.dimensions.time?.unit).toBe("day");
     }
   });
@@ -401,12 +410,12 @@ describe("Aggregate Operations", () => {
       { type: "date" as const, value: testDate },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { time: { exponent: 1, unit: "day" } },
       },
       {
         type: "quantity" as const,
-        value: 24,
+        value: toDecimal(24),
         dimensions: { time: { exponent: 1, unit: "hours" } },
       },
     ];
@@ -415,9 +424,9 @@ describe("Aggregate Operations", () => {
     const result = evaluate("total in hours", vars, { previousResults });
 
     // Should convert everything to hours
-    expect(result.value).toBe(48); // 1 day + 24 hours = 48 hours
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(48); // 1 day + 24 hours = 48 hours
       expect(result.dimensions.time?.unit).toBe("hours");
     }
   });
@@ -428,21 +437,21 @@ describe("Aggregate Operations", () => {
     const previousResults: CalculatedValue[] = [
       {
         type: "quantity" as const,
-        value: 100,
+        value: toDecimal(100),
         dimensions: { currency: { exponent: 1, code: "EUR" } },
       },
       {
         type: "quantity" as const,
-        value: 200,
+        value: toDecimal(200),
         dimensions: { currency: { exponent: 1, code: "RUB" } },
       },
       {
         type: "quantity" as const,
-        value: 1,
+        value: toDecimal(1),
         dimensions: { length: { exponent: 1, unit: "km" } },
       },
       { type: "string" as const, value: "hello" },
-      { type: "number" as const, value: 42 },
+      { type: "number" as const, value: toDecimal(42) },
     ];
 
     const result = evaluate("agg", vars, { previousResults });
@@ -459,9 +468,9 @@ describe("Aggregate Operations", () => {
     const vars = new Map();
 
     const previousResults: CalculatedValue[] = [
-      { type: "number" as const, value: 1 },
-      { type: "number" as const, value: 2 },
-      { type: "number" as const, value: 3 },
+      { type: "number" as const, value: toDecimal(1) },
+      { type: "number" as const, value: toDecimal(2) },
+      { type: "number" as const, value: toDecimal(3) },
     ];
 
     const result = evaluate("aggregate", vars, { previousResults });
@@ -470,7 +479,7 @@ describe("Aggregate Operations", () => {
       expect(result.value).toHaveLength(3);
       expect(
         result.value.map((el: CalculatedValue) =>
-          el.type === "number" ? el.value : null
+          el.type === "number" ? fromDecimal(el.value) : null
         )
       ).toEqual([1, 2, 3]);
     }

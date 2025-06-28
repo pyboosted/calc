@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Higher-order functions with user-defined functions", () => {
   describe("filter with user-defined functions", () => {
@@ -11,8 +12,14 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(2);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 2 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(2),
+        });
       }
     });
 
@@ -24,9 +31,18 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]).toEqual({ type: "number", value: 2 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 6 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(2),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(6),
+        });
       }
     });
 
@@ -62,9 +78,18 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]).toEqual({ type: "number", value: 2 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 6 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(2),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(6),
+        });
       }
     });
 
@@ -76,10 +101,22 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(4);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 9 });
-        expect(result.value[3]).toEqual({ type: "number", value: 16 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(9),
+        });
+        expect(result.value[3]).toEqual({
+          type: "number",
+          value: toDecimal(16),
+        });
       }
     });
 
@@ -109,7 +146,7 @@ describe("Higher-order functions with user-defined functions", () => {
       evaluate("add(a, b) = a + b", env);
       const result = evaluate("[1, 2, 3, 4] | reduce(add, 0)", env);
 
-      expect(result).toEqual({ type: "number", value: 10 });
+      expect(result).toEqual({ type: "number", value: toDecimal(10) });
     });
 
     test("reduce with multiply function", () => {
@@ -117,7 +154,7 @@ describe("Higher-order functions with user-defined functions", () => {
       evaluate("multiply(a, b) = a * b", env);
       const result = evaluate("[1, 2, 3, 4] | reduce(multiply, 1)", env);
 
-      expect(result).toEqual({ type: "number", value: 24 });
+      expect(result).toEqual({ type: "number", value: toDecimal(24) });
     });
 
     test("reduce with string concatenation", () => {
@@ -138,7 +175,7 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         const values = result.value.map((v) =>
-          v.type === "number" ? v.value : null
+          v.type === "number" ? fromDecimal(v.value) : null
         );
         expect(values).toEqual([1, 1, 3, 4, 5]);
       }
@@ -152,7 +189,7 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         const values = result.value.map((v) =>
-          v.type === "number" ? v.value : null
+          v.type === "number" ? fromDecimal(v.value) : null
         );
         expect(values).toEqual([5, 4, 3, 1, 1]);
       }
@@ -219,8 +256,14 @@ describe("Higher-order functions with user-defined functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(2);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
       }
     });
 

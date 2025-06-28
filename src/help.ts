@@ -20,6 +20,7 @@ ${chalk.bold.yellow("USAGE:")}
 ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan("-e '2 + 2'")}                Basic arithmetic
   ${chalk.green("calc")} ${chalk.cyan("-e 'sqrt(16)'")}             Mathematical functions
+  ${chalk.green("calc")} ${chalk.cyan("-e '2 * pi'")}               Using mathematical constants
   ${chalk.green("calc")} ${chalk.cyan("-e '100 USD in EUR'")}       Currency conversion
   ${chalk.green("calc")} ${chalk.cyan("-e '5 feet in meters'")}     Unit conversion
   ${chalk.green("calc")} ${chalk.cyan("-e 'today + 5 days'")}       Date arithmetic
@@ -60,8 +61,10 @@ ${chalk.bold.yellow("KEYBOARD SHORTCUTS:")}
   ${chalk.magenta("Enter")}                       New line
 
 ${chalk.bold.yellow("FEATURES:")}
+  ${chalk.gray("•")} Arbitrary precision arithmetic with Decimal.js ${chalk.cyan("(v1.5.0)")}
   ${chalk.gray("•")} Basic arithmetic: ${chalk.cyan("+, -, *, /, ^, %")}
   ${chalk.gray("•")} Compound assignments: ${chalk.cyan("+=, -=")} for all types
+  ${chalk.gray("•")} Mathematical constants: ${chalk.cyan("pi, e")} (case-insensitive)
   ${chalk.gray("•")} Built-in functions: ${chalk.cyan("sqrt, sin, cos, log, round, etc.")}
   ${chalk.gray("•")} User-defined functions: ${chalk.cyan("name(params) = expression")} with recursion
   ${chalk.gray("•")} Lambda functions: ${chalk.cyan("x => x * 2, (a, b) => a + b")}

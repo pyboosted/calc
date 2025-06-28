@@ -1,4 +1,5 @@
 import type { CalculatedValue, LambdaInfo } from "../types";
+import { fromDecimal } from "../utils/decimal-math";
 import { type EvaluationContext, evaluateNode } from "./evaluate";
 
 /**
@@ -314,7 +315,7 @@ export function sortArray(
       throw new Error("Sort comparator must return a number");
     }
 
-    return result.value;
+    return fromDecimal(result.value);
   });
 
   return { type: "array", value: sorted };
@@ -402,7 +403,7 @@ function isTruthy(value: CalculatedValue): boolean {
     case "boolean":
       return value.value;
     case "number":
-      return value.value !== 0;
+      return !value.value.isZero();
     case "string":
       return value.value !== "";
     case "null":

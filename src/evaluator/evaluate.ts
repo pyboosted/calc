@@ -41,6 +41,28 @@ import {
   debugLog,
   debugToken,
 } from "../utils/debug";
+import {
+  abs,
+  add,
+  type Decimal,
+  divide,
+  E,
+  equals,
+  floor,
+  fromDecimal,
+  isDecimalNaN,
+  isZero,
+  lessThan,
+  modulo,
+  multiply,
+  negate,
+  ONE,
+  PI,
+  power,
+  subtract,
+  toDecimal,
+  ZERO,
+} from "../utils/decimal-math";
 import { TimezoneManager } from "../utils/timezone-manager";
 import {
   evaluateArrayFunction,
@@ -84,9 +106,9 @@ import { formatQuantity } from "./unit-formatter";
 const DATE_PATTERN = /(\d{1,2})[./](\d{1,2})[./](\d{4})/;
 
 // Mathematical constants
-const MATH_CONSTANTS_VALUES: Record<string, number> = {
-  pi: Math.PI,
-  e: Math.E,
+const MATH_CONSTANTS_VALUES: Record<string, Decimal> = {
+  pi: PI,
+  e: E,
 };
 
 // Maximum recursion depth for user-defined functions
@@ -272,6 +294,12 @@ function evaluateAssignmentNode(
   variables: Map<string, CalculatedValue>,
   context?: EvaluationContext
 ): CalculatedValue {
+  // Check if trying to assign to a constant
+  const lowerCaseName = node.variable.toLowerCase();
+  if (lowerCaseName in MATH_CONSTANTS_VALUES) {
+    throw new Error(`Cannot assign to mathematical constant: ${node.variable}`);
+  }
+
   const result = evaluateNode(node.value, variables, context);
   variables.set(node.variable, result);
   return result;
@@ -311,9 +339,9 @@ function isTruthy(value: CalculatedValue): boolean {
     case "boolean":
       return value.value;
     case "number":
-      return value.value !== 0;
+      return !isZero(value.value);
     case "percentage":
-      return value.value !== 0;
+      return !isZero(value.value);
     case "string":
       return value.value !== "";
     case "null":
@@ -325,7 +353,7 @@ function isTruthy(value: CalculatedValue): boolean {
     case "object":
       return value.value.size > 0;
     case "quantity":
-      return value.value !== 0; // Quantities are truthy if non-zero
+      return !isZero(value.value); // Quantities are truthy if non-zero
     case "function":
       return true; // Functions are always truthy
     case "lambda":
@@ -358,11 +386,12 @@ function evaluateTypeCastNode(
 
   if (node.targetType === "number") {
     if (value.type === "string") {
-      const num = Number.parseFloat(value.value);
-      if (Number.isNaN(num)) {
+      try {
+        const num = toDecimal(value.value);
+        return { type: "number", value: num };
+      } catch {
         throw new Error(`Cannot convert "${value.value}" to number`);
       }
-      return { type: "number", value: num };
     }
     if (value.type === "number") {
       return value;
@@ -373,10 +402,16 @@ function evaluateTypeCastNode(
     }
     if (value.type === "percentage") {
       // Convert percentage to decimal
-      return { type: "number", value: value.value / 100 };
+      return {
+        type: "number",
+        value: divide(value.value, toDecimal(100)),
+      };
     }
     if (value.type === "boolean") {
-      return { type: "number", value: value.value ? 1 : 0 };
+      return {
+        type: "number",
+        value: value.value ? ONE : ZERO,
+      };
     }
     throw new Error(`Cannot convert ${value.type} to number`);
   }
@@ -455,7 +490,10 @@ function evaluateTypeCastNode(
         obj.set(index.toString(), element);
       });
 
-      obj.set("length", { type: "number", value: value.value.length });
+      obj.set("length", {
+        type: "number",
+        value: toDecimal(value.value.length),
+      });
 
       return { type: "object", value: obj };
     }
@@ -477,10 +515,10 @@ type JSONValue =
 function valueToJSON(value: CalculatedValue): JSONValue {
   switch (value.type) {
     case "number":
-      return value.value;
+      return fromDecimal(value.value);
     case "percentage":
       // Convert percentage to its numeric value
-      return value.value;
+      return fromDecimal(value.value);
     case "string":
       return value.value;
     case "boolean":
@@ -502,7 +540,7 @@ function valueToJSON(value: CalculatedValue): JSONValue {
       // Convert quantity to object representation
       return {
         type: "quantity",
-        value: value.value,
+        value: fromDecimal(value.value),
         dimensions: value.dimensions,
       };
     case "function":
@@ -540,7 +578,7 @@ function jsonToCalculatedValue(json: JSONValue): CalculatedValue {
     return { type: "boolean", value: json };
   }
   if (typeof json === "number") {
-    return { type: "number", value: json };
+    return { type: "number", value: toDecimal(json) };
   }
   if (typeof json === "string") {
     return { type: "string", value: json };
@@ -571,12 +609,12 @@ function evaluateUnaryNode(
       return operand;
     case "-":
       if (operand.type === "number") {
-        return { type: "number", value: -operand.value };
+        return { type: "number", value: negate(operand.value) };
       }
       if (operand.type === "quantity") {
         return {
           type: "quantity",
-          value: -operand.value,
+          value: negate(operand.value),
           dimensions: operand.dimensions,
         };
       }
@@ -632,14 +670,14 @@ function evaluateSubstr(args: CalculatedValue[]): CalculatedValue {
     throw new Error("Second argument to substr() must be a number");
   }
 
-  const start = Math.floor(startArg.value);
+  const start = fromDecimal(floor(startArg.value));
   let substring: string;
 
   if (lengthArg) {
     if (lengthArg.type !== "number") {
       throw new Error("Third argument to substr() must be a number");
     }
-    const length = Math.floor(lengthArg.value);
+    const length = fromDecimal(floor(lengthArg.value));
     substring = strArg.value.substring(start, start + length);
   } else {
     substring = strArg.value.substring(start);
@@ -662,7 +700,7 @@ function evaluateCharAt(args: CalculatedValue[]): CalculatedValue {
     throw new Error("Second argument to charAt() must be a number");
   }
 
-  const index = Math.floor(indexArg.value);
+  const index = fromDecimal(floor(indexArg.value));
   const char = strArg.value.charAt(index);
   return { type: "string", value: char };
 }
@@ -875,7 +913,7 @@ function evaluatePadLeft(args: CalculatedValue[]): CalculatedValue {
   const padChar = charArg && charArg.type === "string" ? charArg.value : " ";
   return {
     type: "string",
-    value: strArg.value.padStart(Math.floor(lengthArg.value), padChar),
+    value: strArg.value.padStart(fromDecimal(floor(lengthArg.value)), padChar),
   };
 }
 
@@ -895,7 +933,7 @@ function evaluatePadRight(args: CalculatedValue[]): CalculatedValue {
   const padChar = charArg && charArg.type === "string" ? charArg.value : " ";
   return {
     type: "string",
-    value: strArg.value.padEnd(Math.floor(lengthArg.value), padChar),
+    value: strArg.value.padEnd(fromDecimal(floor(lengthArg.value)), padChar),
   };
 }
 
@@ -912,7 +950,10 @@ function evaluateIndexOf(args: CalculatedValue[]): CalculatedValue {
   if (!substringArg || substringArg.type !== "string") {
     throw new Error("Second argument to indexof() must be a string");
   }
-  return { type: "number", value: strArg.value.indexOf(substringArg.value) };
+  return {
+    type: "number",
+    value: toDecimal(strArg.value.indexOf(substringArg.value)),
+  };
 }
 
 function evaluateLastIndexOf(args: CalculatedValue[]): CalculatedValue {
@@ -929,7 +970,7 @@ function evaluateLastIndexOf(args: CalculatedValue[]): CalculatedValue {
   }
   return {
     type: "number",
-    value: strArg.value.lastIndexOf(substringArg.value),
+    value: toDecimal(strArg.value.lastIndexOf(substringArg.value)),
   };
 }
 
@@ -1427,6 +1468,10 @@ function evaluateFunctionNode(
     if (a.type === "number") {
       return a.value;
     }
+    if (a.type === "quantity" && node.name !== "round") {
+      // Allow quantities for non-rounding functions, but strip units
+      return a.value;
+    }
     throw new Error(`Function ${node.name} requires numeric arguments`);
   });
 
@@ -1653,7 +1698,7 @@ function evaluateDateOperationNode(
     }
     const valueResult = evaluateNode(node.value, variables, context);
 
-    let value: number;
+    let value: Decimal;
     const unit = node.unit;
 
     if (valueResult.type === "number") {
@@ -1685,8 +1730,8 @@ function evaluateDateOperationNode(
 
     const newDate =
       node.operation === "add"
-        ? dateManager.addPeriod(date, value, unit)
-        : dateManager.subtractPeriod(date, value, unit);
+        ? dateManager.addPeriod(date, fromDecimal(value), unit)
+        : dateManager.subtractPeriod(date, fromDecimal(value), unit);
 
     // Preserve timezone if present
     return {
@@ -1897,23 +1942,29 @@ function evaluateBinaryOperation(
   // Special handling for percentages
   if ((operator === "+" || operator === "-") && right.type === "percentage") {
     if (left.type === "number") {
-      const percentageAmount = left.value * (right.value / 100);
+      const percentageAmount = multiply(
+        left.value,
+        divide(right.value, toDecimal(100))
+      );
       return {
         type: "number",
         value:
           operator === "+"
-            ? left.value + percentageAmount
-            : left.value - percentageAmount,
+            ? add(left.value, percentageAmount)
+            : subtract(left.value, percentageAmount),
       };
     }
     if (left.type === "quantity") {
-      const percentageAmount = left.value * (right.value / 100);
+      const percentageAmount = multiply(
+        left.value,
+        divide(right.value, toDecimal(100))
+      );
       return {
         type: "quantity",
         value:
           operator === "+"
-            ? left.value + percentageAmount
-            : left.value - percentageAmount,
+            ? add(left.value, percentageAmount)
+            : subtract(left.value, percentageAmount),
         dimensions: left.dimensions,
       };
     }
@@ -1965,30 +2016,48 @@ function evaluateBinaryOperation(
       return evaluateDivide(left, right);
 
     case "%":
-      return { type: "number", value: left.value % right.value };
+      return {
+        type: "number",
+        value: modulo(left.value, right.value),
+      };
 
     case "percent":
       // Return percentage as its own type
       return { type: "percentage", value: left.value };
 
     case "^":
-      return { type: "number", value: left.value ** right.value };
+      return {
+        type: "number",
+        value: power(left.value, right.value),
+      };
 
     case "&":
-      // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { type: "number", value: left.value & right.value };
+      return {
+        type: "number",
+        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
+        value: toDecimal(fromDecimal(left.value) & fromDecimal(right.value)),
+      };
 
     case "|":
-      // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { type: "number", value: left.value | right.value };
+      return {
+        type: "number",
+        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
+        value: toDecimal(fromDecimal(left.value) | fromDecimal(right.value)),
+      };
 
     case "<<":
-      // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { type: "number", value: left.value << right.value };
+      return {
+        type: "number",
+        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
+        value: toDecimal(fromDecimal(left.value) << fromDecimal(right.value)),
+      };
 
     case ">>":
-      // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
-      return { type: "number", value: left.value >> right.value };
+      return {
+        type: "number",
+        // biome-ignore lint/nursery/noBitwiseOperators: Calculator supports bitwise operations
+        value: toDecimal(fromDecimal(left.value) >> fromDecimal(right.value)),
+      };
 
     default:
       throw new Error(`Unknown binary operator: ${operator}`);
@@ -2054,13 +2123,13 @@ function evaluateStringOperation(
       if (left.type === "string" && right.type === "number") {
         return {
           type: "string",
-          value: left.value.repeat(Math.floor(right.value)),
+          value: left.value.repeat(fromDecimal(floor(right.value))),
         };
       }
       if (left.type === "number" && right.type === "string") {
         return {
           type: "string",
-          value: right.value.repeat(Math.floor(left.value)),
+          value: right.value.repeat(fromDecimal(floor(left.value))),
         };
       }
       throw new Error(`Cannot multiply ${left.type} and ${right.type}`);
@@ -2104,7 +2173,9 @@ function evaluateAddSubtract(
 
   // Simple arithmetic (no units)
   const result =
-    operator === "+" ? left.value + right.value : left.value - right.value;
+    operator === "+"
+      ? add(left.value, right.value)
+      : subtract(left.value, right.value);
   return { type: "number", value: result };
 }
 
@@ -2127,7 +2198,7 @@ function evaluateDateArithmetic(
     if (operator === "-") {
       const diffMs = leftDate.getTime() - rightDate.getTime();
       // Convert to seconds for easier unit conversion
-      const diffSeconds = diffMs / 1000;
+      const diffSeconds = toDecimal(diffMs).div(1000);
       return {
         type: "quantity",
         value: diffSeconds,
@@ -2140,7 +2211,7 @@ function evaluateDateArithmetic(
   }
 
   // Get numeric value and unit from right side
-  let rightValue = 0;
+  let rightValue = ZERO;
   let rightUnit: string | undefined;
 
   if (right.type === "quantity") {
@@ -2159,8 +2230,12 @@ function evaluateDateArithmetic(
   if (leftDate && rightUnit && isTimePeriodUnit(rightUnit)) {
     const newDate =
       operator === "+"
-        ? dateManager.addPeriod(leftDate, rightValue, rightUnit)
-        : dateManager.subtractPeriod(leftDate, rightValue, rightUnit);
+        ? dateManager.addPeriod(leftDate, fromDecimal(rightValue), rightUnit)
+        : dateManager.subtractPeriod(
+            leftDate,
+            fromDecimal(rightValue),
+            rightUnit
+          );
     // Preserve timezone if present
     return {
       type: "date",
@@ -2170,7 +2245,7 @@ function evaluateDateArithmetic(
   }
 
   // Get numeric value and unit from left side
-  let leftValue = 0;
+  let leftValue = ZERO;
   let leftUnit: string | undefined;
 
   if (left.type === "quantity") {
@@ -2188,7 +2263,11 @@ function evaluateDateArithmetic(
   // Handle: time period + date
   if (rightDate && leftUnit && isTimePeriodUnit(leftUnit)) {
     if (operator === "+") {
-      const newDate = dateManager.addPeriod(rightDate, leftValue, leftUnit);
+      const newDate = dateManager.addPeriod(
+        rightDate,
+        fromDecimal(leftValue),
+        leftUnit
+      );
       // Preserve timezone if present
       return {
         type: "date",
@@ -2213,7 +2292,10 @@ function evaluateMultiply(
   if (left.type !== "number" || right.type !== "number") {
     throw new Error("Multiplication requires numeric values");
   }
-  return { type: "number", value: left.value * right.value };
+  return {
+    type: "number",
+    value: multiply(left.value, right.value),
+  };
 }
 
 function evaluateDivide(
@@ -2224,10 +2306,10 @@ function evaluateDivide(
   if (left.type !== "number" || right.type !== "number") {
     throw new Error("Division requires numeric values");
   }
-  if (right.value === 0) {
+  if (isZero(right.value)) {
     throw new Error("Division by zero");
   }
-  return { type: "number", value: left.value / right.value };
+  return { type: "number", value: divide(left.value, right.value) };
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: TODO: Refactor this function to reduce complexity
@@ -2270,14 +2352,14 @@ function evaluateAggregateNode(
     const dateResult = dateResults[0];
 
     // Sum all time periods, converting to seconds
-    let totalSeconds = 0;
+    let totalSeconds = toDecimal(0);
     for (const period of timePeriodResults) {
       try {
         if (period.type === "quantity" && period.dimensions.time) {
           const unit = period.dimensions.time.unit;
           if (unit) {
             const seconds = convertUnits(period.value, unit, "seconds");
-            totalSeconds += seconds;
+            totalSeconds = add(totalSeconds, seconds);
           }
         }
       } catch (_error) {
@@ -2286,7 +2368,7 @@ function evaluateAggregateNode(
     }
 
     // Add the total time period to the date
-    if (totalSeconds !== 0 && dateResult) {
+    if (!isZero(totalSeconds) && dateResult) {
       const dateManagerInstance = DateManager.getInstance();
       let date: Date;
       let timezone: string | undefined;
@@ -2300,7 +2382,7 @@ function evaluateAggregateNode(
 
       const newDate = dateManagerInstance.addPeriod(
         date,
-        totalSeconds,
+        fromDecimal(totalSeconds),
         "seconds"
       );
       return {
@@ -2335,10 +2417,10 @@ function evaluateAggregateNode(
     }
     return (
       (result.type === "number" || result.type === "quantity") &&
-      !Number.isNaN(
+      !isDecimalNaN(
         result.type === "number" || result.type === "quantity"
           ? result.value
-          : Number.NaN
+          : toDecimal(Number.NaN)
       )
     );
   });
@@ -2367,7 +2449,7 @@ function evaluateAggregateNode(
   }
 
   // average
-  const avg = totalValue / numericResults.length;
+  const avg = divide(totalValue, toDecimal(numericResults.length));
   if (dimensions && !isDimensionless(dimensions)) {
     return {
       type: "quantity",
@@ -2382,21 +2464,21 @@ function evaluateAggregateNode(
 function calculateAggregateQuantity(
   values: CalculatedValue[],
   targetUnit?: string
-): { value: number; dimensions?: DimensionMap } {
+): { value: Decimal; dimensions?: DimensionMap } {
   // If we have a target unit, convert all compatible values to that unit
   if (targetUnit) {
-    let totalValue = 0;
+    let totalValue = ZERO;
     const targetDimensions = createDimensionFromUnit(targetUnit);
 
     for (const item of values) {
       if (item.type === "number") {
-        totalValue += item.value;
+        totalValue = add(totalValue, item.value);
       } else if (item.type === "quantity") {
         try {
           // Try to convert to target unit
           const converted = convertQuantity(item, targetUnit);
           if (converted.type === "quantity") {
-            totalValue += converted.value;
+            totalValue = add(totalValue, converted.value);
           }
         } catch (_error) {
           // If conversion fails, skip this value
@@ -2436,15 +2518,15 @@ function calculateAggregateQuantity(
   }
 
   // Sum all compatible values
-  let totalValue = 0;
+  let totalValue = ZERO;
 
   for (const item of values) {
     if (item.type === "number") {
-      totalValue += item.value;
+      totalValue = add(totalValue, item.value);
     } else if (item.type === "quantity") {
       if (!firstDimensions || isDimensionless(item.dimensions)) {
         // No dimensions or dimensionless - just add the value
-        totalValue += item.value;
+        totalValue = add(totalValue, item.value);
       } else {
         // Try to convert to the first unit's dimensions
         try {
@@ -2459,17 +2541,17 @@ function calculateAggregateQuantity(
                 item.dimensions,
                 firstDimensions
               );
-              totalValue += converted;
+              totalValue = add(totalValue, converted);
             } else {
-              totalValue += item.value;
+              totalValue = add(totalValue, item.value);
             }
           } else {
             // Incompatible dimensions - just add raw value
-            totalValue += item.value;
+            totalValue = add(totalValue, item.value);
           }
         } catch (_error) {
           // If conversion fails, just add raw value
-          totalValue += item.value;
+          totalValue = add(totalValue, item.value);
         }
       }
     }
@@ -2495,8 +2577,9 @@ function evaluateConstantNode(
     return varValue;
   }
 
-  // Otherwise, use the constant value
-  const value = MATH_CONSTANTS_VALUES[node.name];
+  // Otherwise, use the constant value (case-insensitive)
+  const constantName = node.name.toLowerCase();
+  const value = MATH_CONSTANTS_VALUES[constantName];
   if (value === undefined) {
     throw new Error(`Unknown constant: ${node.name}`);
   }
@@ -2637,7 +2720,7 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
   switch (left.type) {
     case "number":
       // Plain numbers without units
-      return left.value === (right as typeof left).value;
+      return equals(left.value, (right as typeof left).value);
     case "string":
       return left.value === (right as typeof left).value;
     case "boolean":
@@ -2686,13 +2769,15 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
           rightQuantity.dimensions,
           left.dimensions
         );
-        return Math.abs(left.value - convertedRight) < 1e-10; // Allow for floating point errors
+        return abs(subtract(left.value, convertedRight)).lessThan(
+          toDecimal("1e-10")
+        ); // Allow for floating point errors
       } catch {
         return false;
       }
     }
     case "percentage":
-      return left.value === (right as typeof left).value;
+      return equals(left.value, (right as typeof left).value);
     case "function":
       // Functions are equal if they have the same name
       return left.value.name === (right as typeof left).value.name;
@@ -2719,7 +2804,7 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
   switch (left.type) {
     case "number":
       // Plain numbers without units
-      return left.value < (right as typeof left).value;
+      return lessThan(left.value, (right as typeof left).value);
     case "string":
       return left.value < (right as typeof left).value;
     case "date":
@@ -2746,13 +2831,13 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
           rightQuantity.dimensions,
           left.dimensions
         );
-        return left.value < convertedRight;
+        return lessThan(left.value, convertedRight);
       } catch {
         throw new Error("Cannot compare quantities with different units");
       }
     }
     case "percentage":
-      return left.value < (right as typeof left).value;
+      return lessThan(left.value, (right as typeof left).value);
     case "function":
       throw new Error("Cannot compare functions");
     case "lambda":
@@ -2896,7 +2981,7 @@ function evaluatePropertyAccessNode(
       throw new Error(`Array index must be a number, got ${property.type}`);
     }
 
-    let index = Math.floor(property.value);
+    let index = fromDecimal(floor(property.value));
 
     // Support negative indices (Python-style)
     if (index < 0) {

@@ -1,4 +1,5 @@
 import type { CalculatedValue } from "../types";
+import { toDecimal } from "../utils/decimal-math";
 import { createDimensionFromUnit } from "./dimensions";
 
 /**
@@ -9,7 +10,7 @@ export function createUnitExpression(unit: string): CalculatedValue {
     const dimensions = createDimensionFromUnit(unit);
     return {
       type: "quantity",
-      value: 1,
+      value: toDecimal(1),
       dimensions,
     };
   } catch {

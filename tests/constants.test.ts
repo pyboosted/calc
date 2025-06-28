@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Mathematical Constants", () => {
   const variables = new Map();
 
   test("PI constant", () => {
     const result = evaluate("pi", variables);
-    expect(result.value).toBeCloseTo(Math.PI, 10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBeCloseTo(Math.PI, 10);
+    }
   });
 
   test("PI constant is case-insensitive", () => {
@@ -20,7 +24,10 @@ describe("Mathematical Constants", () => {
 
   test("E constant", () => {
     const result = evaluate("e", variables);
-    expect(result.value).toBeCloseTo(Math.E, 10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBeCloseTo(Math.E, 10);
+    }
   });
 
   test("E constant is case-insensitive", () => {
@@ -36,7 +43,10 @@ describe("Mathematical Constants", () => {
     ["pi^2", Math.PI ** 2],
   ])("Constants in expressions: %s", (expression, expected) => {
     const result = evaluate(expression, variables);
-    expect(result.value).toBeCloseTo(expected, 10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBeCloseTo(expected, 10);
+    }
   });
 
   test.each([
@@ -45,7 +55,10 @@ describe("Mathematical Constants", () => {
     ["ln(e)", 1],
   ])("Constants with functions: %s", (expression, expected) => {
     const result = evaluate(expression, variables);
-    expect(result.value).toBeCloseTo(expected, 10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBeCloseTo(expected, 10);
+    }
   });
 
   test.each([
@@ -54,7 +67,10 @@ describe("Mathematical Constants", () => {
     ["1.6e+10", 1.6e10],
   ])("Scientific notation: %s", (expression, expected) => {
     const result = evaluate(expression, variables);
-    expect(result.value).toBe(expected);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(expected);
+    }
   });
 
   describe("Scientific notation with E doesn't conflict with constant", () => {
@@ -65,10 +81,13 @@ describe("Mathematical Constants", () => {
       ["E * 2", Math.E * 2, true],
     ])("%s", (expression, expected, useCloseTo) => {
       const result = evaluate(expression, variables);
-      if (useCloseTo) {
-        expect(result.value).toBeCloseTo(expected, 10);
-      } else {
-        expect(result.value).toBe(expected);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        if (useCloseTo) {
+          expect(fromDecimal(result.value)).toBeCloseTo(expected, 10);
+        } else {
+          expect(fromDecimal(result.value)).toBe(expected);
+        }
       }
     });
   });
@@ -78,26 +97,41 @@ describe("Mathematical Constants", () => {
 
     // Before setting variables, constants should work
     const e1 = evaluate("e", vars);
-    expect(e1.value).toBeCloseTo(Math.E, 10);
+    expect(e1.type).toBe("number");
+    if (e1.type === "number") {
+      expect(fromDecimal(e1.value)).toBeCloseTo(Math.E, 10);
+    }
 
     const pi1 = evaluate("pi", vars);
-    expect(pi1.value).toBeCloseTo(Math.PI, 10);
+    expect(pi1.type).toBe("number");
+    if (pi1.type === "number") {
+      expect(fromDecimal(pi1.value)).toBeCloseTo(Math.PI, 10);
+    }
 
     // After setting variables, they override constants
-    vars.set("e", { type: "number", value: 10 });
-    vars.set("pi", { type: "number", value: 3 });
+    vars.set("e", { type: "number", value: toDecimal(10) });
+    vars.set("pi", { type: "number", value: toDecimal(3) });
 
     const e2 = evaluate("e", vars);
-    expect(e2.value).toBe(10);
+    expect(e2.type).toBe("number");
+    if (e2.type === "number") {
+      expect(fromDecimal(e2.value)).toBe(10);
+    }
 
     const pi2 = evaluate("pi", vars);
-    expect(pi2.value).toBe(3);
+    expect(pi2.type).toBe("number");
+    if (pi2.type === "number") {
+      expect(fromDecimal(pi2.value)).toBe(3);
+    }
   });
 
   test("Complex expressions with constants", () => {
     const result = evaluate("(pi * e) / 2 + sin(pi/2)", variables);
     const expected = (Math.PI * Math.E) / 2 + Math.sin(Math.PI / 2);
-    expect(result.value).toBeCloseTo(expected, 10);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBeCloseTo(expected, 10);
+    }
   });
 
   test.each(["pi = 3", "e = 2"])(

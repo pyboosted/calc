@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Basic Arithmetic", () => {
   test.each([
@@ -11,7 +12,10 @@ describe("Basic Arithmetic", () => {
     ["10 % 3", 1, "modulo"],
   ])("%s (%s)", (expression, expected, _operation) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBe(expected);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(expected);
+    }
   });
 });
 
@@ -24,7 +28,10 @@ describe("Mathematical Functions", () => {
     ["floor(3.9)", 3],
   ])("%s", (expression, expected) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBe(expected);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(expected);
+    }
   });
 });
 
@@ -36,8 +43,10 @@ describe("Percentage Calculations", () => {
     ["20% of 100", 20, "number" as const],
   ])("%s", (expression, expectedValue, expectedType) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBe(expectedValue);
     expect(result.type).toBe(expectedType);
+    if (result.type === "number" || result.type === "percentage") {
+      expect(fromDecimal(result.value)).toBe(expectedValue);
+    }
   });
 });
 
@@ -45,16 +54,27 @@ describe("Variables", () => {
   test("variable assignment and usage", () => {
     const vars = new Map();
     const result1 = evaluate("x = 10", vars);
-    expect(result1.value).toBe(10);
+    expect(result1.type).toBe("number");
+    if (result1.type === "number") {
+      expect(fromDecimal(result1.value)).toBe(10);
+    }
 
     const result2 = evaluate("x + 5", vars);
-    expect(result2.value).toBe(15);
+    expect(result2.type).toBe("number");
+    if (result2.type === "number") {
+      expect(fromDecimal(result2.value)).toBe(15);
+    }
   });
 
   test("prev variable with value", () => {
-    const vars = new Map([["prev", { type: "number" as const, value: 42 }]]);
+    const vars = new Map([
+      ["prev", { type: "number" as const, value: toDecimal(42) }],
+    ]);
     const result = evaluate("prev * 2", vars);
-    expect(result.value).toBe(84);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(84);
+    }
   });
 
   test("prev variable without value throws error", () => {
@@ -78,8 +98,10 @@ describe("Inline Comments", () => {
     ["5 m # five meters", 5, "quantity" as const],
   ])("%s", (expression, expectedValue, expectedType) => {
     const result = evaluate(expression, new Map());
-    expect(result.value).toBe(expectedValue);
     expect(result.type).toBe(expectedType);
+    if (result.type === "number" || result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(expectedValue);
+    }
     if (expectedType === "quantity" && result.type === "quantity") {
       expect(result.dimensions.length?.unit).toBe("m");
     }
@@ -88,8 +110,11 @@ describe("Inline Comments", () => {
   test("variable assignment with comment", () => {
     const vars = new Map();
     const result = evaluate("price = 100 # base price", vars);
-    expect(result.value).toBe(100);
+    expect(result.type).toBe("number");
+    if (result.type === "number") {
+      expect(fromDecimal(result.value)).toBe(100);
+    }
     const priceValue = vars.get("price");
-    expect(priceValue?.value).toBe(100);
+    expect(priceValue?.value && fromDecimal(priceValue.value)).toBe(100);
   });
 });

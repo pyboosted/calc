@@ -328,6 +328,15 @@ function convertToJSON(value: CalculatedValue): JSONValue {
     // Partials cannot be serialized to JSON
     return `<partial(${value.value.remainingParams.join(", ")})>`;
   }
+  // Handle Decimal types
+  if (
+    value.type === "number" ||
+    value.type === "percentage" ||
+    value.type === "quantity"
+  ) {
+    const { fromDecimal } = require("./utils/decimal-math");
+    return fromDecimal(value.value);
+  }
   return value.value;
 }
 

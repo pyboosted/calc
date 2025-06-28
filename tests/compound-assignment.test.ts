@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Compound Assignment Operators", () => {
   describe("+= operator", () => {
@@ -37,6 +38,7 @@ describe("Compound Assignment Operators", () => {
       },
     ])(
       "$name",
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Parameterized test requires complex logic
       ({ setup, operation, expectedType, expectedValue, checkVariable }) => {
         const variables = new Map<string, CalculatedValue>();
         evaluate(setup, variables);
@@ -51,7 +53,14 @@ describe("Compound Assignment Operators", () => {
             | "array"
             | "object"
         );
-        expect(result.value).toBe(expectedValue);
+        if (result.type === "number" && typeof expectedValue === "number") {
+          expect(fromDecimal(result.value)).toBe(expectedValue);
+        } else if (
+          result.type === "string" &&
+          typeof expectedValue === "string"
+        ) {
+          expect(result.value).toBe(expectedValue);
+        }
 
         if (checkVariable) {
           const varName = operation.split(" ")[0];
@@ -59,7 +68,17 @@ describe("Compound Assignment Operators", () => {
             const storedVar = variables.get(varName);
             expect(storedVar).toBeDefined();
             if (storedVar) {
-              expect(storedVar.value).toBe(expectedValue);
+              if (
+                storedVar.type === "number" &&
+                typeof expectedValue === "number"
+              ) {
+                expect(fromDecimal(storedVar.value)).toBe(expectedValue);
+              } else if (
+                storedVar.type === "string" &&
+                typeof expectedValue === "string"
+              ) {
+                expect(storedVar.value).toBe(expectedValue);
+              }
             }
           }
         }
@@ -75,7 +94,10 @@ describe("Compound Assignment Operators", () => {
         expect(result.value).toHaveLength(4);
         const item = result.value[3];
         if (item && item.type === "number") {
-          expect(item.value).toBe(4);
+          expect(item.type).toBe("number");
+          if (item.type === "number") {
+            expect(fromDecimal(item.value)).toBe(4);
+          }
         }
       }
     });
@@ -87,7 +109,11 @@ describe("Compound Assignment Operators", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(4);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4]);
       }
     });
 
@@ -101,7 +127,11 @@ describe("Compound Assignment Operators", () => {
         const lastItem = result.value[5];
         expect(lastItem).toBeDefined();
         if (lastItem && lastItem.type === "array") {
-          expect(lastItem.value.map((v) => v.value)).toEqual([6, 7]);
+          expect(
+            lastItem.value.map((v) =>
+              v.type === "number" ? fromDecimal(v.value) : null
+            )
+          ).toEqual([6, 7]);
         }
       }
     });
@@ -142,6 +172,7 @@ describe("Compound Assignment Operators", () => {
       },
     ])(
       "$name",
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Parameterized test requires complex logic
       ({ setup, operation, expectedType, expectedValue, checkVariable }) => {
         const variables = new Map<string, CalculatedValue>();
         evaluate(setup, variables);
@@ -156,7 +187,14 @@ describe("Compound Assignment Operators", () => {
             | "array"
             | "object"
         );
-        expect(result.value).toBe(expectedValue);
+        if (result.type === "number" && typeof expectedValue === "number") {
+          expect(fromDecimal(result.value)).toBe(expectedValue);
+        } else if (
+          result.type === "string" &&
+          typeof expectedValue === "string"
+        ) {
+          expect(result.value).toBe(expectedValue);
+        }
 
         if (checkVariable) {
           const varName = operation.split(" ")[0];
@@ -164,7 +202,17 @@ describe("Compound Assignment Operators", () => {
             const storedVar = variables.get(varName);
             expect(storedVar).toBeDefined();
             if (storedVar) {
-              expect(storedVar.value).toBe(expectedValue);
+              if (
+                storedVar.type === "number" &&
+                typeof expectedValue === "number"
+              ) {
+                expect(fromDecimal(storedVar.value)).toBe(expectedValue);
+              } else if (
+                storedVar.type === "string" &&
+                typeof expectedValue === "string"
+              ) {
+                expect(storedVar.value).toBe(expectedValue);
+              }
             }
           }
         }
@@ -178,7 +226,11 @@ describe("Compound Assignment Operators", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value.map((v) => v.value)).toEqual([1, 3, 4]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 3, 4]);
       }
     });
 
@@ -189,7 +241,11 @@ describe("Compound Assignment Operators", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value.map((v) => v.value)).toEqual([1, 3, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 3, 5]);
       }
     });
 
@@ -219,7 +275,10 @@ describe("Compound Assignment Operators", () => {
       expect(result).toBeDefined();
       if (result) {
         expect(result.type).toBe("number");
-        expect(result.value).toBe(60);
+        expect(result.type).toBe("number");
+        if (result.type === "number") {
+          expect(fromDecimal(result.value)).toBe(60);
+        }
       }
     });
 
@@ -232,7 +291,10 @@ describe("Compound Assignment Operators", () => {
       expect(result).toBeDefined();
       if (result) {
         expect(result.type).toBe("number");
-        expect(result.value).toBe(120);
+        expect(result.type).toBe("number");
+        if (result.type === "number") {
+          expect(fromDecimal(result.value)).toBe(120);
+        }
       }
     });
   });
@@ -278,7 +340,11 @@ describe("Array + operator", () => {
     expect(result.type).toBe("array");
     if (result.type === "array") {
       expect(result.value).toHaveLength(expectedLength);
-      expect(result.value.map((v) => v.value)).toEqual(expectedValues);
+      expect(
+        result.value.map((v) =>
+          v.type === "number" ? fromDecimal(v.value) : null
+        )
+      ).toEqual(expectedValues);
     }
   });
 
@@ -303,7 +369,11 @@ describe("Array + operator", () => {
       expect(result.value).toHaveLength(3);
       const item = result.value[2];
       if (item && item.type === "array") {
-        expect(item.value.map((v) => v.value)).toEqual([3, 4]);
+        expect(
+          item.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([3, 4]);
       }
     }
   });
@@ -332,7 +402,11 @@ describe("Array - operator", () => {
     expect(result.type).toBe("array");
     if (result.type === "array") {
       expect(result.value).toHaveLength(expectedLength);
-      expect(result.value.map((v) => v.value)).toEqual(expectedValues);
+      expect(
+        result.value.map((v) =>
+          v.type === "number" ? fromDecimal(v.value) : null
+        )
+      ).toEqual(expectedValues);
     }
   });
 
@@ -349,7 +423,10 @@ describe("Array - operator", () => {
         expect(item0.value).toBe("hello");
       }
       if (item1 && item1.type === "number") {
-        expect(item1.value).toBe(2);
+        expect(item1.type).toBe("number");
+        if (item1.type === "number") {
+          expect(fromDecimal(item1.value)).toBe(2);
+        }
       }
       if (item2 && item2.type === "string") {
         expect(item2.value).toBe("world");

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Units Without Spaces", () => {
   test.each([
@@ -20,7 +21,7 @@ describe("Units Without Spaces", () => {
     const result = evaluate(expression, new Map());
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
-      expect(result.value).toBe(expectedValue);
+      expect(fromDecimal(result.value)).toBe(expectedValue);
 
       // Determine the dimension based on the unit
       if (
@@ -47,7 +48,7 @@ describe("Units Without Spaces", () => {
     const result = evaluate(expression, new Map());
     expect(result.type).toBe("quantity");
     if (result.type === "quantity") {
-      expect(result.value).toBeCloseTo(expectedValue);
+      expect(fromDecimal(result.value)).toBeCloseTo(expectedValue);
 
       // Determine the dimension based on the unit
       if (expectedUnit === "d") {
@@ -68,7 +69,7 @@ describe("Units Without Spaces", () => {
     const result = evaluate(expression, new Map());
     expect(result.type).toBe("number");
     if (result.type === "number") {
-      expect(result.value).toBe(expectedValue);
+      expect(fromDecimal(result.value)).toBe(expectedValue);
     }
   });
 });

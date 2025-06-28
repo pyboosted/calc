@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Compound unit division bug", () => {
   test("1km/speed and 1000m/speed should give same result", () => {
@@ -21,13 +22,10 @@ describe("Compound unit division bug", () => {
     const mExpr = "1000m/speed in min";
     const mResult = evaluate(mExpr, state);
 
-    console.log("Speed:", speedResult);
-    console.log("1km/speed in min:", kmResult);
-    console.log("1000m/speed in min:", mResult);
-
     // They should be equal (within floating point tolerance)
     if (kmResult.type === "quantity" && mResult.type === "quantity") {
-      expect(Math.abs(kmResult.value - mResult.value)).toBeLessThan(0.001);
+      const diff = kmResult.value.minus(mResult.value).abs();
+      expect(fromDecimal(diff)).toBeLessThan(0.001);
     } else {
       throw new Error("Expected quantity results");
     }
@@ -49,8 +47,6 @@ describe("Compound unit division bug", () => {
     const mExpr = "1000m/speed";
     const mResult = evaluate(mExpr, state);
 
-    console.log("Direct results:");
-    console.log("1km/speed:", kmResult);
-    console.log("1000m/speed:", mResult);
+    // Direct results should be proportional
   });
 });

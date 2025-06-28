@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Immutable Array Functions", () => {
   describe("push - non-mutating", () => {
@@ -11,7 +12,10 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(4);
-        expect(result.value[3]?.value).toBe(4);
+        expect(result.value[3]?.type).toBe("number");
+        if (result.value[3]?.type === "number") {
+          expect(fromDecimal(result.value[3]?.value)).toBe(4);
+        }
       }
 
       // Original array should be unchanged
@@ -29,7 +33,11 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
     });
 
@@ -40,7 +48,10 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value[0]?.value).toBe(1);
+        expect(result.value[0]?.type).toBe("number");
+        if (result.value[0]?.type === "number") {
+          expect(fromDecimal(result.value[0]?.value)).toBe(1);
+        }
         expect(result.value[1]?.value).toBe("hello");
         expect(result.value[2]?.value).toBe(true);
       }
@@ -56,7 +67,11 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(2);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2]);
       }
 
       // Original array should be unchanged
@@ -94,7 +109,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate("find([1, 5, 10, 15], x => x > 7)", env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(10);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(10);
+      }
     });
 
     test("find returns null when no match", () => {
@@ -115,7 +133,10 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("object");
       if (result.type === "object") {
         expect(result.value.get("name")?.value).toBe("Bob");
-        expect(result.value.get("age")?.value).toBe(30);
+        const age = result.value.get("age");
+        if (age?.type === "number") {
+          expect(fromDecimal(age.value)).toBe(30);
+        }
       }
     });
 
@@ -135,7 +156,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate('find([0, "", false, null, 5], x => x)', env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(5);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(5);
+      }
     });
   });
 
@@ -145,7 +169,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate("findIndex([10, 20, 30, 40], x => x > 25)", env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(2); // index of 30
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(2);
+      } // index of 30
     });
 
     test("findIndex returns -1 when no match", () => {
@@ -153,7 +180,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate("findIndex([1, 2, 3], x => x > 10)", env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(-1);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(-1);
+      }
     });
 
     test("findIndex works with strings", () => {
@@ -161,7 +191,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate('findIndex(["a", "b", "c"], s => s == "b")', env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(1);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(1);
+      }
     });
 
     test("findIndex finds first occurrence", () => {
@@ -169,7 +202,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate("findIndex([1, 5, 3, 5, 2], x => x == 5)", env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(1); // first 5 is at index 1
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(1);
+      } // first 5 is at index 1
     });
 
     test("findIndex with empty array", () => {
@@ -177,7 +213,10 @@ describe("Immutable Array Functions", () => {
       const result = evaluate("findIndex([], x => true)", env);
 
       expect(result.type).toBe("number");
-      expect(result.value).toBe(-1);
+      expect(result.type).toBe("number");
+      if (result.type === "number") {
+        expect(fromDecimal(result.value)).toBe(-1);
+      }
     });
   });
 
@@ -191,7 +230,11 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(5);
-        expect(result.value.map((v) => v.value)).toEqual([1, 2, 3, 4, 5]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 2, 3, 4, 5]);
       }
     });
 
@@ -204,7 +247,11 @@ describe("Immutable Array Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value.length).toBe(3);
-        expect(result.value.map((v) => v.value)).toEqual([1, 3, 4]);
+        expect(
+          result.value.map((v) =>
+            v.type === "number" ? fromDecimal(v.value) : null
+          )
+        ).toEqual([1, 3, 4]);
       }
     });
   });

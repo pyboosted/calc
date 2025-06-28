@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Date Duration Operations", () => {
   test("date - date returns quantity with time dimension", () => {
@@ -8,13 +9,13 @@ describe("Date Duration Operations", () => {
     evaluate("d2 = 25.12.2024", vars);
 
     const result = evaluate("d1 - d2", vars);
-    expect(result).toEqual({
-      type: "quantity",
-      value: 604_800, // 7 days in seconds
-      dimensions: {
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(604_800); // 7 days in seconds
+      expect(result.dimensions).toEqual({
         time: { exponent: 1, unit: "s" },
-      },
-    });
+      });
+    }
   });
 
   test("duration can be converted to different time units", () => {
@@ -24,33 +25,33 @@ describe("Date Duration Operations", () => {
 
     // Days
     const days = evaluate("future - past in days", vars);
-    expect(days).toEqual({
-      type: "quantity",
-      value: 7,
-      dimensions: {
+    expect(days.type).toBe("quantity");
+    if (days.type === "quantity") {
+      expect(fromDecimal(days.value)).toBe(7);
+      expect(days.dimensions).toEqual({
         time: { exponent: 1, unit: "days" },
-      },
-    });
+      });
+    }
 
     // Hours
     const hours = evaluate("future - past in hours", vars);
-    expect(hours).toEqual({
-      type: "quantity",
-      value: 168,
-      dimensions: {
+    expect(hours.type).toBe("quantity");
+    if (hours.type === "quantity") {
+      expect(fromDecimal(hours.value)).toBe(168);
+      expect(hours.dimensions).toEqual({
         time: { exponent: 1, unit: "hours" },
-      },
-    });
+      });
+    }
 
     // Weeks
     const weeks = evaluate("future - past in weeks", vars);
-    expect(weeks).toEqual({
-      type: "quantity",
-      value: 1,
-      dimensions: {
+    expect(weeks.type).toBe("quantity");
+    if (weeks.type === "quantity") {
+      expect(fromDecimal(weeks.value)).toBe(1);
+      expect(weeks.dimensions).toEqual({
         time: { exponent: 1, unit: "weeks" },
-      },
-    });
+      });
+    }
   });
 
   test("duration arithmetic operations", () => {
@@ -62,12 +63,16 @@ describe("Date Duration Operations", () => {
     // Multiply duration
     const doubled = evaluate("duration * 2", vars);
     expect(doubled.type).toBe("quantity");
-    expect(doubled.value).toBe(1_555_200); // 18 days in seconds
+    if (doubled.type === "quantity") {
+      expect(fromDecimal(doubled.value)).toBe(1_555_200); // 18 days in seconds
+    }
 
     // Divide duration
     const halved = evaluate("duration / 2", vars);
     expect(halved.type).toBe("quantity");
-    expect(halved.value).toBe(388_800); // 4.5 days in seconds
+    if (halved.type === "quantity") {
+      expect(fromDecimal(halved.value)).toBe(388_800); // 4.5 days in seconds
+    }
   });
 
   test("adding duration to date", () => {
@@ -93,12 +98,12 @@ describe("Date Duration Operations", () => {
     evaluate("future = 01.01.2025", vars);
 
     const result = evaluate("past - future in days", vars);
-    expect(result).toEqual({
-      type: "quantity",
-      value: -366, // 2024 is a leap year
-      dimensions: {
+    expect(result.type).toBe("quantity");
+    if (result.type === "quantity") {
+      expect(fromDecimal(result.value)).toBe(-366); // 2024 is a leap year
+      expect(result.dimensions).toEqual({
         time: { exponent: 1, unit: "days" },
-      },
-    });
+      });
+    }
   });
 });

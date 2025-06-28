@@ -4,6 +4,8 @@ import { Box, Text } from "ink";
 import type React from "react";
 import type { CalculatedValue } from "../types";
 import { ConfigManager } from "../utils/config-manager";
+import type { Decimal } from "../utils/decimal-math";
+import { fromDecimal } from "../utils/decimal-math";
 import { TimezoneManager } from "../utils/timezone-manager";
 
 // Performance optimization: Move regex to module level
@@ -190,7 +192,8 @@ function formatObject(obj: Map<string, CalculatedValue>): string {
   return `{${entries.join(", ")}}`;
 }
 
-function formatNumber(num: number): string {
+function formatNumber(decimal: Decimal): string {
+  const num = fromDecimal(decimal);
   const config = ConfigManager.getInstance();
   const precision = config.precision;
 

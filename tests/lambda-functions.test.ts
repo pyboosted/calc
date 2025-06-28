@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { evaluate } from "../src/evaluator/evaluate";
 import type { CalculatedValue } from "../src/types";
+import { fromDecimal, toDecimal } from "../src/utils/decimal-math";
 
 describe("Lambda Functions", () => {
   const variables = new Map<string, CalculatedValue>();
@@ -15,9 +16,18 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]).toEqual({ type: "number", value: 2 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 6 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(2),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(6),
+        });
       }
     });
 
@@ -28,11 +38,26 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(5);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 1 });
-        expect(result.value[2]).toEqual({ type: "number", value: 3 });
-        expect(result.value[3]).toEqual({ type: "number", value: 4 });
-        expect(result.value[4]).toEqual({ type: "number", value: 5 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(3),
+        });
+        expect(result.value[3]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[4]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
       }
     });
 
@@ -44,8 +69,14 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(2);
-        expect(result.value[0]).toEqual({ type: "number", value: 30 });
-        expect(result.value[1]).toEqual({ type: "number", value: 25 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(30),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(25),
+        });
       }
     });
 
@@ -55,9 +86,18 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]).toEqual({ type: "number", value: 2 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 6 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(2),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(6),
+        });
       }
     });
   });
@@ -70,9 +110,18 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 3 });
-        expect(result.value[2]).toEqual({ type: "number", value: 5 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(3),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
       }
     });
 
@@ -106,9 +155,18 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(3);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 9 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(9),
+        });
       }
     });
 
@@ -117,8 +175,14 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(2);
-        expect(result.value[0]).toEqual({ type: "number", value: 5 });
-        expect(result.value[1]).toEqual({ type: "number", value: 5 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
       }
     });
 
@@ -139,14 +203,14 @@ describe("Lambda Functions", () => {
       const result = evaluateExpression(
         "reduce([1, 2, 3, 4], (acc, n) => acc + n, 0)"
       );
-      expect(result).toEqual({ type: "number", value: 10 });
+      expect(result).toEqual({ type: "number", value: toDecimal(10) });
     });
 
     test("product of numbers", () => {
       const result = evaluateExpression(
         "reduce([2, 3, 4], (acc, n) => acc * n, 1)"
       );
-      expect(result).toEqual({ type: "number", value: 24 });
+      expect(result).toEqual({ type: "number", value: toDecimal(24) });
     });
 
     test("concatenate strings", () => {
@@ -160,14 +224,14 @@ describe("Lambda Functions", () => {
       const result = evaluateExpression(
         "reduce([3, 7, 2, 9, 1], (acc, n) => n > acc ? n : acc, 0)"
       );
-      expect(result).toEqual({ type: "number", value: 9 });
+      expect(result).toEqual({ type: "number", value: toDecimal(9) });
     });
 
     test("count true values", () => {
       const result = evaluateExpression(
         "reduce([true, false, true, true], (acc, b) => b ? acc + 1 : acc, 0)"
       );
-      expect(result).toEqual({ type: "number", value: 3 });
+      expect(result).toEqual({ type: "number", value: toDecimal(3) });
     });
   });
 
@@ -179,12 +243,30 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(6);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 1 });
-        expect(result.value[2]).toEqual({ type: "number", value: 3 });
-        expect(result.value[3]).toEqual({ type: "number", value: 4 });
-        expect(result.value[4]).toEqual({ type: "number", value: 5 });
-        expect(result.value[5]).toEqual({ type: "number", value: 9 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(3),
+        });
+        expect(result.value[3]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[4]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
+        expect(result.value[5]).toEqual({
+          type: "number",
+          value: toDecimal(9),
+        });
       }
     });
 
@@ -195,11 +277,26 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(5);
-        expect(result.value[0]).toEqual({ type: "number", value: 5 });
-        expect(result.value[1]).toEqual({ type: "number", value: 4 });
-        expect(result.value[2]).toEqual({ type: "number", value: 3 });
-        expect(result.value[3]).toEqual({ type: "number", value: 1 });
-        expect(result.value[4]).toEqual({ type: "number", value: 1 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(4),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(3),
+        });
+        expect(result.value[3]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[4]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
       }
     });
 
@@ -223,10 +320,22 @@ describe("Lambda Functions", () => {
       expect(result.type).toBe("array");
       if (result.type === "array") {
         expect(result.value).toHaveLength(4);
-        expect(result.value[0]).toEqual({ type: "number", value: 1 });
-        expect(result.value[1]).toEqual({ type: "number", value: 2 });
-        expect(result.value[2]).toEqual({ type: "number", value: -3 });
-        expect(result.value[3]).toEqual({ type: "number", value: -4 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
+        expect(result.value[1]).toEqual({
+          type: "number",
+          value: toDecimal(2),
+        });
+        expect(result.value[2]).toEqual({
+          type: "number",
+          value: toDecimal(-3),
+        });
+        expect(result.value[3]).toEqual({
+          type: "number",
+          value: toDecimal(-4),
+        });
       }
     });
 
@@ -239,16 +348,27 @@ describe("Lambda Functions", () => {
       );
       expect(result.type).toBe("array");
       if (result.type === "array" && result.value[0]?.type === "object") {
-        expect(result.value[0].value.get("age")).toEqual({
-          type: "number",
-          value: 25,
-        });
-        expect(
-          result.value[1]?.type === "object" && result.value[1].value.get("age")
-        ).toEqual({ type: "number", value: 30 });
-        expect(
-          result.value[2]?.type === "object" && result.value[2].value.get("age")
-        ).toEqual({ type: "number", value: 35 });
+        const age0 = result.value[0].value.get("age");
+        expect(age0?.type).toBe("number");
+        if (age0?.type === "number") {
+          expect(fromDecimal(age0.value)).toBe(25);
+        }
+
+        if (result.value[1]?.type === "object") {
+          const age1 = result.value[1].value.get("age");
+          expect(age1?.type).toBe("number");
+          if (age1?.type === "number") {
+            expect(fromDecimal(age1.value)).toBe(30);
+          }
+        }
+
+        if (result.value[2]?.type === "object") {
+          const age2 = result.value[2].value.get("age");
+          expect(age2?.type).toBe("number");
+          if (age2?.type === "number") {
+            expect(fromDecimal(age2.value)).toBe(35);
+          }
+        }
       }
     });
   });
@@ -307,20 +427,20 @@ describe("Lambda Functions", () => {
     test("lambda stored in variable and called directly", () => {
       evaluateExpression("a = i => i + 1");
       const result = evaluateExpression("a(5)");
-      expect(result).toEqual({ type: "number", value: 6 });
+      expect(result).toEqual({ type: "number", value: toDecimal(6) });
     });
 
     test("lambda with multiple params stored in variable", () => {
       evaluateExpression("add = (a, b) => a + b");
       const result = evaluateExpression("add(3, 4)");
-      expect(result).toEqual({ type: "number", value: 7 });
+      expect(result).toEqual({ type: "number", value: toDecimal(7) });
     });
 
     test("lambda passed as parameter to user function", () => {
       evaluateExpression("do(a, pred) = pred(a)");
       evaluateExpression("inc = i => i + 1");
       const result = evaluateExpression("do(5, inc)");
-      expect(result).toEqual({ type: "number", value: 6 });
+      expect(result).toEqual({ type: "number", value: toDecimal(6) });
     });
 
     test("user function with lambda parameter", () => {
@@ -345,7 +465,7 @@ describe("Lambda Functions", () => {
     test("find function implementation", () => {
       evaluateExpression("find(arr, pred) = first(filter(arr, pred))");
       const result = evaluateExpression("find([1, 2, 3, 4], n => n > 2)");
-      expect(result).toEqual({ type: "number", value: 3 });
+      expect(result).toEqual({ type: "number", value: toDecimal(3) });
     });
 
     test("sortDescending helper", () => {
@@ -353,8 +473,14 @@ describe("Lambda Functions", () => {
       const result = evaluateExpression("sortDesc([3, 1, 4, 1, 5])");
       expect(result.type).toBe("array");
       if (result.type === "array") {
-        expect(result.value[0]).toEqual({ type: "number", value: 5 });
-        expect(result.value[4]).toEqual({ type: "number", value: 1 });
+        expect(result.value[0]).toEqual({
+          type: "number",
+          value: toDecimal(5),
+        });
+        expect(result.value[4]).toEqual({
+          type: "number",
+          value: toDecimal(1),
+        });
       }
     });
   });
@@ -400,7 +526,7 @@ describe("Lambda Functions", () => {
       const result = evaluateExpression(
         "reduce(filter(map([1, 2, 3, 4], n => n * n), n => n > 5), (acc, n) => acc + n, 0)"
       );
-      expect(result).toEqual({ type: "number", value: 25 }); // 9 + 16
+      expect(result).toEqual({ type: "number", value: toDecimal(25) }); // 9 + 16
     });
   });
 

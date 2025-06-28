@@ -8,6 +8,7 @@ import type {
   NumberNode,
   VariableNode,
 } from "../src/types";
+import { fromDecimal } from "../src/utils/decimal-math";
 
 describe("Parser", () => {
   const parse = (input: string) => {
@@ -20,7 +21,7 @@ describe("Parser", () => {
   test("parses numbers", () => {
     const ast = parse("42");
     expect(ast.type).toBe("number");
-    expect((ast as NumberNode).value).toBe(42);
+    expect(fromDecimal((ast as NumberNode).value)).toBe(42);
   });
 
   test("parses binary operations", () => {
@@ -29,8 +30,8 @@ describe("Parser", () => {
 
     const binaryAst = ast as BinaryOpNode;
     expect(binaryAst.operator).toBe("+");
-    expect((binaryAst.left as NumberNode).value).toBe(2);
-    expect((binaryAst.right as NumberNode).value).toBe(3);
+    expect(fromDecimal((binaryAst.left as NumberNode).value)).toBe(2);
+    expect(fromDecimal((binaryAst.right as NumberNode).value)).toBe(3);
   });
 
   test("respects operator precedence", () => {
@@ -39,7 +40,7 @@ describe("Parser", () => {
 
     const binaryAst = ast as BinaryOpNode;
     expect(binaryAst.operator).toBe("+");
-    expect((binaryAst.left as NumberNode).value).toBe(2);
+    expect(fromDecimal((binaryAst.left as NumberNode).value)).toBe(2);
     expect(binaryAst.right.type).toBe("binary");
     expect((binaryAst.right as BinaryOpNode).operator).toBe("*");
   });
@@ -52,7 +53,7 @@ describe("Parser", () => {
     expect(binaryAst.operator).toBe("*");
     expect(binaryAst.left.type).toBe("binary");
     expect((binaryAst.left as BinaryOpNode).operator).toBe("+");
-    expect((binaryAst.right as NumberNode).value).toBe(4);
+    expect(fromDecimal((binaryAst.right as NumberNode).value)).toBe(4);
   });
 
   test("parses function calls", () => {
@@ -62,7 +63,7 @@ describe("Parser", () => {
     const funcAst = ast as FunctionNode;
     expect(funcAst.name).toBe("sqrt");
     expect(funcAst.args.length).toBe(1);
-    expect((funcAst.args[0] as NumberNode).value).toBe(16);
+    expect(fromDecimal((funcAst.args[0] as NumberNode).value)).toBe(16);
   });
 
   test("parses variable assignments", () => {
@@ -71,7 +72,7 @@ describe("Parser", () => {
 
     const assignAst = ast as AssignmentNode;
     expect(assignAst.variable).toBe("x");
-    expect((assignAst.value as NumberNode).value).toBe(10);
+    expect(fromDecimal((assignAst.value as NumberNode).value)).toBe(10);
   });
 
   test("parses unit conversions", () => {
@@ -87,7 +88,7 @@ describe("Parser", () => {
     const leftBinary = binaryAst.left as BinaryOpNode;
     expect(leftBinary.operator).toBe("unit");
     expect(leftBinary.left.type).toBe("number");
-    expect((leftBinary.left as NumberNode).value).toBe(100);
+    expect(fromDecimal((leftBinary.left as NumberNode).value)).toBe(100);
     expect(leftBinary.right.type).toBe("variable");
     expect((leftBinary.right as VariableNode).name).toBe("cm");
 
@@ -102,7 +103,7 @@ describe("Parser", () => {
 
     const binaryAst = ast as BinaryOpNode;
     expect(binaryAst.operator).toBe("-");
-    expect((binaryAst.left as NumberNode).value).toBe(100);
+    expect(fromDecimal((binaryAst.left as NumberNode).value)).toBe(100);
     // The right side should be transformed to (100 * 10/100)
     expect(binaryAst.right.type).toBe("binary");
     expect((binaryAst.right as BinaryOpNode).operator).toBe("*");

@@ -14,6 +14,7 @@ export interface HistoryEntry {
 
 // Import dimension types
 import type { DimensionMap } from "../evaluator/dimensions";
+import type { Decimal } from "../utils/decimal-math";
 
 // Function information for user-defined functions
 export interface FunctionInfo {
@@ -39,9 +40,9 @@ export interface PartialInfo {
 
 // Discriminated union type for all calculated values
 export type CalculatedValue =
-  | { type: "number"; value: number } // Pure numbers only, no units
-  | { type: "percentage"; value: number } // Special type for percentages
-  | { type: "quantity"; value: number; dimensions: DimensionMap }
+  | { type: "number"; value: Decimal } // Pure numbers only, no units
+  | { type: "percentage"; value: Decimal } // Special type for percentages
+  | { type: "quantity"; value: Decimal; dimensions: DimensionMap }
   | { type: "string"; value: string }
   | { type: "date"; value: Date; timezone?: string }
   | { type: "boolean"; value: boolean }
@@ -110,7 +111,7 @@ export interface Token {
 
 export interface NumberNode {
   type: "number";
-  value: number;
+  value: Decimal;
 }
 
 export interface BinaryOpNode {
