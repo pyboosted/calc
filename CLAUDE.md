@@ -567,6 +567,9 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/cli-env-arg.test.ts`: CLI integration tests for stdin, --arg, and -o flags
 - `tests/user-functions.test.ts`: User-defined functions with recursion (v1.4.1)
 - `tests/lambda-functions.test.ts`: Lambda expressions and higher-order functions (v1.4.3)
+- `tests/pipe-operator.test.ts`: Pipe operator functionality (v1.4.5)
+- `tests/sum-avg-functions.test.ts`: Sum/avg as both array functions and aggregates
+- `tests/compound-division-bug.test.ts`: Compound unit division consistency
 
 ## Important Notes
 
@@ -615,3 +618,6 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Lambda functions are supported with arrow syntax (v1.4.3): `x => x * 2`
 - Higher-order functions available: `filter`, `map`, `reduce`, `sort`, `groupBy`
 - Lambdas have full closure support and can access outer scope variables
+- Pipe operator (`|`) enables functional composition (v1.4.5): `[1, 2, 3] | sum`
+- Pipe operator works with built-in functions, user-defined functions, and higher-order functions
+- Unit conversions during division now properly handle compound units (v1.4.5 bugfix)

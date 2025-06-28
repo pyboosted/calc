@@ -67,6 +67,10 @@ area = pi * radius^2    # 78.54
 double(x) = x * 2
 double(10)              # 20
 
+# Pipe operator
+[1, 2, 3, 4, 5] | sum   # 15
+"  hello  " | trim | len # 5
+
 # Date calculations
 today + 7 days
 25/12/2024 - today in days
@@ -83,6 +87,7 @@ today + 7 days
 - 📊 **Arrays & Objects** - First-class data structures
 - 🔧 **Variables & Functions** - User-defined functions with recursion
 - 🎯 **Lambda Expressions** - Anonymous functions, higher-order operations
+- 🚀 **Pipe Operator** - Functional composition with `|` operator
 - 🎨 **Smart Interface** - Syntax highlighting, history, multi-line support
 
 [→ View all features](docs/features.md)

@@ -4,7 +4,7 @@ This file provides guidance to Gemini when working with code in this repository.
 
 ## Project Overview
 
-Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
+Boosted Calculator is a powerful terminal-based calculator built with TypeScript and Ink (React for CLI). It features advanced mathematical operations, dimensional analysis with compound units (v1.4.0), user-defined functions with recursion (v1.4.1), lambda functions and higher-order operations (v1.4.3), pipe operator for functional composition (v1.4.5), live currency conversion, string manipulation (v1.3.0), boolean operations (v1.3.1), arrays and objects (v1.3.2), and a sophisticated expression parser. The project uses Bun as the package manager and development runtime, but is distributed as a standard Node.js package.
 
 ## Development Commands
 
@@ -96,6 +96,8 @@ bun test --name-pattern "percentage"
    - Recognizes comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)
    - Tokenizes boolean/null keywords and logical operators (`and`, `or`, `not`)
    - Tokenizes array literals (`[`, `]`) and object literals (`{`, `}`)
+   - Tokenizes arrow operator (`=>`) for lambda expressions
+   - Tokenizes pipe operator (`|`) for functional composition
    - Maintains position information for each token
    - Processes escape sequences in strings
 
@@ -111,6 +113,8 @@ bun test --name-pattern "percentage"
    - Supports property access (dot notation and bracket notation)
    - Implements comparison and logical operators with proper precedence
    - Supports ternary conditional operator (`? :`)
+   - Parses lambda expressions (`x => x * 2`, `(a, b) => a + b`)
+   - Parses pipe operator with correct precedence between additive and conversion
 
 3. **Evaluator** (`src/evaluator/evaluate.ts`): Executes AST to produce results
    - Maintains variable state across evaluations
@@ -124,6 +128,8 @@ bun test --name-pattern "percentage"
    - Evaluates comparison operations with automatic unit conversion
    - Implements short-circuit evaluation for logical operators
    - Uses JavaScript-like truthiness rules for conditional expressions
+   - Evaluates lambda expressions with closure support
+   - Handles higher-order functions (filter, map, reduce, sort, groupBy)
 
 ### UI Architecture (Ink/React)
 
@@ -168,7 +174,9 @@ type CalculatedValue =
   | { type: 'boolean'; value: boolean }
   | { type: 'null'; value: null }
   | { type: 'array'; value: CalculatedValue[] }
-  | { type: 'object'; value: Map<string, CalculatedValue> };
+  | { type: 'object'; value: Map<string, CalculatedValue> }
+  | { type: 'function'; value: FunctionInfo }            // User-defined functions
+  | { type: 'lambda'; value: LambdaInfo };               // Lambda expressions
 ```
 
 **DimensionMap** structure for dimensional analysis:
@@ -350,6 +358,48 @@ The calculator supports lambda expressions (anonymous functions) and higher-orde
    any([1, 2, 3], x => x > 2)  # true
    ```
 
+### Pipe Operator (v1.4.5)
+
+The pipe operator (`|`) enables functional composition by passing values through a chain of functions:
+
+1. **Basic Syntax**:
+   ```calc
+   # Pipe value to function
+   [1, 2, 3] | sum  # 6
+   
+   # Chain multiple operations
+   "  hello  " | trim | len  # 5
+   ```
+
+2. **Features**:
+   - Left-to-right data flow
+   - Works with built-in functions, user-defined functions, and lambdas
+   - Preserves units through operations
+   - Enables partial application with additional arguments
+
+3. **Examples**:
+   ```calc
+   # Basic piping
+   [1, 2, 3, 4, 5] | sum                  # 15
+   [10, 20, 30] | avg                     # 20
+   
+   # With user functions
+   double(x) = x * 2
+   5 | double                             # 10
+   
+   # With higher-order functions
+   [1, -2, 3, -4, 5] | filter(x => x > 0) | sum  # 9
+   
+   # Unit preservation
+   [10m, 20m, 30m] | sum                  # 60 m
+   
+   # Multi-line aggregates
+   100
+   200
+   300
+   agg | sum                              # 600
+   ```
+
 ### User-Defined Functions (v1.4.1)
 
 The calculator supports user-defined functions with recursion, making it Turing-complete:
@@ -491,6 +541,9 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - `tests/cli-env-arg.test.ts`: CLI integration tests for stdin, --arg, and -o flags
 - `tests/user-functions.test.ts`: User-defined functions with recursion (v1.4.1)
 - `tests/lambda-functions.test.ts`: Lambda expressions and higher-order functions (v1.4.3)
+- `tests/pipe-operator.test.ts`: Pipe operator functionality (v1.4.5)
+- `tests/sum-avg-functions.test.ts`: Sum/avg as both array functions and aggregates
+- `tests/compound-division-bug.test.ts`: Compound unit division consistency
 
 ## Important Notes
 
@@ -539,3 +592,6 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Lambda functions are supported with arrow syntax (v1.4.3): `x => x * 2`
 - Higher-order functions available: `filter`, `map`, `reduce`, `sort`, `groupBy`
 - Lambdas have full closure support and can access outer scope variables
+- Pipe operator (`|`) enables functional composition (v1.4.5): `[1, 2, 3] | sum`
+- Pipe operator works with built-in functions, user-defined functions, and higher-order functions
+- Unit conversions during division now properly handle compound units (v1.4.5 bugfix)
