@@ -191,11 +191,66 @@ str_num = `456` as number              # 456
 pi_str = 3.14159 as string             # "3.14159"
 
 # String functions
+# Length and access
 len(`Hello`)                           # 5
 substr(`Hello, World!`, 0, 5)          # "Hello"
 substr(`Hello, World!`, 7)             # "World!"
 charat(`Hello`, 1)                     # "e"
+
+# Case transformation
+uppercase(`hello world`)               # "HELLO WORLD"
+upper(`hello`)                         # "HELLO" (alias)
+lowercase(`HELLO WORLD`)               # "hello world"
+lower(`HELLO`)                         # "hello" (alias)
+capitalize(`hello world`)              # "Hello world"
+
+# Trimming
 trim(`  spaces  `)                     # "spaces"
+
+# String checking
+startswith(`hello world`, `hello`)     # true
+endswith(`report.pdf`, `.pdf`)         # true
+includes(`hello world`, `lo wo`)       # true
+contains(`hello world`, `world`)       # true (alias)
+
+# String manipulation
+replace(`hello hello`, `hello`, `hi`)  # "hi hello"
+replaceall(`hello hello`, `hello`, `hi`) # "hi hi"
+split(`a,b,c`, `,`)                    # ["a", "b", "c"]
+join([`a`, `b`, `c`], `-`)             # "a-b-c"
+reverse(`hello`)                       # "olleh"
+
+# String padding
+padleft(`5`, 3, `0`)                   # "005"
+padstart(`abc`, 5, `*`)                # "**abc" (alias)
+padright(`hello`, 10, `.`)             # "hello....."
+padend(`abc`, 5, `*`)                  # "abc**" (alias)
+
+# Finding substrings
+indexof(`hello world`, `world`)        # 6
+lastindexof(`abcabc`, `abc`)           # 3
+
+# Practical examples
+# Email validation
+email = `user@example.com`
+includes(email, `@`) and includes(email, `.`)  # true
+
+# File extension checking
+filename = `report_2025.pdf`
+endswith(filename, `.pdf`) ? `PDF file` : `Other file`  # "PDF file"
+
+# Name formatting
+name = `john doe`
+capitalize(name)                       # "John doe"
+join(map(split(name, ` `), capitalize), ` `)  # "John Doe"
+
+# String cleaning
+text = `  HELLO   WORLD  `
+text | trim | lower | replace(`  `, ` `)  # "hello world"
+
+# Number formatting with padding
+invoice = 42
+`INV-${padleft(invoice as string, 6, `0`)}`  # "INV-000042"
 
 # Date formatting with strings
 today_str = format(today, `dd/MM/yyyy`)

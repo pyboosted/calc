@@ -76,7 +76,15 @@
   - Repetition (`*`)
   - Suffix removal (`-`)
 - **Type casting**: `as string`, `as number`
-- **String functions**: `len`, `substr`, `charat`, `trim`, `format`
+- **String functions**:
+  - **Length & Access**: `len`, `substr`, `charat`
+  - **Case Transformation**: `uppercase`/`upper`, `lowercase`/`lower`, `capitalize`
+  - **Trimming**: `trim`
+  - **Checking**: `startswith`, `endswith`, `includes`/`contains`
+  - **Manipulation**: `replace`, `replaceall`, `split`, `join`, `reverse`
+  - **Padding**: `padleft`/`padstart`, `padright`/`padend`
+  - **Finding**: `indexof`, `lastindexof`
+  - **Formatting**: `format` (for dates)
 - **Escape sequences**: `\n`, `\t`, `\\`, `` \` ``
 
 ## Boolean Operations (v1.3.1)

@@ -86,7 +86,9 @@ describe("nullish coalescing operator (??)", () => {
       evaluate("arr = null", env);
       const result = evaluate("arr ?? [1, 2, 3]", env);
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(3);
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(3);
+      }
     });
 
     test("works with objects", () => {
@@ -94,10 +96,12 @@ describe("nullish coalescing operator (??)", () => {
       evaluate("obj = null", env);
       const result = evaluate("obj ?? {a: 1, b: 2}", env);
       expect(result.type).toBe("object");
-      expect((result as any).value.get("a")).toEqual({
-        type: "number",
-        value: 1,
-      });
+      if (result.type === "object") {
+        expect(result.value.get("a")).toEqual({
+          type: "number",
+          value: 1,
+        });
+      }
     });
 
     test("works with strings", () => {

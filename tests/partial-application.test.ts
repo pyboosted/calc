@@ -66,8 +66,12 @@ describe("Partial Application", () => {
       const result = evaluate("[1, 2, 3] | map(triple)", env);
 
       expect(result.type).toBe("array");
-      const values = (result as any).value.map((v: any) => v.value);
-      expect(values).toEqual([3, 6, 9]);
+      if (result.type === "array") {
+        const values = result.value.map((v) =>
+          v.type === "number" ? v.value : null
+        );
+        expect(values).toEqual([3, 6, 9]);
+      }
     });
   });
 
@@ -104,7 +108,9 @@ describe("Partial Application", () => {
 
       const result = evaluate("toMeters(100 cm)", env);
       expect(result.type).toBe("quantity");
-      expect((result as any).value).toBe(1);
+      if (result.type === "quantity") {
+        expect(result.value).toBe(1);
+      }
     });
   });
 
@@ -119,8 +125,12 @@ describe("Partial Application", () => {
       );
 
       expect(result.type).toBe("array");
-      const values = (result as any).value.map((v: any) => v.value);
-      expect(values).toEqual([0, 5, 10]);
+      if (result.type === "array") {
+        const values = result.value.map((v) =>
+          v.type === "number" ? v.value : null
+        );
+        expect(values).toEqual([0, 5, 10]);
+      }
     });
 
     test("map with partially applied transformation", () => {
@@ -130,8 +140,12 @@ describe("Partial Application", () => {
       const result = evaluate("[1, 2, 3] | map(increment)", env);
 
       expect(result.type).toBe("array");
-      const values = (result as any).value.map((v: any) => v.value);
-      expect(values).toEqual([2, 3, 4]);
+      if (result.type === "array") {
+        const values = result.value.map((v) =>
+          v.type === "number" ? v.value : null
+        );
+        expect(values).toEqual([2, 3, 4]);
+      }
     });
 
     test("reduce with partially applied reducer", () => {
@@ -175,12 +189,14 @@ describe("Partial Application", () => {
       const partial = evaluate("add(5)", env);
 
       expect(partial.type).toBe("partial");
-      expect((partial as any).value.remainingParams).toEqual(["b"]);
-      expect((partial as any).value.appliedArgs).toHaveLength(1);
-      expect((partial as any).value.appliedArgs[0]).toEqual({
-        type: "number",
-        value: 5,
-      });
+      if (partial.type === "partial") {
+        expect(partial.value.remainingParams).toEqual(["b"]);
+        expect(partial.value.appliedArgs).toHaveLength(1);
+        expect(partial.value.appliedArgs[0]).toEqual({
+          type: "number",
+          value: 5,
+        });
+      }
     });
   });
 });

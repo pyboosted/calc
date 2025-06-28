@@ -207,12 +207,35 @@ This allows the calculator to handle multiple data types while maintaining type 
    - **Repetition (*)**: `string * number` repeats the string
    - **Subtraction (-)**: Removes suffix if present
 
-3. **String Functions** (`src/evaluator/string-functions.ts`):
-   - `len(string)`: Returns length
-   - `substr(string, start, length?)`: Extracts substring
-   - `charat(string, index)`: Gets character at index
-   - `trim(string)`: Removes whitespace
-   - `format(date, pattern)`: Formats dates using patterns
+3. **String Functions** (implemented in `src/evaluator/evaluate.ts`):
+   - **Length & Access**:
+     - `len(string)`: Returns length
+     - `substr(string, start, length?)`: Extracts substring
+     - `charat(string, index)`: Gets character at index
+   - **Case Transformation**:
+     - `uppercase(string)` / `upper(string)`: Convert to uppercase
+     - `lowercase(string)` / `lower(string)`: Convert to lowercase
+     - `capitalize(string)`: Capitalize first letter
+   - **Trimming**:
+     - `trim(string)`: Removes whitespace from both ends
+   - **String Checking**:
+     - `startswith(string, prefix)`: Check if string starts with prefix
+     - `endswith(string, suffix)`: Check if string ends with suffix
+     - `includes(string, substring)` / `contains(string, substring)`: Check if string contains substring
+   - **String Manipulation**:
+     - `replace(string, search, replacement)`: Replace first occurrence
+     - `replaceall(string, search, replacement)`: Replace all occurrences
+     - `split(string, delimiter)`: Split string into array
+     - `join(array, delimiter)`: Join array elements into string
+     - `reverse(string)`: Reverse string characters
+   - **String Padding**:
+     - `padleft(string, length, char?)` / `padstart(string, length, char?)`: Pad from left
+     - `padright(string, length, char?)` / `padend(string, length, char?)`: Pad from right
+   - **Finding**:
+     - `indexof(string, substring)`: Find first occurrence index
+     - `lastindexof(string, substring)`: Find last occurrence index
+   - **Formatting**:
+     - `format(date, pattern)`: Format dates using patterns
 
 4. **Type Casting**:
    - `as string`: Converts numbers/dates/booleans to strings

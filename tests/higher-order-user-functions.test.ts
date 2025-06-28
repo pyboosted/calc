@@ -9,9 +9,11 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[-2, -1, 0, 1, 2] | filter(isPositive)", env);
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(2);
-      expect((result as any).value[0]).toEqual({ type: "number", value: 1 });
-      expect((result as any).value[1]).toEqual({ type: "number", value: 2 });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0]).toEqual({ type: "number", value: 1 });
+        expect(result.value[1]).toEqual({ type: "number", value: 2 });
+      }
     });
 
     test("filter with more complex predicate", () => {
@@ -20,10 +22,12 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[1, 2, 3, 4, 5, 6] | filter(isEven)", env);
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(3);
-      expect((result as any).value[0]).toEqual({ type: "number", value: 2 });
-      expect((result as any).value[1]).toEqual({ type: "number", value: 4 });
-      expect((result as any).value[2]).toEqual({ type: "number", value: 6 });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(3);
+        expect(result.value[0]).toEqual({ type: "number", value: 2 });
+        expect(result.value[1]).toEqual({ type: "number", value: 4 });
+        expect(result.value[2]).toEqual({ type: "number", value: 6 });
+      }
     });
 
     test("filter with string predicate", () => {
@@ -35,15 +39,17 @@ describe("Higher-order functions with user-defined functions", () => {
       );
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(2);
-      expect((result as any).value[0]).toEqual({
-        type: "string",
-        value: "hello",
-      });
-      expect((result as any).value[1]).toEqual({
-        type: "string",
-        value: "world",
-      });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0]).toEqual({
+          type: "string",
+          value: "hello",
+        });
+        expect(result.value[1]).toEqual({
+          type: "string",
+          value: "world",
+        });
+      }
     });
   });
 
@@ -54,10 +60,12 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[1, 2, 3] | map(double)", env);
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(3);
-      expect((result as any).value[0]).toEqual({ type: "number", value: 2 });
-      expect((result as any).value[1]).toEqual({ type: "number", value: 4 });
-      expect((result as any).value[2]).toEqual({ type: "number", value: 6 });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(3);
+        expect(result.value[0]).toEqual({ type: "number", value: 2 });
+        expect(result.value[1]).toEqual({ type: "number", value: 4 });
+        expect(result.value[2]).toEqual({ type: "number", value: 6 });
+      }
     });
 
     test("map with square function", () => {
@@ -66,11 +74,13 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[1, 2, 3, 4] | map(square)", env);
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(4);
-      expect((result as any).value[0]).toEqual({ type: "number", value: 1 });
-      expect((result as any).value[1]).toEqual({ type: "number", value: 4 });
-      expect((result as any).value[2]).toEqual({ type: "number", value: 9 });
-      expect((result as any).value[3]).toEqual({ type: "number", value: 16 });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(4);
+        expect(result.value[0]).toEqual({ type: "number", value: 1 });
+        expect(result.value[1]).toEqual({ type: "number", value: 4 });
+        expect(result.value[2]).toEqual({ type: "number", value: 9 });
+        expect(result.value[3]).toEqual({ type: "number", value: 16 });
+      }
     });
 
     test("map with string transformation", () => {
@@ -79,15 +89,17 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate('["hello", "world"] | map(exclaim)', env);
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(2);
-      expect((result as any).value[0]).toEqual({
-        type: "string",
-        value: "hello!",
-      });
-      expect((result as any).value[1]).toEqual({
-        type: "string",
-        value: "world!",
-      });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0]).toEqual({
+          type: "string",
+          value: "hello!",
+        });
+        expect(result.value[1]).toEqual({
+          type: "string",
+          value: "world!",
+        });
+      }
     });
   });
 
@@ -124,8 +136,12 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[3, 1, 4, 1, 5] | sort(compareNumbers)", env);
 
       expect(result.type).toBe("array");
-      const values = (result as any).value.map((v: any) => v.value);
-      expect(values).toEqual([1, 1, 3, 4, 5]);
+      if (result.type === "array") {
+        const values = result.value.map((v) =>
+          v.type === "number" ? v.value : null
+        );
+        expect(values).toEqual([1, 1, 3, 4, 5]);
+      }
     });
 
     test("sort in descending order", () => {
@@ -134,8 +150,12 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[3, 1, 4, 1, 5] | sort(descending)", env);
 
       expect(result.type).toBe("array");
-      const values = (result as any).value.map((v: any) => v.value);
-      expect(values).toEqual([5, 4, 3, 1, 1]);
+      if (result.type === "array") {
+        const values = result.value.map((v) =>
+          v.type === "number" ? v.value : null
+        );
+        expect(values).toEqual([5, 4, 3, 1, 1]);
+      }
     });
   });
 
@@ -146,15 +166,19 @@ describe("Higher-order functions with user-defined functions", () => {
       const result = evaluate("[1, 2, 3, 4, 5, 6] | groupBy(parity)", env);
 
       expect(result.type).toBe("object");
-      const obj = result as any;
+      if (result.type === "object") {
+        const odd = result.value.get("odd");
+        expect(odd?.type).toBe("array");
+        if (odd?.type === "array") {
+          expect(odd.value).toHaveLength(3);
+        }
 
-      const odd = obj.value.get("odd");
-      expect(odd.type).toBe("array");
-      expect(odd.value).toHaveLength(3);
-
-      const even = obj.value.get("even");
-      expect(even.type).toBe("array");
-      expect(even.value).toHaveLength(3);
+        const even = result.value.get("even");
+        expect(even?.type).toBe("array");
+        if (even?.type === "array") {
+          expect(even.value).toHaveLength(3);
+        }
+      }
     });
 
     test("groupBy with string length", () => {
@@ -166,11 +190,20 @@ describe("Higher-order functions with user-defined functions", () => {
       );
 
       expect(result.type).toBe("object");
-      const obj = result as any;
-
-      expect(obj.value.get("1").value).toHaveLength(2); // "a", "e"
-      expect(obj.value.get("2").value).toHaveLength(2); // "bb", "dd"
-      expect(obj.value.get("3").value).toHaveLength(1); // "ccc"
+      if (result.type === "object") {
+        const one = result.value.get("1");
+        if (one?.type === "array") {
+          expect(one.value).toHaveLength(2); // "a", "e"
+        }
+        const two = result.value.get("2");
+        if (two?.type === "array") {
+          expect(two.value).toHaveLength(2); // "bb", "dd"
+        }
+        const three = result.value.get("3");
+        if (three?.type === "array") {
+          expect(three.value).toHaveLength(1); // "ccc"
+        }
+      }
     });
   });
 
@@ -184,9 +217,11 @@ describe("Higher-order functions with user-defined functions", () => {
       );
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(2);
-      expect((result as any).value[0]).toEqual({ type: "number", value: 1 });
-      expect((result as any).value[1]).toEqual({ type: "number", value: 4 });
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0]).toEqual({ type: "number", value: 1 });
+        expect(result.value[1]).toEqual({ type: "number", value: 4 });
+      }
     });
 
     test("map with lambda then filter with user function", () => {
@@ -198,7 +233,9 @@ describe("Higher-order functions with user-defined functions", () => {
       );
 
       expect(result.type).toBe("array");
-      expect((result as any).value).toHaveLength(4); // All doubled values are even
+      if (result.type === "array") {
+        expect(result.value).toHaveLength(4); // All doubled values are even
+      }
     });
   });
 

@@ -678,6 +678,261 @@ function evaluateTrim(args: CalculatedValue[]): CalculatedValue {
   return { type: "string", value: strArg.value.trim() };
 }
 
+// Case transformation functions
+function evaluateUppercase(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 1) {
+    throw new Error("uppercase() requires exactly 1 argument");
+  }
+  const strArg = args[0];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("uppercase() requires a string argument");
+  }
+  return { type: "string", value: strArg.value.toUpperCase() };
+}
+
+function evaluateLowercase(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 1) {
+    throw new Error("lowercase() requires exactly 1 argument");
+  }
+  const strArg = args[0];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("lowercase() requires a string argument");
+  }
+  return { type: "string", value: strArg.value.toLowerCase() };
+}
+
+function evaluateCapitalize(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 1) {
+    throw new Error("capitalize() requires exactly 1 argument");
+  }
+  const strArg = args[0];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("capitalize() requires a string argument");
+  }
+  const str = strArg.value;
+  return {
+    type: "string",
+    value: str.length > 0 ? str.charAt(0).toUpperCase() + str.slice(1) : "",
+  };
+}
+
+// String checking functions
+function evaluateStartsWith(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("startswith() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const prefixArg = args[1];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to startswith() must be a string");
+  }
+  if (!prefixArg || prefixArg.type !== "string") {
+    throw new Error("Second argument to startswith() must be a string");
+  }
+  return { type: "boolean", value: strArg.value.startsWith(prefixArg.value) };
+}
+
+function evaluateEndsWith(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("endswith() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const suffixArg = args[1];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to endswith() must be a string");
+  }
+  if (!suffixArg || suffixArg.type !== "string") {
+    throw new Error("Second argument to endswith() must be a string");
+  }
+  return { type: "boolean", value: strArg.value.endsWith(suffixArg.value) };
+}
+
+function evaluateIncludes(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("includes() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const substringArg = args[1];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to includes() must be a string");
+  }
+  if (!substringArg || substringArg.type !== "string") {
+    throw new Error("Second argument to includes() must be a string");
+  }
+  return { type: "boolean", value: strArg.value.includes(substringArg.value) };
+}
+
+// String manipulation functions
+function evaluateReplace(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 3) {
+    throw new Error("replace() requires exactly 3 arguments");
+  }
+  const strArg = args[0];
+  const searchArg = args[1];
+  const replaceArg = args[2];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to replace() must be a string");
+  }
+  if (!searchArg || searchArg.type !== "string") {
+    throw new Error("Second argument to replace() must be a string");
+  }
+  if (!replaceArg || replaceArg.type !== "string") {
+    throw new Error("Third argument to replace() must be a string");
+  }
+  return {
+    type: "string",
+    value: strArg.value.replace(searchArg.value, replaceArg.value),
+  };
+}
+
+function evaluateReplaceAll(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 3) {
+    throw new Error("replaceall() requires exactly 3 arguments");
+  }
+  const strArg = args[0];
+  const searchArg = args[1];
+  const replaceArg = args[2];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to replaceall() must be a string");
+  }
+  if (!searchArg || searchArg.type !== "string") {
+    throw new Error("Second argument to replaceall() must be a string");
+  }
+  if (!replaceArg || replaceArg.type !== "string") {
+    throw new Error("Third argument to replaceall() must be a string");
+  }
+  return {
+    type: "string",
+    value: strArg.value.replaceAll(searchArg.value, replaceArg.value),
+  };
+}
+
+function evaluateSplit(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("split() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const delimiterArg = args[1];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to split() must be a string");
+  }
+  if (!delimiterArg || delimiterArg.type !== "string") {
+    throw new Error("Second argument to split() must be a string");
+  }
+  const parts = strArg.value.split(delimiterArg.value);
+  return {
+    type: "array",
+    value: parts.map((part) => ({ type: "string", value: part })),
+  };
+}
+
+function evaluateJoin(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("join() requires exactly 2 arguments");
+  }
+  const arrArg = args[0];
+  const delimiterArg = args[1];
+  if (!arrArg || arrArg.type !== "array") {
+    throw new Error("First argument to join() must be an array");
+  }
+  if (!delimiterArg || delimiterArg.type !== "string") {
+    throw new Error("Second argument to join() must be a string");
+  }
+  const strings = arrArg.value.map((item) => {
+    if (item.type === "string") {
+      return item.value;
+    }
+    return formatValue(item);
+  });
+  return { type: "string", value: strings.join(delimiterArg.value) };
+}
+
+function evaluateReverse(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 1) {
+    throw new Error("reverse() requires exactly 1 argument");
+  }
+  const strArg = args[0];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("reverse() requires a string argument");
+  }
+  return { type: "string", value: strArg.value.split("").reverse().join("") };
+}
+
+// String padding functions
+function evaluatePadLeft(args: CalculatedValue[]): CalculatedValue {
+  if (args.length < 2 || args.length > 3) {
+    throw new Error("padleft() requires 2 or 3 arguments");
+  }
+  const strArg = args[0];
+  const lengthArg = args[1];
+  const charArg = args[2];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to padleft() must be a string");
+  }
+  if (!lengthArg || lengthArg.type !== "number") {
+    throw new Error("Second argument to padleft() must be a number");
+  }
+  const padChar = charArg && charArg.type === "string" ? charArg.value : " ";
+  return {
+    type: "string",
+    value: strArg.value.padStart(Math.floor(lengthArg.value), padChar),
+  };
+}
+
+function evaluatePadRight(args: CalculatedValue[]): CalculatedValue {
+  if (args.length < 2 || args.length > 3) {
+    throw new Error("padright() requires 2 or 3 arguments");
+  }
+  const strArg = args[0];
+  const lengthArg = args[1];
+  const charArg = args[2];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to padright() must be a string");
+  }
+  if (!lengthArg || lengthArg.type !== "number") {
+    throw new Error("Second argument to padright() must be a number");
+  }
+  const padChar = charArg && charArg.type === "string" ? charArg.value : " ";
+  return {
+    type: "string",
+    value: strArg.value.padEnd(Math.floor(lengthArg.value), padChar),
+  };
+}
+
+// String finding functions
+function evaluateIndexOf(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("indexof() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const substringArg = args[1];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to indexof() must be a string");
+  }
+  if (!substringArg || substringArg.type !== "string") {
+    throw new Error("Second argument to indexof() must be a string");
+  }
+  return { type: "number", value: strArg.value.indexOf(substringArg.value) };
+}
+
+function evaluateLastIndexOf(args: CalculatedValue[]): CalculatedValue {
+  if (args.length !== 2) {
+    throw new Error("lastindexof() requires exactly 2 arguments");
+  }
+  const strArg = args[0];
+  const substringArg = args[1];
+  if (!strArg || strArg.type !== "string") {
+    throw new Error("First argument to lastindexof() must be a string");
+  }
+  if (!substringArg || substringArg.type !== "string") {
+    throw new Error("Second argument to lastindexof() must be a string");
+  }
+  return {
+    type: "number",
+    value: strArg.value.lastIndexOf(substringArg.value),
+  };
+}
+
 function evaluateStringFunction(
   name: string,
   args: CalculatedValue[]
@@ -691,6 +946,46 @@ function evaluateStringFunction(
       return evaluateCharAt(args);
     case "trim":
       return evaluateTrim(args);
+    // Case transformation
+    case "uppercase":
+    case "upper":
+      return evaluateUppercase(args);
+    case "lowercase":
+    case "lower":
+      return evaluateLowercase(args);
+    case "capitalize":
+      return evaluateCapitalize(args);
+    // String checking
+    case "startswith":
+      return evaluateStartsWith(args);
+    case "endswith":
+      return evaluateEndsWith(args);
+    case "includes":
+    case "contains":
+      return evaluateIncludes(args);
+    // String manipulation
+    case "replace":
+      return evaluateReplace(args);
+    case "replaceall":
+      return evaluateReplaceAll(args);
+    case "split":
+      return evaluateSplit(args);
+    case "join":
+      return evaluateJoin(args);
+    case "reverse":
+      return evaluateReverse(args);
+    // String padding
+    case "padleft":
+    case "padstart":
+      return evaluatePadLeft(args);
+    case "padright":
+    case "padend":
+      return evaluatePadRight(args);
+    // String finding
+    case "indexof":
+      return evaluateIndexOf(args);
+    case "lastindexof":
+      return evaluateLastIndexOf(args);
     default:
       throw new Error(`Unknown string function: ${name}`);
   }
@@ -1045,7 +1340,34 @@ function evaluateFunctionNode(
   const args = node.args.map((arg) => evaluateNode(arg, variables, context));
 
   // Handle string functions
-  if (["format", "substr", "charat", "trim"].includes(node.name)) {
+  if (
+    [
+      "format",
+      "substr",
+      "charat",
+      "trim",
+      "uppercase",
+      "upper",
+      "lowercase",
+      "lower",
+      "capitalize",
+      "startswith",
+      "endswith",
+      "includes",
+      "contains",
+      "replace",
+      "replaceall",
+      "split",
+      "join",
+      "reverse",
+      "padleft",
+      "padstart",
+      "padright",
+      "padend",
+      "indexof",
+      "lastindexof",
+    ].includes(node.name)
+  ) {
     return evaluateStringFunction(node.name, args);
   }
 
