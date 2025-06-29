@@ -236,14 +236,14 @@ export class CalculatorEngine {
       return;
     }
 
-    // Find previous result for 'prev' variable
+    // Find previous result for 'prev' variable (skip markdown results)
     let prevValue: CalculatedValue | undefined;
     for (let i = index - 1; i >= 0; i--) {
       const prevLine = this.lines[i];
       if (!prevLine) {
         continue;
       }
-      if (prevLine.result && !prevLine.isComment) {
+      if (prevLine.result && !prevLine.isComment && prevLine.result.type !== "markdown") {
         prevValue = prevLine.result;
         break;
       }
@@ -257,7 +257,7 @@ export class CalculatorEngine {
     }
 
     try {
-      // Collect previous results for aggregate operations
+      // Collect previous results for aggregate operations (skip markdown results)
       const previousResults: CalculatedValue[] = [];
       for (let i = index - 1; i >= 0; i--) {
         const prevLine = this.lines[i];
@@ -267,7 +267,10 @@ export class CalculatorEngine {
         if (!prevLine.result || prevLine.isComment) {
           break;
         }
-        previousResults.unshift(prevLine.result);
+        // Skip markdown results in aggregation
+        if (prevLine.result.type !== "markdown") {
+          previousResults.unshift(prevLine.result);
+        }
       }
 
       let result: CalculatedValue;

@@ -77,14 +77,15 @@
 ## Special Operations
 
 ### Previous Result
-- Use `prev` to reference the previous line's result (skips empty lines and comments)
+- Use `prev` to reference the previous line's result (skips empty lines, comments, and markdown)
 
 ### Aggregate Operations
-- `total` calculates sum of previous numeric values (stops at empty line or comment)
+- `total` calculates sum of previous numeric values (stops at empty line or comment, ignores markdown)
 - String concatenation: `total` concatenates strings when previous results contain strings
-- `agg` keyword: Returns array of previous results for piping
+- `agg` keyword: Returns array of previous results for piping (ignores markdown results)
 - Use `agg | sum` for sum of previous results (replaces old `sum` aggregate)
 - Use `agg | avg` or `agg | average` for average of previous results (replaces old `avg`/`average` aggregates)
+- All aggregate operations skip markdown-rendered lines, only processing valid calculation results
 
 ### Smart Percentage Calculations
 - Basic: `20%` = 0.2
