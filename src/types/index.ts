@@ -54,7 +54,8 @@ export type CalculatedValue =
   | { type: "object"; value: Map<string, CalculatedValue> }
   | { type: "function"; value: FunctionInfo }
   | { type: "lambda"; value: LambdaInfo }
-  | { type: "partial"; value: PartialInfo };
+  | { type: "partial"; value: PartialInfo }
+  | { type: "markdown"; value: MarkdownNode };
 
 export const TokenType = {
   NUMBER: "NUMBER",
@@ -285,6 +286,26 @@ export interface LambdaNode {
   body: ASTNode;
 }
 
+// Markdown element types
+export type MarkdownElement =
+  | { type: "text"; value: string }
+  | { type: "bold"; content: MarkdownElement[]; marker: "**" | "__" }
+  | { type: "italic"; content: MarkdownElement[]; marker: "*" | "_" }
+  | { type: "code"; value: string }
+  | {
+      type: "codeblock";
+      value: string;
+      language?: string;
+      incomplete?: boolean;
+    }
+  | { type: "link"; text: string; url: string }
+  | { type: "strikethrough"; content: MarkdownElement[] };
+
+export interface MarkdownNode {
+  type: "markdown";
+  elements: MarkdownElement[];
+}
+
 // ASTNode is now a discriminated union type
 export type ASTNode =
   | NumberNode
@@ -314,4 +335,5 @@ export type ASTNode =
   | PropertyAssignmentNode
   | TypeCheckNode
   | FunctionDefinitionNode
-  | LambdaNode;
+  | LambdaNode
+  | MarkdownNode;

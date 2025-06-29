@@ -141,7 +141,7 @@ describe("Concatenated Compound Units", () => {
 
     test("number followed by non-unit text", () => {
       const vars = new Map();
-      // This should fail to parse because "hello" is not a unit
+      // This should throw an error since "hello" is not a unit
       expect(() => evaluate("5hello", vars)).toThrow();
     });
   });

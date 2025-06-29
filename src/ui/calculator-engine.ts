@@ -1,5 +1,7 @@
 import { evaluate } from "../evaluator/evaluate";
+import { MarkdownParser } from "../parser/markdown-parser";
 import type { CalculatedValue } from "../types";
+import { ConfigManager } from "../utils/config-manager";
 import { deepCloneCalculatedValue } from "../utils/deep-clone";
 
 interface LineState {
@@ -18,6 +20,7 @@ export class CalculatorEngine {
   private variables = new Map<string, CalculatedValue>();
   private nextId = 1;
   private debugMode: boolean;
+  private markdownMode: boolean;
   private stdinData?: string;
   private cliArg?: string;
 
@@ -28,10 +31,12 @@ export class CalculatorEngine {
   constructor(
     initialContent?: string,
     debugMode = false,
+    markdownMode = false,
     stdinData?: string,
     cliArg?: string
   ) {
     this.debugMode = debugMode;
+    this.markdownMode = markdownMode;
     this.stdinData = stdinData;
     this.cliArg = cliArg;
     if (initialContent) {
@@ -265,12 +270,34 @@ export class CalculatorEngine {
         previousResults.unshift(prevLine.result);
       }
 
-      const result = evaluate(line.content, lineVariables, {
-        previousResults,
-        debugMode: this.debugMode,
-        stdinData: this.stdinData,
-        cliArg: this.cliArg,
-      });
+      let result: CalculatedValue;
+      try {
+        // Try to evaluate as calculator expression
+        result = evaluate(line.content, lineVariables, {
+          previousResults,
+          debugMode: this.debugMode,
+          stdinData: this.stdinData,
+          cliArg: this.cliArg,
+        });
+      } catch (error) {
+        // Check if markdown support is enabled
+        const config = ConfigManager.getInstance();
+        const markdownEnabled = this.markdownMode || config.markdownSupport;
+
+        if (markdownEnabled) {
+          // If evaluation fails (syntax or runtime error), parse as markdown
+          const markdownParser = new MarkdownParser(line.content);
+          const markdownAst = markdownParser.parse();
+          result = {
+            type: "markdown",
+            value: markdownAst,
+          };
+        } else {
+          // Re-throw the error to be handled below
+          throw error;
+        }
+      }
+
       line.result = result;
       line.error = null;
       line.isComment = false;
@@ -388,6 +415,9 @@ export class CalculatorEngine {
         return a === b;
       case "partial":
         // Partials are equal if they reference the same object
+        return a === b;
+      case "markdown":
+        // Markdown values are equal if they reference the same object
         return a === b;
       default: {
         // Exhaustive check

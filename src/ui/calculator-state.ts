@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { existsSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import clipboardy from "clipboardy";
+import { isDebugMode } from "../utils/debug";
 import type { KeyEvent } from "../utils/key-event";
 import { CalculatorEngine } from "./calculator-engine";
 import { TextEditor } from "./text-editor";
@@ -37,10 +38,12 @@ export class CalculatorStateManager extends EventEmitter {
   private initialContent: string;
   private isNewFile = false;
   private isRenamingFile = false;
+  private markdownMode = false;
 
   constructor(
     initialContent?: string,
     debugMode = false,
+    markdownMode = false,
     filename?: string,
     isNewFile = false,
     stdinData?: string,
@@ -49,6 +52,7 @@ export class CalculatorStateManager extends EventEmitter {
     super();
     this.filename = filename || null;
     this.initialContent = initialContent || "";
+    this.markdownMode = markdownMode;
 
     // If it's a new file that doesn't exist yet, mark it as modified
     this.isNewFile = isNewFile;
@@ -67,7 +71,13 @@ export class CalculatorStateManager extends EventEmitter {
     this.setupEditorSubscriptions(this.filenameEditor);
 
     // Initialize engine without content
-    this.engine = new CalculatorEngine(undefined, debugMode, stdinData, cliArg);
+    this.engine = new CalculatorEngine(
+      undefined,
+      debugMode,
+      markdownMode,
+      stdinData,
+      cliArg
+    );
 
     // Now sync content from editor to engine
     if (initialContent) {
@@ -293,7 +303,11 @@ export class CalculatorStateManager extends EventEmitter {
   }
 
   clearAll() {
-    this.engine = new CalculatorEngine();
+    this.engine = new CalculatorEngine(
+      undefined,
+      isDebugMode(),
+      this.markdownMode
+    );
     this.editor.reset();
     // No need to emit stateChanged - the editor will emit change event
   }

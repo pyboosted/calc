@@ -591,14 +591,16 @@ export function formatResultWithUnit(
         const intValue = value.value.floor();
         const isNegative = intValue.isNegative();
         const absValue = intValue.abs();
-        const binaryStr = absValue.toBinary();
+        const num = absValue.toNumber();
+        const binaryStr = `0b${num.toString(2)}`;
         return isNegative ? `-${binaryStr}` : binaryStr;
       }
       if (value.format === "hex") {
         const intValue = value.value.floor();
         const isNegative = intValue.isNegative();
         const absValue = intValue.abs();
-        const hexStr = absValue.toHexadecimal();
+        const num = absValue.toNumber();
+        const hexStr = `0x${num.toString(16)}`;
         return isNegative ? `-${hexStr}` : hexStr;
       }
 
@@ -720,6 +722,10 @@ export function formatResultWithUnit(
 
     case "partial":
       return `<partial(${value.value.remainingParams.join(", ")})>`;
+
+    case "markdown":
+      // Return empty string - markdown will be rendered separately in UI
+      return "";
 
     default: {
       // Exhaustive check

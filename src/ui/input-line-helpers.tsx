@@ -10,6 +10,8 @@ export interface CharPart {
   color?: string;
   selected?: boolean;
   selectionEnd?: boolean;
+  bold?: boolean;
+  italic?: boolean;
   selectionDirection?: "left" | "right";
 }
 
@@ -161,6 +163,14 @@ export function renderCharPart(
         props.color = part.color;
       }
     }
+    // Handle bold property explicitly
+    if (part.bold) {
+      props.bold = true;
+    }
+    // Handle italic property explicitly
+    if (part.italic) {
+      props.italic = true;
+    }
     if (part.inverse) {
       props.inverse = true;
     }
@@ -174,7 +184,7 @@ export function renderCharPart(
   })();
 
   return (
-    <Text {...textProps} key={key}>
+    <Text key={key} {...textProps}>
       {part.text}
     </Text>
   );

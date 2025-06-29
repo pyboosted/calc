@@ -105,6 +105,7 @@ describe("Modified Status Tracking", () => {
       const manager = new CalculatorStateManager(
         "",
         false,
+        false,
         "new-file.txt",
         true
       );
@@ -115,6 +116,7 @@ describe("Modified Status Tracking", () => {
     test("should remain modified after adding content to new file", () => {
       const manager = new CalculatorStateManager(
         "",
+        false,
         false,
         "new-file.txt",
         true
@@ -130,6 +132,7 @@ describe("Modified Status Tracking", () => {
     test("should remain modified even if content is deleted in new file", () => {
       const manager = new CalculatorStateManager(
         "",
+        false,
         false,
         "new-file.txt",
         true
@@ -157,6 +160,7 @@ describe("Modified Status Tracking", () => {
 
       const manager = new CalculatorStateManager(
         "test content",
+        false,
         false,
         testFile,
         true

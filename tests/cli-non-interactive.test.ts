@@ -24,7 +24,8 @@ describe("CLI Non-Interactive Mode", () => {
 
   test("handles errors gracefully", async () => {
     try {
-      await $`bun run src/cli.tsx "invalid expression"`.text();
+      // Disable markdown mode to ensure invalid expressions throw errors
+      await $`bun run src/cli.tsx --md=false "invalid expression"`.text();
       expect(true).toBe(false); // Should not reach here
     } catch (error) {
       const e = error as { exitCode: number; stderr: Buffer };

@@ -5,6 +5,8 @@ import { getSelectionDirection } from "./input-line-helpers";
 interface HighlightedPart {
   text: string;
   color?: string;
+  bold?: boolean;
+  italic?: boolean;
 }
 
 // Build parts for a single highlighted part when cursor is within it
@@ -34,6 +36,8 @@ export function buildPartsForCursorInPart(
       parts.push({
         text: beforeCursor[i] || "",
         color: part.color,
+        bold: part.bold,
+        italic: part.italic,
         selected: !!isSelected,
         selectionEnd: !!isSelectionEnd,
         selectionDirection: isSelectionEnd
@@ -54,6 +58,8 @@ export function buildPartsForCursorInPart(
   parts.push({
     text: charAtCursor,
     color: inactiveCursor && !selection ? "gray" : part.color,
+    bold: part.bold,
+    italic: part.italic,
     selected: !!isSelected,
     selectionEnd: !!isSelectionEnd,
     selectionDirection: isSelectionEnd
@@ -75,6 +81,8 @@ export function buildPartsForCursorInPart(
       parts.push({
         text: afterCursor[i] || "",
         color: part.color,
+        bold: part.bold,
+        italic: part.italic,
         selected: !!afterIsSelected,
         selectionEnd: !!afterIsSelectionEnd,
         selectionDirection: afterIsSelectionEnd
@@ -111,6 +119,8 @@ export function buildPartsForEndOfLine(
     parts.push({
       text: part.text[i] || "",
       color: part.color,
+      bold: part.bold,
+      italic: part.italic,
       selected: !!isSelected,
       selectionEnd: !!isSelectionEnd,
       selectionDirection: isSelectionEnd
@@ -161,6 +171,8 @@ export function buildPartsForRegularText(
     parts.push({
       text: part.text[i] || "",
       color: part.color,
+      bold: part.bold,
+      italic: part.italic,
       selected: !!isSelected,
       selectionEnd: !!isSelectionEnd,
       selectionDirection: isSelectionEnd

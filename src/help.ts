@@ -16,6 +16,8 @@ ${chalk.bold.yellow("USAGE:")}
   ${chalk.green("calc")} ${chalk.cyan("-h")}                     Show this help message (alternative)
   ${chalk.green("calc")} ${chalk.cyan("--arg <value>")}          Pass argument to arg() function
   ${chalk.green("calc")} ${chalk.cyan("<file> -o")}              Execute file, output only last result
+  ${chalk.green("calc")} ${chalk.cyan("--md=false")}             Disable markdown mode
+  ${chalk.green("calc")} ${chalk.cyan("--markdown=false")}       Disable markdown mode (alternative)
 
 ${chalk.bold.yellow("EXAMPLES:")}
   ${chalk.green("calc")} ${chalk.cyan("-e '2 + 2'")}                Basic arithmetic
@@ -89,6 +91,7 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Environment variables: ${chalk.cyan('env("VAR_NAME")')}
   ${chalk.gray("•")} Command-line arguments: ${chalk.cyan("arg()")} with stdin or ${chalk.cyan("--arg")}
   ${chalk.gray("•")} Comments with ${chalk.cyan("#")} symbol
+  ${chalk.gray("•")} Markdown mode: ${chalk.cyan("enabled by default")}, supports rich text formatting
 
 ${chalk.bold.yellow("DEBUG MODE:")}
   When enabled with ${chalk.cyan("--debug")}, provides verbose logging to stderr:

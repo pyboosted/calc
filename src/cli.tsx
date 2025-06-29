@@ -4,6 +4,7 @@ import { render } from "ink";
 import { evaluate } from "./evaluator/evaluate";
 import { formatResultWithUnit } from "./evaluator/unit-formatter";
 import { showHelp } from "./help";
+import { MarkdownParser } from "./parser/markdown-parser";
 import type { CalculatedValue } from "./types";
 import { Calculator } from "./ui/calculator";
 import { ConfigManager } from "./utils/config-manager";
@@ -27,6 +28,25 @@ function handleEarlyFlags(args: string[]) {
 
 function isDebugMode(args: string[]): boolean {
   return args.includes("--debug");
+}
+
+function getMarkdownMode(args: string[], config: ConfigManager): boolean {
+  // Check for explicit disable flags
+  if (args.includes("--md=false") || args.includes("--markdown=false")) {
+    return false;
+  }
+
+  // Check for explicit enable flags
+  if (
+    args.includes("-m") ||
+    args.includes("--markdown") ||
+    args.includes("--md")
+  ) {
+    return true;
+  }
+
+  // Otherwise use config value (defaults to true)
+  return config.markdownSupport;
 }
 
 function parseExpressions(args: string[]): string[] {
@@ -86,6 +106,7 @@ interface FileResult {
 function handleFileOrExpression(
   nonFlagArgs: string[],
   debugMode: boolean,
+  markdownMode: boolean,
   _outputMode: boolean,
   stdinData: string | undefined,
   cliArg: string | undefined
@@ -139,6 +160,7 @@ function handleFileOrExpression(
     const input = nonFlagArgs.join(" ");
     processNonInteractiveMode(input, {
       debugMode,
+      markdownMode,
       outputMode: false, // Backwards compatibility mode doesn't use -o
       stdinData,
       cliArg,
@@ -215,9 +237,45 @@ function readStdin(): Promise<string | undefined> {
 
 interface ProcessOptions {
   debugMode: boolean;
+  markdownMode: boolean;
   outputMode: boolean;
   stdinData?: string;
   cliArg?: string;
+}
+
+function handleMarkdownFallback(
+  line: string,
+  _error: Error,
+  options: ProcessOptions,
+  onSuccess: (result: CalculatedValue) => void
+): boolean {
+  if (!options.markdownMode) {
+    return false;
+  }
+
+  try {
+    // Parse as markdown if evaluation fails
+    const markdownParser = new MarkdownParser(line);
+    const markdownAst = markdownParser.parse();
+    const markdownResult: CalculatedValue = {
+      type: "markdown",
+      value: markdownAst,
+    };
+
+    // Call success callback
+    onSuccess(markdownResult);
+
+    // Only output if not in output mode
+    if (!options.outputMode) {
+      // For markdown, just show the original text
+      console.log(line);
+    }
+
+    return true;
+  } catch (_mdError) {
+    // Markdown parsing failed, return false to indicate error should be shown
+    return false;
+  }
 }
 
 function processNonInteractiveMode(input: string, options: ProcessOptions) {
@@ -260,8 +318,21 @@ function processNonInteractiveMode(input: string, options: ProcessOptions) {
       // Also update 'prev' variable with the latest result
       variables.set("prev", result);
     } catch (error) {
-      console.error(chalk.red(`Error: ${(error as Error).message}`));
-      hasError = true;
+      const markdownHandled = handleMarkdownFallback(
+        line.trim(),
+        error as Error,
+        options,
+        (result) => {
+          lastResult = result;
+          previousResults.push(result);
+          variables.set("prev", result);
+        }
+      );
+
+      if (!markdownHandled) {
+        console.error(chalk.red(`Error: ${(error as Error).message}`));
+        hasError = true;
+      }
     }
   }
 
@@ -279,6 +350,10 @@ function processNonInteractiveMode(input: string, options: ProcessOptions) {
     } else if (lastResult.type === "array" || lastResult.type === "object") {
       // Convert array/object to JSON for piping
       console.log(JSON.stringify(convertToJSON(lastResult)));
+    } else if (lastResult.type === "markdown") {
+      // For markdown, we need to reconstruct the original text
+      // This is a simplified version - ideally we'd have a markdown renderer
+      console.log("[markdown content]");
     } else {
       // For other types, use the formatter
       const config = ConfigManager.getInstance();
@@ -328,6 +403,10 @@ function convertToJSON(value: CalculatedValue): JSONValue {
     // Partials cannot be serialized to JSON
     return `<partial(${value.value.remainingParams.join(", ")})>`;
   }
+  if (value.type === "markdown") {
+    // Markdown cannot be serialized to JSON
+    return "<markdown>";
+  }
   // Handle Decimal types
   if (
     value.type === "number" ||
@@ -355,6 +434,10 @@ async function main() {
   // Initialize managers
   await initializeManagers(args);
 
+  // Get config and check markdown mode
+  const config = ConfigManager.getInstance();
+  const markdownMode = getMarkdownMode(args, config);
+
   // Read stdin data if available
   const stdinData = await readStdin();
 
@@ -372,6 +455,7 @@ async function main() {
     // Note: -o flag doesn't apply to -e expressions (already non-interactive)
     processNonInteractiveMode(expressions.join("\n"), {
       debugMode,
+      markdownMode,
       outputMode: false, // Always show all results for -e expressions
       stdinData,
       cliArg,
@@ -386,6 +470,7 @@ async function main() {
   const fileResult = handleFileOrExpression(
     nonFlagArgs,
     debugMode,
+    markdownMode,
     outputMode,
     stdinData,
     cliArg
@@ -403,6 +488,7 @@ async function main() {
       // Execute file content and output only the last result
       processNonInteractiveMode(fileContent, {
         debugMode,
+        markdownMode,
         outputMode: true,
         stdinData,
         cliArg,
@@ -416,6 +502,7 @@ async function main() {
           filename={filename}
           initialContent={fileContent}
           isNewFile={isNewFile}
+          markdownMode={markdownMode}
           stdinData={stdinData}
         />
       );
@@ -423,7 +510,12 @@ async function main() {
   } else {
     // Interactive mode with empty content
     render(
-      <Calculator cliArg={cliArg} debugMode={debugMode} stdinData={stdinData} />
+      <Calculator
+        cliArg={cliArg}
+        debugMode={debugMode}
+        markdownMode={markdownMode}
+        stdinData={stdinData}
+      />
     );
   }
 }

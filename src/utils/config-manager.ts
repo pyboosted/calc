@@ -8,11 +8,13 @@ const CONFIG_FILE = join(CONFIG_DIR, "config.yaml");
 
 interface Config {
   precision: number;
+  markdownSupport: boolean;
   // Add more options here in the future
 }
 
 const DEFAULT_CONFIG: Config = {
   precision: 2,
+  markdownSupport: true,
 };
 
 export class ConfigManager {
@@ -66,6 +68,7 @@ export class ConfigManager {
       const yamlContent =
         "# Boosted Calculator Configuration\n" +
         "# precision: Number of decimal places for results (default: 2)\n" +
+        "# markdownSupport: Enable markdown rendering for invalid expressions (default: true)\n" +
         "\n" +
         stringify(this.config);
 
@@ -90,6 +93,11 @@ export class ConfigManager {
       }
       this.config.precision = DEFAULT_CONFIG.precision;
     }
+
+    // Validate markdownSupport
+    if (typeof this.config.markdownSupport !== "boolean") {
+      this.config.markdownSupport = DEFAULT_CONFIG.markdownSupport;
+    }
   }
 
   get precision(): number {
@@ -98,6 +106,15 @@ export class ConfigManager {
 
   async setPrecision(precision: number): Promise<void> {
     this.config.precision = Math.max(0, Math.min(20, Math.floor(precision)));
+    await this.saveConfig();
+  }
+
+  get markdownSupport(): boolean {
+    return this.config.markdownSupport;
+  }
+
+  async setMarkdownSupport(enabled: boolean): Promise<void> {
+    this.config.markdownSupport = enabled;
     await this.saveConfig();
   }
 

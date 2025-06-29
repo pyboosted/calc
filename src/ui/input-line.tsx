@@ -1,5 +1,7 @@
 import { Text } from "ink";
 import type React from "react";
+import type { CalculatedValue } from "../types";
+import { debugLog } from "../utils/debug";
 import type { TextSelection } from "./calculator-state";
 import { buildCharacterParts } from "./input-line-builder";
 import {
@@ -20,6 +22,7 @@ interface InputLineProps {
   lineIndex?: number;
   copyHighlight?: "result" | "full" | "selection" | null;
   inactiveCursor?: boolean;
+  result?: CalculatedValue | null;
 }
 
 // Component for empty line with cursor
@@ -174,7 +177,12 @@ export const InputLine: React.FC<InputLineProps> = ({
   lineIndex,
   copyHighlight,
   inactiveCursor,
+  result,
 }) => {
+  // Debug render
+  if (text.includes("`")) {
+    debugLog("UI", "InputLine rendering", { text, cursor: cursorPosition });
+  }
   // Get selection range for this line
   const selectionRange = getLineSelectionRange(selection, lineIndex);
   const showLineEndIndicator = shouldShowLineEndIndicator(selection, lineIndex);
@@ -211,6 +219,7 @@ export const InputLine: React.FC<InputLineProps> = ({
         copyHighlight={copyHighlight}
         dimColor={dimColor}
         lineIndex={lineIndex}
+        result={result}
         selection={selection}
         selectionRange={selectionRange}
         showLineEndIndicator={showLineEndIndicator}
@@ -230,6 +239,7 @@ export const InputLine: React.FC<InputLineProps> = ({
     isAtSelectionEdge: (charPos) =>
       isAtSelectionEdge(charPos, selection ?? null, lineIndex),
     inactiveCursor,
+    result,
   });
 
   // Render all parts in a single Text component
@@ -251,6 +261,24 @@ export const InputLine: React.FC<InputLineProps> = ({
   );
 };
 
+// Helper function to check if line ending has selection edge
+function hasLineEndingEdge(
+  selection: TextSelection | null,
+  lineIndex: number | undefined,
+  textLength: number
+): boolean {
+  if (!selection || lineIndex === undefined) {
+    return false;
+  }
+
+  return (
+    // Forward selection: cursor wrapped to next line
+    (lineIndex === selection.to.line - 1 && selection.to.char === 0) ||
+    // Backward selection: cursor at end of current line
+    (lineIndex === selection.to.line && selection.to.char === textLength)
+  );
+}
+
 const HighlightedText: React.FC<{
   text: string;
   selectionRange?: { start: number; end: number } | null;
@@ -259,6 +287,7 @@ const HighlightedText: React.FC<{
   showLineEndIndicator?: boolean;
   selection?: TextSelection | null;
   lineIndex?: number;
+  result?: CalculatedValue | null;
 }> = ({
   text,
   selectionRange,
@@ -267,6 +296,7 @@ const HighlightedText: React.FC<{
   showLineEndIndicator,
   selection,
   lineIndex,
+  result,
 }) => {
   // Handle empty lines - they should still show selection indicator
   if (!text) {
@@ -286,7 +316,16 @@ const HighlightedText: React.FC<{
     );
   }
 
-  const parts = getHighlightedParts(text);
+  const parts = getHighlightedParts(text, result);
+
+  // Debug highlighted parts
+  if (text.includes("`")) {
+    debugLog(
+      "UI",
+      "HighlightedText parts",
+      parts.map((p) => ({ text: p.text, color: p.color }))
+    );
+  }
 
   // If there's no selection, render normally
   if (!selectionRange) {
@@ -304,8 +343,10 @@ const HighlightedText: React.FC<{
 
           return (
             <Text
+              bold={part.bold}
               color={dimColor || part.color === "dim" ? undefined : part.color}
               dimColor={dimColor || part.color === "dim"}
+              italic={part.italic}
               key={key}
             >
               {part.text}
@@ -315,15 +356,11 @@ const HighlightedText: React.FC<{
         {showLineEndIndicator &&
           (() => {
             // Check if line ending has selection edge
-            const hasEdge =
-              selection &&
-              lineIndex !== undefined &&
-              // Forward selection: cursor wrapped to next line
-              ((lineIndex === selection.to.line - 1 &&
-                selection.to.char === 0) ||
-                // Backward selection: cursor at end of current line
-                (lineIndex === selection.to.line &&
-                  selection.to.char === text.length));
+            const hasEdge = hasLineEndingEdge(
+              selection || null,
+              lineIndex,
+              text.length
+            );
 
             if (hasEdge) {
               return (
@@ -340,11 +377,13 @@ const HighlightedText: React.FC<{
 
   // Render with syntax highlighting AND selection highlighting
   // We need to combine both syntax colors and selection state
-  const syntaxParts = getHighlightedParts(text);
+  const syntaxParts = getHighlightedParts(text, result);
   const combinedParts: Array<{
     text: string;
     selected: boolean;
     color?: string;
+    bold?: boolean;
+    italic?: boolean;
     hasEdge?: boolean;
   }> = [];
 
@@ -377,6 +416,8 @@ const HighlightedText: React.FC<{
         text: syntaxPart.text.slice(partIndex, groupEnd),
         selected: isSelected,
         color: syntaxPart.color,
+        bold: syntaxPart.bold,
+        italic: syntaxPart.italic,
       });
 
       partIndex = groupEnd;
@@ -390,13 +431,11 @@ const HighlightedText: React.FC<{
       selectionRange && text.length < selectionRange.end;
 
     // Check if line ending has selection edge
-    const hasEdge =
-      selection &&
-      lineIndex !== undefined &&
-      // Forward selection: cursor wrapped to next line
-      ((lineIndex === selection.to.line - 1 && selection.to.char === 0) ||
-        // Backward selection: cursor at end of current line
-        (lineIndex === selection.to.line && selection.to.char === text.length));
+    const hasEdge = hasLineEndingEdge(
+      selection || null,
+      lineIndex,
+      text.length
+    );
 
     combinedParts.push({
       text: LINE_END_CHAR,
@@ -424,6 +463,7 @@ const HighlightedText: React.FC<{
 
         return (
           <Text
+            key={`combined-${i}-${part.selected ? "sel" : "unsel"}-${part.color || "def"}`}
             {...(part.selected
               ? (() => {
                   const selectionProps: Record<string, unknown> = {};
@@ -448,9 +488,14 @@ const HighlightedText: React.FC<{
                   ) {
                     props.dimColor = true;
                   }
+                  if (part.bold) {
+                    props.bold = true;
+                  }
+                  if (part.italic) {
+                    props.italic = true;
+                  }
                   return props;
                 })())}
-            key={`combined-${i}-${part.selected ? "sel" : "unsel"}-${part.color || "def"}`}
           >
             {part.text}
           </Text>

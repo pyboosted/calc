@@ -71,6 +71,13 @@ export function deepCloneCalculatedValue(
         },
       };
 
+    case "markdown":
+      // Markdown nodes are immutable
+      return {
+        type: "markdown",
+        value: value.value,
+      };
+
     default: {
       // This should never happen if all cases are covered
       const _exhaustive: never = value;

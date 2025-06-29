@@ -1,3 +1,4 @@
+import type { CalculatedValue } from "../types";
 import type { TextSelection } from "./calculator-state";
 import {
   buildPartsForCursorInPart,
@@ -21,6 +22,7 @@ interface BuildCharacterPartsOptions {
   lineIndex: number | undefined;
   isAtSelectionEdge: (charPos: number) => boolean;
   inactiveCursor?: boolean;
+  result?: CalculatedValue | null;
 }
 
 export function buildCharacterParts({
@@ -32,6 +34,7 @@ export function buildCharacterParts({
   lineIndex,
   isAtSelectionEdge,
   inactiveCursor,
+  result,
 }: BuildCharacterPartsOptions): CharPart[] {
   const parts: CharPart[] = [];
 
@@ -43,7 +46,7 @@ export function buildCharacterParts({
     });
   } else {
     // Get highlighted parts for the entire text
-    const highlightedParts = getHighlightedParts(text);
+    const highlightedParts = getHighlightedParts(text, result);
 
     // Now split these parts around the cursor and selection
     let charIndex = 0;

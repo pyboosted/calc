@@ -2,6 +2,7 @@ import { Box, Text } from "ink";
 import type React from "react";
 import { formatResultWithUnit } from "../evaluator/unit-formatter";
 import type { CalculatedValue } from "../types";
+import { debugLog } from "../utils/debug";
 import type { TextSelection } from "./calculator-state";
 import { InputLine } from "./input-line";
 
@@ -30,6 +31,10 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
   lineIndex,
   inactiveCursor,
 }) => {
+  // Debug rendering
+  if (value.includes("`")) {
+    debugLog("UI", "InputWithResult rendering", { value, isActive });
+  }
   // Format result
   let resultText = "";
   if (error) {
@@ -83,6 +88,7 @@ export const InputWithResult: React.FC<InputWithResultProps> = ({
               dimColor={isComment}
               inactiveCursor={inactiveCursor}
               lineIndex={lineIndex}
+              result={result}
               selection={selection}
               text={value}
             />

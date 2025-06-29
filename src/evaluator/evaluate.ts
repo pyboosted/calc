@@ -186,7 +186,7 @@ export interface EvaluationContext {
 
 export function evaluate(
   input: string,
-  variables: Map<string, CalculatedValue>,
+  variables: Map<string, CalculatedValue> = new Map(),
   context?: EvaluationContext
 ): CalculatedValue {
   if (context?.debugMode) {
@@ -369,6 +369,8 @@ function isTruthy(value: CalculatedValue): boolean {
       return true; // Lambdas are always truthy
     case "partial":
       return true; // Partials are always truthy
+    case "markdown":
+      return true; // Markdown is always truthy
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = value;
@@ -571,6 +573,9 @@ function valueToJSON(value: CalculatedValue): JSONValue {
         type: "partial",
         remainingParams: value.value.remainingParams,
       };
+    case "markdown":
+      // Convert markdown to string representation
+      return "[markdown content]";
     default: {
       const _exhaustiveCheck: never = value;
       return _exhaustiveCheck;
@@ -3020,6 +3025,9 @@ function isEqual(left: CalculatedValue, right: CalculatedValue): boolean {
     case "partial":
       // Partials are equal if they reference the same object
       return left === right;
+    case "markdown":
+      // Markdown values are equal if they reference the same object
+      return left === right;
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -3077,6 +3085,8 @@ function isLessThan(left: CalculatedValue, right: CalculatedValue): boolean {
       throw new Error("Cannot compare lambdas");
     case "partial":
       throw new Error("Cannot compare partial applications");
+    case "markdown":
+      throw new Error("Cannot compare markdown values");
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = left;
@@ -3411,6 +3421,14 @@ export function evaluateNode(
         },
       };
       return lambdaValue;
+    }
+
+    case "markdown": {
+      // Return markdown as a calculated value
+      return {
+        type: "markdown",
+        value: node,
+      };
     }
 
     default: {

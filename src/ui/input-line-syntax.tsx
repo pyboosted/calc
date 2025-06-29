@@ -1,18 +1,39 @@
 import { Tokenizer } from "../parser/tokenizer";
-import { type Token, TokenType } from "../types";
+import {
+  type CalculatedValue,
+  type MarkdownElement,
+  type MarkdownNode,
+  type Token,
+  TokenType,
+} from "../types";
+import { debugLog } from "../utils/debug";
 import { getFunctionDefinitionColor, getTokenColor } from "./token-colors";
 
 export function getHighlightedParts(
-  text: string
-): Array<{ text: string; color?: string }> {
+  text: string,
+  result?: CalculatedValue | null
+): Array<{ text: string; color?: string; bold?: boolean; italic?: boolean }> {
   if (!text) {
     return [];
+  }
+
+  // Check if this is a markdown result
+  if (result && result.type === "markdown") {
+    if (text.includes("`")) {
+      debugLog("MARKDOWN", "Processing as markdown", { text });
+    }
+    return getMarkdownHighlightedParts(result.value);
   }
 
   // Check for comment
   const commentIndex = text.indexOf("#");
   if (commentIndex !== -1) {
-    const parts: Array<{ text: string; color?: string }> = [];
+    const parts: Array<{
+      text: string;
+      color?: string;
+      bold?: boolean;
+      italic?: boolean;
+    }> = [];
 
     // Process the part before the comment
     if (commentIndex > 0) {
@@ -68,7 +89,7 @@ function isFunctionDefinition(tokens: Token[], index: number): boolean {
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: This function handles complex syntax highlighting logic
 function getHighlightedPartsWithoutComment(
   text: string
-): Array<{ text: string; color?: string }> {
+): Array<{ text: string; color?: string; bold?: boolean; italic?: boolean }> {
   if (!text) {
     return [];
   }
@@ -98,15 +119,52 @@ function getHighlightedPartsWithoutComment(
         tokenArray.push(token);
 
         // Calculate the actual token length in the input
-        let tokenLength = token.value.length;
+        let tokenLength: number;
 
-        // For string tokens, add 2 for the quotes
+        // For string tokens, we need to find the actual length in the input
         if (
           token.type === TokenType.STRING_LITERAL ||
           token.type === TokenType.SINGLE_QUOTE_STRING ||
           token.type === TokenType.DOUBLE_QUOTE_STRING
         ) {
-          tokenLength += 2; // Add opening and closing quotes
+          // Find the closing quote in the original text
+          let quote: string;
+          if (token.type === TokenType.STRING_LITERAL) {
+            quote = "`";
+          } else if (token.type === TokenType.SINGLE_QUOTE_STRING) {
+            quote = "'";
+          } else {
+            quote = '"';
+          }
+
+          // Find the actual end of the string in the original text
+          let searchPos = token.position + 1; // Start after opening quote
+          let inEscape = false;
+
+          while (searchPos < text.length) {
+            if (inEscape) {
+              inEscape = false;
+              searchPos++;
+              continue;
+            }
+
+            if (text[searchPos] === "\\") {
+              inEscape = true;
+              searchPos++;
+              continue;
+            }
+
+            if (text[searchPos] === quote) {
+              searchPos++; // Include the closing quote
+              break;
+            }
+
+            searchPos++;
+          }
+
+          tokenLength = searchPos - token.position;
+        } else {
+          tokenLength = token.value.length;
         }
 
         tokenMap.set(token.position, {
@@ -119,7 +177,12 @@ function getHighlightedPartsWithoutComment(
     }
 
     // Build the parts preserving spaces
-    const parts: Array<{ text: string; color?: string }> = [];
+    const parts: Array<{
+      text: string;
+      color?: string;
+      bold?: boolean;
+      italic?: boolean;
+    }> = [];
     let currentColor: string | undefined;
     let currentText = "";
 
@@ -128,28 +191,49 @@ function getHighlightedPartsWithoutComment(
       let charColor: string | undefined;
 
       if (tokenInfo) {
-        // Handle string literals with interpolations
+        // Handle all string literals (with or without interpolations)
         if (
-          tokenInfo.token.type === TokenType.STRING_LITERAL &&
-          tokenInfo.token.interpolations &&
-          tokenInfo.token.interpolations.length > 0
+          tokenInfo.token.type === TokenType.STRING_LITERAL ||
+          tokenInfo.token.type === TokenType.SINGLE_QUOTE_STRING ||
+          tokenInfo.token.type === TokenType.DOUBLE_QUOTE_STRING
         ) {
-          // Flush any accumulated text before processing the interpolated string
+          // Flush any accumulated text before processing the string
           if (currentText) {
             parts.push({ text: currentText, color: currentColor });
             currentText = "";
             currentColor = undefined;
           }
 
-          // This is the start of a string with interpolations
-          // We need to pass the token value (with markers) wrapped in backticks
-          const tokenValueWithBackticks = `\`${tokenInfo.token.value}\``;
-          const stringParts = getInterpolatedStringParts(
-            tokenValueWithBackticks,
-            tokenInfo.token.interpolations,
-            i
-          );
-          parts.push(...stringParts);
+          // Handle string based on type
+          if (
+            tokenInfo.token.type === TokenType.STRING_LITERAL &&
+            tokenInfo.token.interpolations &&
+            tokenInfo.token.interpolations.length > 0
+          ) {
+            // String with interpolations
+            const tokenValueWithBackticks = `\`${tokenInfo.token.value}\``;
+            const stringParts = getInterpolatedStringParts(
+              tokenValueWithBackticks,
+              tokenInfo.token.interpolations,
+              i
+            );
+            parts.push(...stringParts);
+          } else {
+            // Regular string without interpolations
+            let quote: string;
+            if (tokenInfo.token.type === TokenType.STRING_LITERAL) {
+              quote = "`";
+            } else if (tokenInfo.token.type === TokenType.SINGLE_QUOTE_STRING) {
+              quote = "'";
+            } else {
+              quote = '"';
+            }
+
+            parts.push({ text: quote, color: "green" });
+            parts.push({ text: tokenInfo.token.value, color: "green" });
+            parts.push({ text: quote, color: "green" });
+          }
+
           i = tokenInfo.end - 1; // Skip to end of string
           continue;
         }
@@ -176,8 +260,19 @@ function getHighlightedPartsWithoutComment(
         }
       } else {
         // Check if we're inside a token
+        let insideString = false;
         for (const [start, info] of tokenMap) {
           if (i >= start && i < info.end) {
+            // Skip if we're inside a string token (already processed)
+            if (
+              info.token.type === TokenType.STRING_LITERAL ||
+              info.token.type === TokenType.SINGLE_QUOTE_STRING ||
+              info.token.type === TokenType.DOUBLE_QUOTE_STRING
+            ) {
+              insideString = true;
+              break;
+            }
+
             // Check if this is a function definition
             if (info.token.type === TokenType.VARIABLE) {
               const tokenIndex = tokenIndexMap.get(info.token);
@@ -194,6 +289,11 @@ function getHighlightedPartsWithoutComment(
             }
             break;
           }
+        }
+
+        // Skip characters inside string tokens
+        if (insideString) {
+          continue;
         }
       }
 
@@ -212,9 +312,35 @@ function getHighlightedPartsWithoutComment(
       parts.push({ text: currentText, color: currentColor });
     }
 
+    // Debug output
+    if (text.includes("`")) {
+      debugLog(
+        "HIGHLIGHT",
+        "Output parts",
+        parts.map((p) => ({ text: p.text, len: p.text.length }))
+      );
+    }
+
     return parts;
-  } catch (_error) {
-    // If tokenization fails, just return plain text
+  } catch (error) {
+    // Debug error
+    if (text.includes("`")) {
+      debugLog("HIGHLIGHT", "Error in tokenization", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        text,
+      });
+    }
+
+    // If tokenization fails due to unterminated string literal,
+    // we need to handle backticks specially to avoid duplication
+    if (
+      error instanceof Error &&
+      error.message === "Unterminated string literal"
+    ) {
+      // Return the text as-is without any special processing
+      return [{ text }];
+    }
+    // For other errors, return plain text
     return [{ text }];
   }
 }
@@ -291,5 +417,121 @@ function getInterpolatedStringParts(
   // Add closing backtick
   parts.push({ text: "`", color: "green" });
 
+  return parts;
+}
+
+function getMarkdownHighlightedParts(
+  markdown: MarkdownNode
+): Array<{ text: string; color?: string; bold?: boolean; italic?: boolean }> {
+  const parts: Array<{
+    text: string;
+    color?: string;
+    bold?: boolean;
+    italic?: boolean;
+  }> = [];
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Processing different markdown element types requires multiple branches
+  function processElements(elements: MarkdownElement[]): void {
+    for (const element of elements) {
+      switch (element.type) {
+        case "text":
+          parts.push({ text: element.value });
+          break;
+
+        case "bold": {
+          // Render bold with syntax markers
+          parts.push({ text: element.marker, color: "gray" });
+          const boldStart = parts.length;
+          processElements(element.content);
+          // Apply bold style to content
+          for (let i = boldStart; i < parts.length; i++) {
+            const part = parts[i];
+            if (part) {
+              // Mark as bold (we'll handle the actual bold rendering in the display component)
+              part.bold = true;
+            }
+          }
+          parts.push({ text: element.marker, color: "gray" });
+          break;
+        }
+
+        case "italic": {
+          // Render italic with syntax markers
+          parts.push({ text: element.marker, color: "gray" });
+          const italicStart = parts.length;
+          processElements(element.content);
+          // Apply italic style to content
+          for (let i = italicStart; i < parts.length; i++) {
+            const part = parts[i];
+            if (part) {
+              // Mark as italic (we'll handle the actual italic rendering in the display component)
+              part.italic = true;
+            }
+          }
+          parts.push({ text: element.marker, color: "gray" });
+          break;
+        }
+
+        case "code":
+          parts.push({ text: "`", color: "gray" });
+          parts.push({ text: element.value, color: "cyan" });
+          parts.push({ text: "`", color: "gray" });
+          break;
+
+        case "codeblock": {
+          debugLog("MARKDOWN", "Rendering codeblock", element);
+          // Opening backticks with optional language
+          parts.push({ text: "```", color: "gray" });
+          if (element.language) {
+            parts.push({ text: element.language, color: "yellow" });
+            // Add space after language (it gets consumed during parsing)
+            parts.push({ text: " ", color: "cyan" });
+          }
+          // Code content (only add if not empty)
+          if (element.value) {
+            parts.push({ text: element.value, color: "cyan" });
+          }
+          // Only show closing backticks if the code block is complete
+          if (!element.incomplete) {
+            parts.push({ text: "```", color: "gray" });
+          }
+          break;
+        }
+
+        case "link":
+          // Render the full markdown link syntax
+          parts.push({ text: "[", color: "gray" });
+          parts.push({ text: element.text, color: "blue" });
+          parts.push({ text: "](", color: "gray" });
+          parts.push({ text: element.url, color: "cyan" });
+          parts.push({ text: ")", color: "gray" });
+          break;
+
+        case "strikethrough": {
+          // Render strikethrough with syntax markers
+          parts.push({ text: "~~", color: "gray" });
+          const strikeStart = parts.length;
+          processElements(element.content);
+          // Apply strikethrough style to content
+          for (let i = strikeStart; i < parts.length; i++) {
+            const part = parts[i];
+            if (part && !part.color) {
+              part.color = "dim";
+            }
+          }
+          parts.push({ text: "~~", color: "gray" });
+          break;
+        }
+
+        default: {
+          // Exhaustive check
+          const _exhaustiveCheck: never = element;
+          _exhaustiveCheck;
+        }
+      }
+    }
+  }
+
+  processElements(markdown.elements);
   return parts;
 }

@@ -147,6 +147,9 @@ function formatResult(result: CalculatedValue): string {
       return `<lambda(${result.value.parameters.join(", ")})>`;
     case "partial":
       return `<partial(${result.value.remainingParams.join(", ")})>`;
+    case "markdown":
+      // Markdown is handled by the InputLine component, not here
+      return "";
     default: {
       // Exhaustive check
       const _exhaustiveCheck: never = result;

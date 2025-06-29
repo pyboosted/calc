@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { debugLog } from "../utils/debug";
 import { HotkeyManager } from "../utils/hotkey-manager";
 import type { KeyEvent } from "../utils/key-event";
 
@@ -117,10 +118,21 @@ export class TextEditor extends EventEmitter {
     }
 
     const line = this.lines[this.cursorLine];
+
+    // Debug character insertion
+    if (char === "`" || line?.includes("`")) {
+      debugLog("EDITOR", "Inserting character", { char, line });
+    }
     if (line !== undefined) {
       this.lines[this.cursorLine] =
         line.slice(0, this.cursorChar) + char + line.slice(this.cursorChar);
       this.cursorChar += char.length;
+
+      // Debug result
+      const currentLine = this.lines[this.cursorLine];
+      if (char === "`" || currentLine?.includes("`")) {
+        debugLog("EDITOR", "Result line", { line: currentLine });
+      }
     }
     this.emitChange();
   }

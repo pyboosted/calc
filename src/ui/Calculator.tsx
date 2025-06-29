@@ -15,6 +15,7 @@ import { StatusBar } from "./status-bar";
 interface CalculatorProps {
   initialContent?: string;
   debugMode?: boolean;
+  markdownMode?: boolean;
   filename?: string;
   isNewFile?: boolean;
   stdinData?: string;
@@ -24,6 +25,7 @@ interface CalculatorProps {
 export const Calculator: React.FC<CalculatorProps> = ({
   initialContent,
   debugMode = false,
+  markdownMode = false,
   filename,
   isNewFile = false,
   stdinData,
@@ -42,6 +44,7 @@ export const Calculator: React.FC<CalculatorProps> = ({
     stateManagerRef.current = new CalculatorStateManager(
       initialContent,
       debugMode,
+      markdownMode,
       filename,
       isNewFile,
       stdinData,
