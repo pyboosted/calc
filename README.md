@@ -95,6 +95,7 @@ today + 7 days
 - 🎯 **Lambda Expressions** - Anonymous functions, higher-order operations
 - 🚀 **Pipe Operator** - Functional composition with `|` operator
 - 🎨 **Smart Interface** - Syntax highlighting, history, multi-line support
+- 📝 **Markdown Support** - Rich text formatting for invalid expressions (v1.5.3)
 
 [→ View all features](docs/features.md)
 

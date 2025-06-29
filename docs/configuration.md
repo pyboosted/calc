@@ -5,14 +5,17 @@ The calculator stores its configuration in `~/.config/boomi/config.yaml`. The fi
 ## Available Options
 
 - **precision**: Number of decimal places for results (default: 2, range: 0-20)
+- **markdownSupport**: Enable markdown rendering for invalid expressions (default: true, v1.5.3)
 
 ## Example config.yaml
 
 ```yaml
 # Boosted Calculator Configuration
 # precision: Number of decimal places for results (default: 2)
+# markdownSupport: Enable markdown rendering for invalid expressions (default: true)
 
 precision: 4
+markdownSupport: true
 ```
 
 ## File Locations

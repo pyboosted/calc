@@ -91,7 +91,8 @@ ${chalk.bold.yellow("FEATURES:")}
   ${chalk.gray("•")} Environment variables: ${chalk.cyan('env("VAR_NAME")')}
   ${chalk.gray("•")} Command-line arguments: ${chalk.cyan("arg()")} with stdin or ${chalk.cyan("--arg")}
   ${chalk.gray("•")} Comments with ${chalk.cyan("#")} symbol
-  ${chalk.gray("•")} Markdown mode: ${chalk.cyan("enabled by default")}, supports rich text formatting
+  ${chalk.gray("•")} Markdown mode: ${chalk.cyan("enabled by default")} ${chalk.cyan("(v1.5.3)")}, rich text formatting
+  ${chalk.gray("•")} Markdown syntax: ${chalk.cyan("**bold**, *italic*, `code`, ```blocks```, [links]")}
 
 ${chalk.bold.yellow("DEBUG MODE:")}
   When enabled with ${chalk.cyan("--debug")}, provides verbose logging to stderr:

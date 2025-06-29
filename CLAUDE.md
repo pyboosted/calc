@@ -545,8 +545,9 @@ The calculator now supports full dimensional analysis for compound units and phy
 
 3. **Configuration** (`src/utils/config-manager.ts`)
    - YAML-based config at `~/.config/boomi/config.yaml`
-   - Currently supports precision setting (decimal places)
+   - Supports precision setting (decimal places) and markdown support toggle
    - Auto-creates config directory and file on first run
+   - Markdown support enabled by default (v1.5.3)
 
 4. **Date/Time Operations** (`src/utils/date-manager.ts`)
    - Keywords: today, tomorrow, yesterday, now, weekdays
@@ -651,3 +652,6 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 - Precision is preserved through all operations including unit conversions and currency calculations
 - The precision display setting in config only affects output formatting, not internal calculations
 - Binary and hex conversions require integer values - attempting to convert decimals throws an error (v1.5.1)
+- Markdown mode is enabled by default (v1.5.3) - invalid expressions are rendered as formatted markdown text
+- Use --md=false or --markdown=false flags to disable markdown mode
+- The markdown parser supports bold (**text**), italic (*text*), code (`text`), code blocks (```), links, and strikethrough

@@ -168,3 +168,15 @@
 - **Formatting**: Invalid expressions are treated as comments (gray text), empty lines for organization
 - **Clipboard copy**: Ctrl+Y copies the result value with visual feedback (yellow highlight)
 - **Configurable precision**: Set decimal places for results via config.yaml
+
+## Markdown Support (v1.5.3)
+- **Enabled by default**: Invalid expressions are rendered as formatted markdown text
+- **Supported syntax**:
+  - **Bold text**: `**text**` or `__text__`
+  - **Italic text**: `*text*` or `_text_`
+  - **Inline code**: `` `code` ``
+  - **Code blocks**: ``` with optional language identifier
+  - **Links**: `[text](url)`
+  - **Strikethrough**: `~~text~~`
+- **Disable markdown**: Use `--md=false` or `--markdown=false` flags
+- **Config option**: Set `markdownSupport: false` in config.yaml to disable permanently
