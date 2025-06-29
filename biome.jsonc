@@ -20,5 +20,17 @@
         }
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/ui/Calculator.tsx", "src/ui/Display.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    }
+  ]
 }

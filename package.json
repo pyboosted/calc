@@ -26,6 +26,9 @@
     "url": "https://github.com/pyboosted/calc/issues"
   },
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "bin": {
     "calc": "dist/cli.js"
   },
