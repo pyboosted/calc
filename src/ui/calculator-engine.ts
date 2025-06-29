@@ -243,7 +243,11 @@ export class CalculatorEngine {
       if (!prevLine) {
         continue;
       }
-      if (prevLine.result && !prevLine.isComment && prevLine.result.type !== "markdown") {
+      if (
+        prevLine.result &&
+        !prevLine.isComment &&
+        prevLine.result.type !== "markdown"
+      ) {
         prevValue = prevLine.result;
         break;
       }
