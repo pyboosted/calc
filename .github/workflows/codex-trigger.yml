@@ -1,0 +1,122 @@
+name: Codex Trigger
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+  # Trigger when issues are opened/edited
+  issues:
+    types: [opened, edited]
+  # Trigger when PRs are opened/edited/synchronize
+  pull_request:
+    types: [opened, edited, synchronize]
+  # Trigger on new/edited comments on issues and PRs
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: codex-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  codex:
+    name: Run Codex Job
+    # Only proceed if we detect the trigger keyword or manual dispatch, and avoid loops
+    if: |
+      github.actor != 'github-actions' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'issues' && (
+          contains(github.event.issue.title, '/codex') || contains(github.event.issue.body, '/codex')
+        )) ||
+        (github.event_name == 'pull_request' && (
+          contains(github.event.pull_request.title, '/codex') || contains(github.event.pull_request.body, '/codex')
+        )) ||
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/codex'))
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare context
+        id: ctx
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const event = context.eventName;
+            let number, url, is_pr = false, title = '', body = '';
+            if (event === 'issues') {
+              number = context.payload.issue.number;
+              url = context.payload.issue.html_url;
+              title = context.payload.issue.title || '';
+              body = context.payload.issue.body || '';
+              is_pr = !!context.payload.issue.pull_request;
+            } else if (event === 'pull_request') {
+              number = context.payload.pull_request.number;
+              url = context.payload.pull_request.html_url;
+              title = context.payload.pull_request.title || '';
+              body = context.payload.pull_request.body || '';
+              is_pr = true;
+            } else if (event === 'issue_comment') {
+              number = context.payload.issue.number;
+              url = context.payload.issue.html_url;
+              title = context.payload.issue.title || '';
+              body = context.payload.comment.body || '';
+              is_pr = !!context.payload.issue.pull_request;
+            } else {
+              number = '';
+              url = '';
+            }
+            core.setOutput('number', String(number));
+            core.setOutput('url', url);
+            core.setOutput('is_pr', String(is_pr));
+            core.setOutput('title', title);
+            core.setOutput('body', body);
+
+      - name: Add codex label
+        if: ${{ steps.ctx.outputs.number != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const number = Number(core.getInput('number')) || Number('${{ steps.ctx.outputs.number }}');
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              labels: ['codex']
+            });
+
+      - name: Acknowledge request
+        if: ${{ steps.ctx.outputs.number != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const number = Number('${{ steps.ctx.outputs.number }}');
+            const url = '${{ steps.ctx.outputs.url }}';
+            const actor = context.actor;
+            const msg = [
+              `Codex job triggered by @${actor}.`,
+              '',
+              'We detected `/codex` on this thread and started a workflow.',
+              'If this was unintentional, remove `/codex` and the label.'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              body: msg
+            });
+
+      - name: Run Codex job
+        run: |
+          echo "Starting Codex job for #${{ steps.ctx.outputs.number }} (${{ steps.ctx.outputs.url }})"
+          echo "Repository: $GITHUB_REPOSITORY | Actor: $GITHUB_ACTOR | Event: $GITHUB_EVENT_NAME"
+          # TODO: Insert your actual Codex automation here (scripts, actions, etc.)
+          # For example: bun run typecheck or any other automation.
+          echo "Codex job completed."
+
