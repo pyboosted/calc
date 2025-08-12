@@ -185,6 +185,23 @@ async function initializeManagers(args: string[]) {
 
   // Initialize currency data
   await currencyManager.initialize();
+
+  // Warn user if currency support is disabled or stale; write to stderr
+  if (!currencyManager.isEnabled()) {
+    const reason = currencyManager.getDisabledReason() ?? "Unknown reason";
+    console.error(
+      chalk.yellow(
+        `Warning: Currency conversions are disabled (${reason}). ` +
+          `Reconnect to the internet and run "calc --update" to enable.\n`
+      )
+    );
+  } else if (currencyManager.isStale()) {
+    console.error(
+      chalk.yellow(
+        "Notice: Using cached currency rates; they may be out of date.\n"
+      )
+    );
+  }
 }
 
 function readStdin(): Promise<string | undefined> {

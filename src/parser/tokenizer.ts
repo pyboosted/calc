@@ -828,41 +828,8 @@ export class Tokenizer {
     }
 
     try {
-      // Check against actual available currencies from CurrencyManager
       const currencyManager = CurrencyManager.getInstance();
-      const rate = currencyManager.getRate(value);
-
-      // If we have rates loaded, use them
-      if (currencyManager.getAvailableCurrencies().length > 0) {
-        return rate !== undefined;
-      }
-
-      // If no rates are loaded (e.g., in tests), fall back to common currencies
-      // This allows tests to pass without initializing CurrencyManager
-      const commonCurrencies = [
-        "USD",
-        "EUR",
-        "GBP",
-        "JPY",
-        "CAD",
-        "AUD",
-        "CHF",
-        "CNY",
-        "INR",
-        "KRW",
-        "GEL",
-        "BYR",
-        "RUB",
-        "BRL",
-        "MXN",
-        "ZAR",
-        "SEK",
-        "NOK",
-        "DKK",
-        "PLN",
-      ];
-
-      return commonCurrencies.includes(value.toUpperCase());
+      return currencyManager.isKnownCurrencyCode(value);
     } catch {
       // If CurrencyManager isn't available, accept 3-letter codes
       return value.length === 3 && CURRENCY_CODE_PATTERN.test(value);

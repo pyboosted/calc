@@ -25,6 +25,9 @@ interface CurrencyData {
 export class CurrencyManager {
   private static instance: CurrencyManager;
   private currencyRates: Record<string, number> = {};
+  private disabled = false;
+  private disabledReason: string | null = null;
+  private stale = false; // using cached data but update failed
 
   private constructor() {}
 
@@ -131,45 +134,34 @@ export class CurrencyManager {
         this.currencyRates[currency.toUpperCase()] = rate;
       }
 
+      // Reset state flags
+      this.disabled = false;
+      this.disabledReason = null;
+      this.stale = false;
+
       console.log(
         `Currency rates updated successfully. Found ${Object.keys(this.currencyRates).length} currencies.`
       );
     } catch (error) {
       console.error("Failed to update currency data:", error);
 
-      // Fall back to hardcoded rates if update fails
-      this.currencyRates = {
-        USD: 1,
-        EUR: 0.85,
-        GBP: 0.73,
-        JPY: 110.0,
-        CAD: 1.25,
-        AUD: 1.35,
-        CHF: 0.92,
-        CNY: 6.45,
-        INR: 74.5,
-        KRW: 1180.0,
-      };
+      // If we already have some rates loaded (from cache), keep them and mark as stale
+      if (Object.keys(this.currencyRates).length > 0) {
+        this.stale = true;
+        this.disabled = false;
+        this.disabledReason = null;
+        return;
+      }
+
+      // No cache available: disable currency conversions
+      this.disabled = true;
+      this.disabledReason =
+        "Unable to download currency data and no cache available";
+      this.currencyRates = {};
     }
   }
 
   getRates(): Record<string, number> {
-    // If we have no rates, return default ones
-    if (Object.keys(this.currencyRates).length === 0) {
-      return {
-        USD: 1,
-        EUR: 0.85,
-        GBP: 0.73,
-        JPY: 110.0,
-        CAD: 1.25,
-        AUD: 1.35,
-        CHF: 0.92,
-        CNY: 6.45,
-        INR: 74.5,
-        KRW: 1180.0,
-      };
-    }
-
     return this.currencyRates;
   }
 
@@ -180,5 +172,61 @@ export class CurrencyManager {
 
   getAvailableCurrencies(): string[] {
     return Object.keys(this.currencyRates);
+  }
+
+  isEnabled(): boolean {
+    return !this.disabled;
+  }
+
+  isStale(): boolean {
+    return this.stale;
+  }
+
+  getDisabledReason(): string | null {
+    return this.disabled
+      ? (this.disabledReason ?? "Currency support disabled")
+      : null;
+  }
+
+  // Basic currency code detection independent of live rates
+  isKnownCurrencyCode(code: string): boolean {
+    if (!code) {
+      return false;
+    }
+    const upper = code.toUpperCase();
+    if (this.currencyRates[upper] !== undefined) {
+      return true;
+    }
+    // Common ISO 4217 codes for offline detection
+    const common = new Set([
+      "USD",
+      "EUR",
+      "GBP",
+      "JPY",
+      "CAD",
+      "AUD",
+      "CHF",
+      "CNY",
+      "INR",
+      "KRW",
+      "SEK",
+      "NOK",
+      "DKK",
+      "PLN",
+      "CZK",
+      "HUF",
+      "RON",
+      "BGN",
+      "HRK",
+      "RUB",
+      "TRY",
+      "BRL",
+      "MXN",
+      "ZAR",
+      "HKD",
+      "SGD",
+      "NZD",
+    ]);
+    return common.has(upper);
   }
 }

@@ -84,11 +84,18 @@ function convertTemperature(value: Decimal, from: string, to: string): Decimal {
 
 function isCurrency(unit: string): boolean {
   const currencyManager = CurrencyManager.getInstance();
-  return currencyManager.getRate(unit) !== undefined;
+  // Identify by known codes even if rates are not loaded
+  return currencyManager.isKnownCurrencyCode(unit);
 }
 
 function convertCurrency(value: Decimal, from: string, to: string): Decimal {
   const currencyManager = CurrencyManager.getInstance();
+  if (!currencyManager.isEnabled()) {
+    const reason = currencyManager.getDisabledReason() ?? "No rates available";
+    throw new Error(
+      `Currency conversions are disabled: ${reason}. Try running --update when online.`
+    );
+  }
   const fromRate = currencyManager.getRate(from);
   const toRate = currencyManager.getRate(to);
 

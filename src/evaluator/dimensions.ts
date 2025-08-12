@@ -528,6 +528,18 @@ export function convertUnit(
   // For currency, the coefficient represents the exchange rate (units per 1 USD)
   // For other units, it represents the conversion factor to base unit
   if (dimension === "currency") {
+    try {
+      const { CurrencyManager } = require("../utils/currency-manager");
+      const cm = CurrencyManager.getInstance();
+      if (!cm.isEnabled() && fromUnit !== toUnit) {
+        const reason = cm.getDisabledReason?.() ?? "No rates available";
+        throw new Error(
+          `Currency conversions are disabled: ${reason}. Try running --update when online.`
+        );
+      }
+    } catch {
+      // If currency manager is unavailable, proceed with best effort using table
+    }
     const fromCurrencyCoef = toDecimal(fromConv.coefficient);
     const toCurrencyCoef = toDecimal(toConv.coefficient);
     // Convert to USD (base currency) first
