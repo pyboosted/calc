@@ -75,7 +75,8 @@ jobs:
           #   'Please provide a thorough code review focusing on our coding standards and best practices.' }}
           
           # Add specific tools for running tests or linting (including Bun)
-          allowed_tools: "Bash(bun install),Bash(bun run *),Bash(bun test*),Bash(bun build*),Bash(npm run *)"
+          # Also include file exploration commands for better code review
+          allowed_tools: "Bash(bun install),Bash(bun run *),Bash(bun test*),Bash(bun build*),Bash(npm run *),Bash(ls*),Bash(cat *),Bash(grep *),Bash(find *),Bash(head *),Bash(tail *),Bash(wc *)"
           
           # Optional: Skip review for certain conditions
           # if: |
