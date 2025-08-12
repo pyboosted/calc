@@ -106,7 +106,6 @@ today + 7 days
 - ⌨️  [Keyboard Shortcuts](docs/keyboard-shortcuts.md) - Navigation and editing
 - ⚙️  [Configuration](docs/configuration.md) - Settings and customization
 - 🏗️  [Architecture](docs/architecture.md) - Technical design and internals
-- 🔄 [Breaking Changes](docs/breaking-changes.md) - Migration guides
 
 ## Development
 
