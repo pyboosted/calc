@@ -490,12 +490,12 @@ The calculator now supports full dimensional analysis for compound units and phy
 
 2. **Currency Manager** (`src/utils/currency-manager.ts`)
    - Fetches live rates from exchangerate-api.com
-   - Caches rates for 24 hours in `~/.config/boomi/currency_cache.json`
+   - Caches rates for 24 hours in `~/.config/calc/currencies.json`
    - Supports 300+ currencies
    - Auto-updates on startup if cache is stale
 
 3. **Configuration** (`src/utils/config-manager.ts`)
-   - YAML-based config at `~/.config/boomi/config.yaml`
+   - YAML-based config at `~/.config/calc/config.yaml`
    - Currently supports precision setting (decimal places)
    - Auto-creates config directory and file on first run
 
@@ -548,7 +548,7 @@ Tests use Bun's built-in test framework with `describe`, `test`, and `expect`:
 ## Important Notes
 
 - The calculator is published as `boosted-calc` on npm
-- Configuration and cache files are stored in `~/.config/boomi/`
+- Configuration and cache files are stored in `~/.config/calc/`
 - The parser treats invalid expressions as comments for better UX
 - Percentage calculations are context-aware (addition/subtraction vs standalone)
 - Unit parsing is context-aware - single letters are treated as units only when they follow numbers (e.g., `10 m`, `5kg`) or conversion keywords (e.g., `to m`, `in kg`)

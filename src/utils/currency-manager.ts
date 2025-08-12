@@ -8,8 +8,10 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const CONFIG_DIR = join(homedir(), ".config", "boomi");
+const CONFIG_DIR = join(homedir(), ".config", "calc");
+const OLD_CONFIG_DIR = join(homedir(), ".config", "boomi");
 const CURRENCY_FILE = join(CONFIG_DIR, "currencies.json");
+const OLD_CURRENCY_FILE = join(OLD_CONFIG_DIR, "currencies.json");
 const CURRENCY_API_URL =
   "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json";
 const UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
@@ -39,7 +41,7 @@ export class CurrencyManager {
       mkdirSync(CONFIG_DIR, { recursive: true });
     }
 
-    // Load existing currency data
+    // Load existing currency data (prefer new path, fallback to legacy)
     this.loadCurrencyData();
 
     // Check if we need to update
@@ -50,8 +52,15 @@ export class CurrencyManager {
 
   private loadCurrencyData(): void {
     try {
+      let fileToRead: string | null = null;
       if (existsSync(CURRENCY_FILE)) {
-        const content = readFileSync(CURRENCY_FILE, "utf-8");
+        fileToRead = CURRENCY_FILE;
+      } else if (existsSync(OLD_CURRENCY_FILE)) {
+        fileToRead = OLD_CURRENCY_FILE;
+      }
+
+      if (fileToRead) {
+        const content = readFileSync(fileToRead, "utf-8");
         const data: CurrencyData = JSON.parse(content);
 
         // Convert to our internal format (uppercase keys)
@@ -66,12 +75,20 @@ export class CurrencyManager {
   }
 
   private shouldUpdate(): boolean {
-    if (!existsSync(CURRENCY_FILE)) {
+    // Prefer new file; if missing, check legacy file timestamp
+    let fileForStaleness: string | null = null;
+    if (existsSync(CURRENCY_FILE)) {
+      fileForStaleness = CURRENCY_FILE;
+    } else if (existsSync(OLD_CURRENCY_FILE)) {
+      fileForStaleness = OLD_CURRENCY_FILE;
+    }
+
+    if (!fileForStaleness) {
       return true;
     }
 
     try {
-      const stats = statSync(CURRENCY_FILE);
+      const stats = statSync(fileForStaleness);
       const lastModified = stats.mtime.getTime();
       const now = Date.now();
 
@@ -103,7 +120,7 @@ export class CurrencyManager {
         lastUpdated: Date.now(),
       };
 
-      // Save to file
+      // Save to file (new location)
       writeFileSync(CURRENCY_FILE, JSON.stringify(currencyData, null, 2));
 
       // Update internal rates

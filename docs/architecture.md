@@ -42,11 +42,11 @@ The UI uses Ink (React for CLI) with a sophisticated state management system:
 
 2. **Currency Manager**
    - Fetches live rates from exchangerate-api.com
-   - Caches rates for 24 hours in `~/.config/boomi/currency_cache.json`
+   - Caches rates for 24 hours in `~/.config/calc/currencies.json`
    - Supports 300+ currencies
 
 3. **Configuration**
-   - YAML-based config at `~/.config/boomi/config.yaml`
+   - YAML-based config at `~/.config/calc/config.yaml`
    - Currently supports precision setting (decimal places)
 
 4. **Date/Time Operations**

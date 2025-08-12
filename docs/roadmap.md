@@ -687,7 +687,7 @@ export function processData(data) {
 # Via CLI flag
 calc script.calc --functions ~/.config/calc/functions.mjs
 
-# Via config file (~/.config/boomi/config.yaml)
+# Via config file (~/.config/calc/config.yaml)
 functions_path: ~/.config/calc/functions.mjs
 
 # Multiple function files (future enhancement)

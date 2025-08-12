@@ -1,6 +1,6 @@
 # Configuration
 
-The calculator stores its configuration in `~/.config/boomi/config.yaml`. The file is created automatically on first run with default values.
+The calculator stores its configuration in `~/.config/calc/config.yaml`. The file is created automatically on first run with default values.
 
 ## Available Options
 
@@ -20,7 +20,7 @@ markdownSupport: true
 
 ## File Locations
 
-- Configuration: `~/.config/boomi/config.yaml`
-- Currency cache: `~/.config/boomi/currency_cache.json`
+- Configuration: `~/.config/calc/config.yaml`
+- Currency cache: `~/.config/calc/currencies.json`
 
 The calculator will automatically create these directories and files on first run if they don't exist.
