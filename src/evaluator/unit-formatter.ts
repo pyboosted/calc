@@ -463,7 +463,9 @@ export function formatQuantity(
       formattedValue = formattedValue.replace(TRAILING_ZEROS_AFTER_DECIMAL, "");
     }
   } else {
-    formattedValue = value.toFixed(0);
+    // When precision is undefined, use the number's natural string representation
+    // This preserves significant digits instead of truncating to integer
+    formattedValue = value.toString();
   }
 
   if (unit) {
