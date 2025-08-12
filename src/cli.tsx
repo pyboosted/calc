@@ -6,7 +6,7 @@ import { formatResultWithUnit } from "./evaluator/unit-formatter";
 import { showHelp } from "./help";
 import { MarkdownParser } from "./parser/markdown-parser";
 import type { CalculatedValue } from "./types";
-import { Calculator } from "./ui/calculator";
+import { Calculator } from "./ui/Calculator";
 import { ConfigManager } from "./utils/config-manager";
 import { CurrencyManager } from "./utils/currency-manager";
 import { setDebugMode } from "./utils/debug";
